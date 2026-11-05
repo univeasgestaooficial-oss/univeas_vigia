@@ -44,6 +44,30 @@ def checar_db():
 
 
 # ==========================================
+# 2.5 AUTENTICAÇÃO DO ADMINISTRADOR
+# ==========================================
+@app.post("/master")
+async def login_administrador(senha: str = Form(...)):
+    """Valida a senha única do admin puxando da variável de ambiente da Vercel"""
+
+    # Busca a variável ADMIN_PASSWORD configurada no painel da Vercel
+    senha_segura_vercel = os.getenv("ADMIN_PASSWORD")
+
+    if not senha_segura_vercel:
+        raise HTTPException(status_code=500, detail="Erro interno: Variável ADMIN_PASSWORD não configurada na Vercel.")
+
+    if senha == senha_segura_vercel:
+        # Se a senha bater, retorna o token de acesso para o JS salvar no localStorage
+        return {
+            "sucesso": True,
+            "token_siga": "admin_token_autorizado",
+            "redirecionar": "/admin.html"
+        }
+    else:
+        raise HTTPException(status_code=401, detail="Senha incorreta. Acesso negado.")
+
+
+# ==========================================
 # 3. MÓDULO ADMINISTRADOR - ALUNOS (CRUD COMPLETO)
 # ==========================================
 
