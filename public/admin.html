@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNIVEAS - Painel do Administrador</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
+
+<!-- ==========================================
+     TELA DE LOGIN (SOBREPOSIÇÃO)
+     ========================================== -->
+<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop');">
+
+    <!-- Película escura com desfoque para destacar a caixa branca -->
+    <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-sm"></div>
+
+    <!-- Caixa Branca (com relative e z-10 para ficar acima do fundo) -->
+    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center">
+
+
+
+        <!-- LOGOTIPO VETORIZADO E ANIMADO - UNIVEAS -->
+<div class="relative h-28 w-28 mx-auto mb-6 flex items-center justify-center group cursor-default">
+
+    <!-- Fundo com círculos coloridos dinâmicos (Inspirado no estilo original) -->
+    <div class="absolute inset-0 flex items-center justify-center opacity-80 pointer-events-none">
+        <div class="absolute -top-2 -left-2 w-12 h-12 bg-amber-400 rounded-full blur-sm opacity-80 animate-pulse"></div>
+        <div class="absolute -bottom-1 -right-2 w-14 h-14 bg-rose-500 rounded-full blur-sm opacity-70"></div>
+        <div class="absolute top-4 -right-3 w-10 h-10 bg-indigo-500 rounded-full blur-sm opacity-60 animate-bounce"></div>
+        <div class="absolute -bottom-3 left-3 w-12 h-12 bg-fuchsia-500 rounded-full blur-sm opacity-70"></div>
+    </div>
+
+    <!-- Anel de energia pulsante em volta do logo -->
+    <div class="absolute inset-0 bg-teal-400 rounded-full animate-ping opacity-25"></div>
+    <div class="absolute inset-1 bg-gradient-to-tr from-teal-400 to-cyan-400 rounded-full blur-md opacity-50 group-hover:opacity-80 transition-opacity duration-500"></div>
+
+    <!-- Círculo Base Central (Gradiente moderno e sombra com efeito Neon) -->
+    <div class="relative z-10 w-24 h-24 bg-gradient-to-br from-teal-300 via-cyan-400 to-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(20,184,166,0.7)] border-2 border-white/80 p-3 transition-transform duration-500 group-hover:scale-105">
+
+        <!-- SVG Vetorizado Exato: Cérebro + Mão + Setas Rotativas -->
+        <svg class="w-full h-full text-slate-900 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+
+            <!-- Setas em rotação dinâmica ao redor -->
+            <g class="origin-center animate-[spin_12s_linear_infinite] opacity-85">
+                <path d="M4.5 10A7.5 7.5 0 0 1 19 8m1 2v-4h-4" />
+                <path d="M19.5 14A7.5 7.5 0 0 1 5 16m-1-2v4h4" />
+            </g>
+
+            <!-- Ícone do Cérebro Central -->
+            <path d="M9.5 5.5a2.5 2.5 0 0 0-3 2.5v1a2 2 0 0 1-2 2 2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h1" stroke-width="1.5" />
+            <path d="M14.5 5.5a2.5 2.5 0 0 1 3 2.5v1a2 2 0 0 0 2 2 2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1" stroke-width="1.5" />
+            <line x1="12" y1="5" x2="12" y2="19" stroke-width="1.5" />
+            <path d="M9.5 9h5M9.5 13h5M10 17h4" stroke-width="1.3" />
+
+            <!-- Ícone da Mão Sustentando na base -->
+            <path d="M3 20h12l3.5-4.5a1.5 1.5 0 0 0-2.3-1.8L15 17" fill="rgba(255,255,255,0.2)" stroke-width="1.5" />
+        </svg>
+
+    </div>
+
+    <!-- Ponto de luz interativo flutuante (Efeito de alta tecnologia) -->
+    <div class="absolute top-1 right-1 w-3.5 h-3.5 bg-yellow-300 rounded-full animate-bounce shadow-[0_0_12px_rgba(250,204,21,0.9)] z-20 border-2 border-white"></div>
+</div>
+
+
+
+
+
+
+        <h2 class="text-2xl font-black text-gray-900 mb-1">Acesso Restrito</h2>
+        <p class="text-sm text-gray-500 mb-6 font-medium">Painel do Administrador</p>
+
+        <form id="form-login" class="space-y-4">
+            <div>
+                <input type="password" id="input-senha" placeholder="Digite a senha master" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold tracking-widest">
+            </div>
+            <button type="submit" class="w-full bg-teal-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md flex items-center justify-center">
+                <span id="btn-login-text">Entrar no Sistema</span>
+                <i data-feather="arrow-right" class="ml-2 h-4 w-4 hidden" id="btn-login-icon"></i>
+            </button>
+            <div class="pt-2">
+                <a href="https://wa.me/5591983252639?text=Olá,%20preciso%20de%20ajuda%20para%20recuperar%20minha%20senha%20do%20painel%20UNIVEAS." target="_blank" class="text-[10px] font-bold text-gray-400 hover:text-teal-500 uppercase tracking-widest transition block mt-2 leading-relaxed">
+                    Esqueci a senha - Suporte<br>
+                    <span class="text-teal-500 font-black flex items-center justify-center mt-1">
+                        <i data-feather="message-circle" class="w-3 h-3 mr-1"></i> (91) 98325-2639
+                    </span>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+    <!-- ENVOLVA O RESTO DO SISTEMA AQUI -->
+    <div id="app-container" class="hidden h-full w-full flex-1 flex">
+        <!-- Seu <aside> e <main> existentes entram aqui -->
+
+    <!-- ==========================================
+         MENU LATERAL CLARO E SUAVE
+         ========================================== -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
+        <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
+            <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
+        </div>
+
+        <div class="flex-1 overflow-y-auto no-scrollbar py-4 px-2 space-y-1">
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Visão Geral</p>
+            <button onclick="mudarTela('dashboard')" id="btn-dashboard" class="menu-btn w-full flex items-center px-4 py-2.5 bg-teal-50 text-teal-700 border-l-4 border-teal-500 font-bold rounded-r-lg transition-colors">
+                <i data-feather="grid" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Dashboard</span>
+            </button>
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Secretaria</p>
+            <button onclick="mudarTela('alunos')" id="btn-alunos" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="users" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Alunos & Matrículas</span>
+            </button>
+            <button onclick="mudarTela('documentos')" id="btn-documentos" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
+                <i data-feather="file-text" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Documentos Acadêmicos</span>
+            </button>
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Acadêmico</p>
+            <button onclick="mudarTela('cursos')" id="btn-cursos" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="book-open" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Cursos & Matrizes</span>
+            </button>
+            <button onclick="mudarTela('prestadores')" id="btn-prestadores" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
+                <i data-feather="briefcase" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Corpo Docente</span>
+            </button>
+            <button onclick="mudarTela('diario')" id="btn-diario" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
+                <i data-feather="edit-3" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Diário Eletrônico</span>
+            </button>
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Administração</p>
+            <button onclick="mudarTela('financeiro')" id="btn-financeiro" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="dollar-sign" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Gestão Financeira</span>
+            </button>
+            <button onclick="abrirModalSistema()" class="w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
+                <i data-feather="settings" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Configurações Base</span>
+            </button>
+        </div>
+
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
+                <i data-feather="log-out" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Sair do Sistema</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ==========================================
+         ÁREA CENTRAL DE CONTEÚDO
+         ========================================== -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
+
+        <!-- HEADER -->
+        <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
+            <div class="flex items-center">
+                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Dashboard</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-bold text-gray-900">Diretoria UNIVEAS</p>
+                    <p class="text-xs text-teal-600 font-medium">Administrador Master</p>
+                </div>
+                <div class="h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold border border-teal-200">
+                    ADM
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTAINER PRINCIPAL -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
+
+            <!-- ============================================== -->
+            <!-- 1. DASHBOARD -->
+            <!-- ============================================== -->
+            <div id="tela-dashboard" class="tela block">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Total Docentes</p>
+                            <h3 id="ind-docentes" class="text-2xl font-black text-gray-800 mt-1">24</h3>
+                        </div>
+                        <div class="p-3 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="briefcase" class="h-6 w-6"></i></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Alunos Ativos</p>
+                            <h3 id="ind-alunos" class="text-2xl font-black text-gray-800 mt-1">1,420</h3>
+                        </div>
+                        <div class="p-3 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="users" class="h-6 w-6"></i></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Turmas Ativas</p>
+                            <h3 id="ind-turmas" class="text-2xl font-black text-gray-800 mt-1">45</h3>
+                        </div>
+                        <div class="p-3 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="calendar" class="h-6 w-6"></i></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Inadimplência</p>
+                            <h3 id="ind-inadimplencia" class="text-2xl font-black text-red-500 mt-1">4.2%</h3>
+                        </div>
+                        <div class="p-3 bg-red-50 text-red-500 rounded-xl"><i data-feather="trending-down" class="h-6 w-6"></i></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                        <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                            <i data-feather="bell" class="h-5 w-5 text-teal-500 mr-2"></i> Notificações (Pré-Matrículas)
+                        </h4>
+                        <div class="flex space-x-2 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-64">
+                                <input type="text" placeholder="Buscar notificação..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                                <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
+                            </div>
+                            <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition">
+                                <i data-feather="printer" class="h-4 w-4 mr-2"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Descrição da Notificação</th>
+                                    <th class="py-3 px-4 text-center">Status</th>
+                                    <th class="py-3 px-4 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-notificacoes" class="divide-y divide-gray-100 font-medium">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3 px-4 text-gray-800">Nova solicitação de pré-matrícula: Carlos E. Souza</td>
+                                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] font-bold">Pendente</span></td>
+                                    <td class="py-3 px-4 text-right space-x-2">
+                                        <button class="bg-teal-50 text-teal-600 px-3 py-1 rounded hover:bg-teal-100 text-xs font-bold transition">Atenção</button>
+                                        <button class="bg-gray-100 text-gray-500 px-3 py-1 rounded hover:bg-gray-200 text-xs font-bold transition">Ignorar</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 2. ALUNOS & MATRÍCULAS -->
+            <!-- ============================================== -->
+            <div id="tela-alunos" class="tela hidden">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                    <!-- MATRICULAR ALUNO -->
+                    <div class="xl:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                        <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula de Aluno
+                        </h4>
+                        <!-- ADICIONADO ID: form-matricula -->
+                        <form id="form-matricula" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº Matrícula</label>
+                                    <input type="text" name="matricula" value="#GERADO-AUTO" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 font-mono text-gray-500 cursor-not-allowed">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF do Aluno</label>
+                                    <input type="text" name="cpf" placeholder="000.000.000-00" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
+                                <input type="text" name="nome" placeholder="Nome do aluno" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Nascimento</label>
+                                    <input type="date" name="data_nascimento" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                                    <input type="text" name="telefone" placeholder="(DD) 90000-0000" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail</label>
+                                <input type="email" name="email" placeholder="aluno@email.com" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Endereço Completo</label>
+                                <input type="text" name="endereco" placeholder="Rua, Número, Bairro, CEP" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                            </div>
+
+                            <div class="relative">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Curso Vinculado</label>
+                                <div class="flex">
+                                    <div class="flex-1 relative">
+                                        <input type="text" placeholder="Buscar curso na plataforma..." class="w-full border border-gray-200 rounded-l-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                        <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
+                                    </div>
+                                    <select name="curso_id" required class="w-1/3 border-y border-r border-gray-200 rounded-r-lg px-2 py-2 text-xs focus:outline-none focus:border-teal-500 bg-gray-50">
+                                        <option value="">Selecione...</option>
+                                        <option value="1">Dev. de Sistemas</option>
+                                        <option value="2">Eng. de Software</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Vencimento (Dia)</label>
+                                    <input type="number" name="dia_vencimento" min="1" max="31" placeholder="Ex: 10" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
+                                    <select name="forma_pagamento" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                        <option value="boleto">Boleto Bancário</option>
+                                        <option value="cartao">Cartão de Crédito</option>
+                                        <option value="pix">PIX Mensal</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Possui PCD?</label>
+                                    <select name="pcd" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                        <option value="nao">Não</option>
+                                        <option value="sim">Sim</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Foto 3/4 do Aluno</label>
+                                    <input type="file" name="foto_aluno" class="w-full text-xs text-gray-500 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition">
+                                </div>
+                            </div>
+                            <div class="flex items-center pt-2">
+                                <input type="checkbox" name="aceite_termos" id="termos_aluno" required class="h-4 w-4 text-teal-500 focus:ring-teal-500 border-gray-300 rounded cursor-pointer">
+                                <label for="termos_aluno" class="ml-2 text-xs text-gray-500 cursor-pointer">Aceitar Termos e Políticas Educacionais</label>
+                            </div>
+                            <div class="flex space-x-3 pt-4 border-t border-gray-100">
+                                <button type="submit" class="flex-1 bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition">Salvar / Sair</button>
+                                <button type="reset" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-xs uppercase tracking-wider hover:bg-gray-200 transition">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- LISTA DE ALUNOS MATRICULADOS -->
+                    <div class="xl:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
+                            <h4 class="text-lg font-bold text-gray-900">Alunos Matriculados</h4>
+                            <div class="flex space-x-2 w-full sm:w-auto">
+                                <div class="relative flex-1 sm:w-64">
+                                    <input type="text" placeholder="Matrícula, CPF, Nome, Nasc..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                                    <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
+                                    <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto flex-1">
+                            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                                <thead class="bg-gray-50">
+                                    <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <th class="py-3 px-4">Nº Matrícula</th>
+                                        <th class="py-3 px-4">Nome do Aluno</th>
+                                        <th class="py-3 px-4">Telefone</th>
+                                        <th class="py-3 px-4">Curso Escolhido</th>
+                                        <th class="py-3 px-4 text-center">Status</th>
+                                        <th class="py-3 px-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-alunos" class="divide-y divide-gray-100 font-medium">
+                                    <!-- População via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 3. CENTRAL DE EMISSÃO DE DOCUMENTOS -->
+            <!-- ============================================== -->
+            <div id="tela-documentos" class="tela hidden">
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Central de Emissão de Documentos
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100 mb-8">
+                        <div class="relative">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Buscar Aluno</label>
+                            <input type="text" placeholder="Matrícula, CPF ou Nome..." class="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                            <i data-feather="search" class="absolute left-3 top-[26px] h-4 w-4 text-gray-400"></i>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Documento</label>
+                            <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                <option>Histórico Escolar Parcial</option>
+                                <option>Declaração de Vínculo/Matrícula</option>
+                                <option>Histórico Escolar Conclusão</option>
+                                <option>Certificado de Conclusão</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end border-b border-gray-100 pb-6 mb-6 space-x-3">
+                        <button class="bg-teal-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition flex items-center">
+                            <i data-feather="file-text" class="h-4 w-4 mr-2"></i> Gerar Documento PDF
+                        </button>
+                    </div>
+
+                    <!-- LISTA DE DOCUMENTOS EMITIDOS -->
+                    <div>
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Lista de Documentos Emitidos</p>
+                            <div class="flex space-x-2 w-full sm:w-auto">
+                                <div class="relative flex-1 sm:w-64">
+                                    <input type="text" placeholder="Nome, Tipo, Matrícula, CPF..." class="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                    <i data-feather="search" class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <button class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
+                                    <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                                <thead class="bg-gray-50">
+                                    <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <th class="py-3 px-4">Tipo de Documento</th>
+                                        <th class="py-3 px-4">Nome do Aluno</th>
+                                        <th class="py-3 px-4">Horário de Emissão</th>
+                                        <th class="py-3 px-4 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 font-medium">
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="py-3 px-4 text-gray-800 font-bold">Declaração de Vínculo/Matrícula</td>
+                                        <td class="py-3 px-4 text-gray-500">Carlos E. Souza</td>
+                                        <td class="py-3 px-4 text-gray-400 text-xs">02/11/2026 - 10:45</td>
+                                        <td class="py-3 px-4 text-right">
+                                            <button class="bg-gray-100 text-gray-700 hover:bg-teal-500 hover:text-white px-3 py-1.5 rounded transition text-xs font-bold flex items-center justify-end w-full sm:w-auto ml-auto">
+                                                <i data-feather="download" class="w-3 h-3 mr-1.5"></i> Download
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 4. CURSOS & MATRIZES -->
+            <!-- ============================================== -->
+            <div id="tela-cursos" class="tela hidden">
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Configuração e Abertura de Cursos
+                    </h4>
+                    <!-- ADICIONADO ID: form-curso -->
+                    <form id="form-curso" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Código</label>
+                                <input type="text" name="codigo" placeholder="Ex: TEC-01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Categoria do Curso</label>
+                                <select name="categoria" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    <option value="tecnico">Técnico</option>
+                                    <option value="profissionalizante">Profissionalizante</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome do Curso</label>
+                                <input type="text" name="nome_curso" placeholder="Digite o nome..." required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Modalidade</label>
+                                <select name="modalidade" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    <option value="ead">EAD</option>
+                                    <option value="presencial">Presencial</option>
+                                    <option value="hibrido">Híbrido</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Duração do Curso</label>
+                                <input type="text" name="duracao" placeholder="Ex: 18 Meses" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Valor de Matrícula (R$)</label>
+                                <input type="number" name="valor_matricula" step="0.01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Valor Mensalidade (R$)</label>
+                                <input type="number" name="valor_mensalidade" step="0.01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição Geral do Curso</label>
+                                <textarea name="descricao" rows="3" placeholder="Insira os objetivos e informações do curso..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Matriz Curricular Inicial</label>
+                                <textarea name="matriz_curricular" rows="3" placeholder="Módulo 1: ..., Módulo 2: ..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Foto da Capa do Curso</label>
+                                <div class="border border-gray-200 rounded-lg px-3 py-2 bg-white flex items-center">
+                                    <input type="file" name="foto_capa" class="w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
+                                </div>
+                            </div>
+                            <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                <div class="flex items-center justify-between mb-3">
+                                    <p class="text-xs font-bold text-teal-800 flex items-center uppercase tracking-wider">
+                                        <i data-feather="tag" class="h-4 w-4 mr-2"></i> Promoção Ativa?
+                                    </p>
+                                    <div class="flex space-x-4">
+                                        <label class="text-sm font-medium flex items-center cursor-pointer">
+                                            <input type="radio" name="promocao_ativa" value="sim" class="mr-1.5 text-teal-500 focus:ring-teal-500" onclick="document.getElementById('promo-valor-container').classList.remove('hidden')"> Sim
+                                        </label>
+                                        <label class="text-sm font-medium flex items-center cursor-pointer">
+                                            <input type="radio" name="promocao_ativa" value="nao" class="mr-1.5" checked onclick="document.getElementById('promo-valor-container').classList.add('hidden')"> Não
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="promo-valor-container" class="hidden transition-all">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Valor de Desconto Promocional (%) ou Brinde</label>
+                                    <input type="text" name="valor_promocional" placeholder="Ex: 20% de desconto ou Curso Extra" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 bg-white">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-6 border-t border-gray-100">
+                            <button type="button" class="bg-gray-100 text-gray-600 font-bold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider hover:bg-gray-200 transition">Cancelar</button>
+                            <button type="submit" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition">Registrar Curso</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 5. CORPO DOCENTE -->
+            <!-- ============================================== -->
+            <div id="tela-prestadores" class="tela hidden">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                    <!-- CADASTRAR PRESTADOR -->
+                    <div class="xl:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                        <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Cadastrar Prestador
+                        </h4>
+                        <!-- ADICIONADO ID: form-docente -->
+                        <form id="form-docente" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Registro (Auto)</label>
+                                    <input type="text" name="registro" value="#PR014" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400 font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF do Prestador</label>
+                                    <input type="text" name="cpf_prestador" placeholder="000.000.000-00" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome do Prestador</label>
+                                <input type="text" name="nome_prestador" placeholder="Nome Completo" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Nascimento</label>
+                                    <input type="date" name="data_nascimento_prestador" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                                    <input type="text" name="telefone_prestador" placeholder="(DD) 90000-0000" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail do Prestador</label>
+                                <input type="email" name="email_prestador" placeholder="email@dominio.com" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Profissional</label>
+                                    <select name="tipo_profissional" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                        <option value="professor">Professor</option>
+                                        <option value="instrutor">Instrutor Técnico</option>
+                                        <option value="coordenador">Coordenador</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Especialidade</label>
+                                    <input type="text" name="especialidade" placeholder="Ex: Programação" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno de Atuação</label>
+                                <select name="turno_atuacao" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    <option value="manha">Manhã</option>
+                                    <option value="tarde">Tarde</option>
+                                    <option value="noite">Noite</option>
+                                    <option value="integral">Integral</option>
+                                </select>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
+                                <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center"><i data-feather="credit-card" class="h-3 w-3 mr-1.5"></i> Dados Bancários</p>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <input type="text" name="banco" placeholder="Banco" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
+                                    <input type="text" name="agencia" placeholder="Agência" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
+                                    <input type="text" name="conta" placeholder="Conta" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
+                                </div>
+                                <div>
+                                    <input type="text" name="chave_pix" placeholder="Chave PIX" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
+                                </div>
+                            </div>
+                            <div class="flex space-x-3 pt-4 border-t border-gray-100">
+                                <button type="submit" class="flex-1 bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase shadow-sm hover:bg-teal-600 transition tracking-wider">Salvar</button>
+                                <button type="reset" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-xs uppercase hover:bg-gray-200 transition tracking-wider">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- LISTA DE PRESTADORES -->
+                    <div class="xl:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
+                            <h4 class="text-lg font-bold text-gray-900">Lista de Prestadores</h4>
+                            <div class="flex space-x-2 w-full sm:w-auto">
+                                <div class="relative flex-1 sm:w-64">
+                                    <input type="text" placeholder="Registro, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                    <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
+                                </div>
+                                <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
+                                    <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto flex-1">
+                            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                                <thead class="bg-gray-50">
+                                    <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                        <th class="py-3 px-4">Registro</th>
+                                        <th class="py-3 px-4">Nome do Prestador</th>
+                                        <th class="py-3 px-4">Telefone</th>
+                                        <th class="py-3 px-4">Tipo Profissional</th>
+                                        <th class="py-3 px-4 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-docentes" class="divide-y divide-gray-100 font-medium">
+                                    <!-- População via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 6. DIÁRIO ELETRÔNICO DO PROFESSOR (AUDITORIA/EDIÇÃO) -->
+            <!-- ============================================== -->
+            <div id="tela-diario" class="tela hidden">
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto flex flex-col min-h-[500px]">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Diário Eletrônico (Gestão / Professor)
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100">
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Selecionar Turma/Disciplina</label>
+                            <select class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-teal-500">
+                                <option>Banco de Dados Relacional - Turma A</option>
+                                <option>Engenharia de Software - Turma B</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período/Bimestre</label>
+                            <select class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-teal-500">
+                                <option>1º Bimestre</option>
+                                <option>2º Bimestre</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button class="w-full bg-teal-50 text-teal-700 font-bold py-2.5 rounded-lg text-xs uppercase hover:bg-teal-100 border border-teal-200 transition shadow-sm">
+                                Carregar Pauta
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border rounded-xl border-gray-100 flex-1">
+                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Matrícula</th>
+                                    <th class="py-3 px-4">Nome do Aluno</th>
+                                    <th class="py-3 px-4 text-center w-24">Faltas</th>
+                                    <th class="py-3 px-4 text-center w-24">Nota 1</th>
+                                    <th class="py-3 px-4 text-center w-24">Nota 2</th>
+                                    <th class="py-3 px-4 text-center w-24">Média</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 font-medium">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3 px-4 font-mono text-gray-400 text-xs">#20260941</td>
+                                    <td class="py-3 px-4 text-gray-800 font-bold">Carlos E. Souza</td>
+                                    <td class="py-3 px-4 text-center"><input type="number" min="0" value="0" class="w-16 text-center border border-gray-300 p-1.5 rounded-md text-sm focus:border-teal-500 focus:outline-none"></td>
+                                    <td class="py-3 px-4 text-center"><input type="number" step="0.1" value="9.0" class="w-16 text-center border border-gray-300 p-1.5 rounded-md text-sm focus:border-teal-500 focus:outline-none"></td>
+                                    <td class="py-3 px-4 text-center"><input type="number" step="0.1" value="8.5" class="w-16 text-center border border-gray-300 p-1.5 rounded-md text-sm focus:border-teal-500 focus:outline-none"></td>
+                                    <td class="py-3 px-4 text-center font-black text-teal-600">8.75</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex justify-end mt-6 pt-4 border-t border-gray-100">
+                        <button class="bg-teal-500 text-white font-bold py-3 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md">
+                            Salvar Lançamentos
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- 7. GESTÃO FINANCEIRA -->
+            <!-- ============================================== -->
+            <div id="tela-financeiro" class="tela hidden">
+                <!-- Indicadores Financeiros -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Recebidos no Mês</p>
+                        <h3 class="text-3xl font-black text-teal-600 mt-2">R$ 45.230,00</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">A Receber (Previsão)</p>
+                        <h3 class="text-3xl font-black text-gray-800 mt-2">R$ 12.800,00</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Atrasados</p>
+                        <h3 class="text-3xl font-black text-red-500 mt-2">R$ 3.450,00</h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
+                        <h4 class="text-lg font-bold text-gray-900">Lista de Mensalidades e Cobranças</h4>
+                        <div class="flex space-x-2 w-full sm:w-auto">
+                            <div class="relative flex-1 sm:w-64">
+                                <input type="text" placeholder="Matrícula, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                                <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
+                            </div>
+                            <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
+                                <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Data de Vencimento</th>
+                                    <th class="py-3 px-4">Nome do Aluno</th>
+                                    <th class="py-3 px-4">Valor</th>
+                                    <th class="py-3 px-4 text-center">Status Pagamento</th>
+                                    <th class="py-3 px-4 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-financeiro" class="divide-y divide-gray-100 font-medium">
+                                <!-- População via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 8. CONFIGURAÇÃO (MODAL DE SOBREPOSIÇÃO) -->
+    <!-- ============================================== -->
+    <div id="modal-sistema" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-6 sm:p-8 transform scale-95 transition-all max-h-[90vh] overflow-y-auto no-scrollbar">
+
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
+                <h3 class="text-xl font-black text-gray-900 flex items-center">
+                    <i data-feather="sliders" class="text-teal-500 mr-3"></i> Configuração do Sistema
+                </h3>
+                <button onclick="fecharModalSistema()" class="text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-6 w-6"></i></button>
+            </div>
+
+            <!-- ADICIONADO ID: form-config -->
+            <form id="form-config" class="space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome da Instituição</label>
+                        <input type="text" name="nome_instituicao" value="ESCOLA UNIVEAS" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CNPJ</label>
+                        <input type="text" name="cnpj" value="00.000.000/0001-00" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail de Contato</label>
+                        <input type="email" name="email_instituicao" value="contato@univeas.com.br" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                        <input type="text" name="telefone_instituicao" value="(91) 98325-2639" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Endereço Físico</label>
+                    <input type="text" name="endereco_instituicao" value="Av. Principal, nº 1000, Centro - Vigia/PA" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                </div>
+
+                <div class="border-t border-gray-100 pt-5 mt-2 grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Cor do Tema (Identidade)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="color" name="cor_tema" value="#14b8a6" class="w-10 h-10 border border-gray-200 rounded cursor-pointer">
+                            <span class="text-xs font-mono text-gray-500">#14b8a6 (Teal)</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Foto do Logo</label>
+                        <input type="file" name="foto_logo" class="w-full text-xs text-gray-500 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 hover:file:bg-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Foto do Banner Frontal</label>
+                        <input type="file" name="foto_banner" class="w-full text-xs text-gray-500 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 hover:file:bg-gray-200">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-6 border-t border-gray-100">
+                    <button type="button" onclick="fecharModalSistema()" class="bg-gray-100 text-gray-600 py-2.5 px-6 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-200 transition">Cancelar / Sair</button>
+                    <button type="submit" class="bg-teal-500 text-white py-2.5 px-8 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script>
+// ==========================================
+// UNIFIED SCRIPT - UI & API INTEGRATION
+// ==========================================
+const API_BASE_URL = "/api/v1";
+
+// 1. INICIALIZAÇÃO
+document.addEventListener("DOMContentLoaded", () => {
+    feather.replace();
+
+    // Verifica se já tem o token salvo para pular o login
+    if (localStorage.getItem('token_siga') === 'admin_token_autorizado') {
+        liberarAcesso();
+    }
+});
+
+document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const senha = document.getElementById('input-senha').value;
+    const btnText = document.getElementById('btn-login-text');
+
+    btnText.innerText = "Autenticando...";
+
+    const formData = new FormData();
+    formData.append('senha', senha);
+
+    try {
+        const response = await fetch('/master', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.sucesso) {
+            // Salva a sessão
+            localStorage.setItem('token_siga', data.token_siga);
+            liberarAcesso();
+        } else {
+            alert(data.detail || "Senha incorreta. Acesso negado.");
+            btnText.innerText = "Entrar no Sistema";
+            document.getElementById('input-senha').value = '';
+        }
+    } catch (error) {
+        alert("Erro de comunicação com o servidor.");
+        btnText.innerText = "Entrar no Sistema";
+    }
+});
+
+function liberarAcesso() {
+    document.getElementById('tela-login').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+    document.getElementById('app-container').classList.add('flex');
+    mudarTela('dashboard');
+}
+
+function fazerLogout() {
+    localStorage.removeItem('token_siga');
+    location.reload();
+}
+
+// 2. NAVEGAÇÃO DE TELAS (UI e API)
+function mudarTela(telaId) {
+    document.querySelectorAll('.tela').forEach(t => {
+        t.classList.remove('block');
+        t.classList.add('hidden');
+    });
+
+    const telaAtual = document.getElementById('tela-' + telaId);
+    if (telaAtual) {
+        telaAtual.classList.remove('hidden');
+        telaAtual.classList.add('block');
+    }
+
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+    });
+
+    const activeBtn = document.getElementById('btn-' + telaId);
+    if(activeBtn) {
+        activeBtn.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+        activeBtn.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+    }
+
+    const titulos = {
+        'dashboard': 'Dashboard Geral',
+        'alunos': 'Alunos & Matrículas',
+        'documentos': 'Central de Documentos',
+        'cursos': 'Cursos & Matrizes',
+        'prestadores': 'Corpo Docente',
+        'diario': 'Diário Eletrônico',
+        'financeiro': 'Gestão Financeira'
+    };
+    document.getElementById('titulo-pagina').innerText = titulos[telaId] || 'Painel';
+
+    // Gatilhos de carregamento da API
+    if(telaId === 'dashboard') loadDashboard();
+    if(telaId === 'alunos') loadAlunos();
+    if(telaId === 'prestadores') loadDocentes();
+    if(telaId === 'financeiro') loadFinanceiro();
+    if(telaId === 'cursos') loadCursos();
+    if(telaId === 'documentos') loadDocumentos();
+}
+
+// 3. MODAIS
+function abrirModalSistema() {
+    const modal = document.getElementById('modal-sistema');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+
+function fecharModalSistema() {
+    const modal = document.getElementById('modal-sistema');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+// 4. UTILITÁRIOS DA API
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const headers = {
+        'Authorization': `Bearer ${localStorage.getItem('token_siga')}`
+    };
+
+    const config = { method, headers };
+
+    if (data) {
+        // Se for FormData (tem arquivos), não usa Content-Type JSON
+        if (data instanceof FormData) {
+            config.body = data;
+        } else {
+            headers['Content-Type'] = 'application/json';
+            config.body = JSON.stringify(data);
+        }
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        if (response.status === 401) {
+            window.location.href = '/login.html';
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Erro na requisição ${endpoint}:`, error);
+    }
+}
+
+// 5. CARREGAMENTO E SUBMISSÃO DE DADOS
+async function loadDashboard() {
+    const data = await apiRequest('/dashboard/indicadores');
+    if (!data) return;
+
+    document.getElementById('ind-docentes').textContent = data.total_docentes;
+    document.getElementById('ind-alunos').textContent = data.alunos_ativos;
+    document.getElementById('ind-turmas').textContent = data.turmas_ativas;
+    document.getElementById('ind-inadimplencia').textContent = `R$ ${data.total_inadimplencia}`;
+
+    const tbody = document.getElementById('tabela-notificacoes');
+    if(tbody) {
+        tbody.innerHTML = '';
+        data.notificacoes.forEach(notif => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="py-3 px-4">${notif.descricao}</td>
+                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] font-bold">${notif.status}</span></td>
+                    <td class="py-3 px-4 text-right">
+                        <button onclick="updateNotificacao(${notif.id}, 'atencao')" class="bg-teal-50 text-teal-600 px-3 py-1 rounded text-xs font-bold">Atenção</button>
+                        <button onclick="updateNotificacao(${notif.id}, 'ignorar')" class="bg-gray-100 text-gray-500 px-3 py-1 rounded text-xs font-bold">Ignorar</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+}
+
+async function loadAlunos() {
+    const alunos = await apiRequest('/alunos');
+    const tbody = document.getElementById('tabela-alunos');
+    if (!tbody || !alunos) return;
+
+    tbody.innerHTML = '';
+    alunos.forEach(aluno => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="py-3 px-4 text-gray-500 font-mono">${aluno.matricula}</td>
+                <td class="py-3 px-4 text-gray-800 font-bold">${aluno.nome}</td>
+                <td class="py-3 px-4 text-gray-500">${aluno.telefone}</td>
+                <td class="py-3 px-4 text-gray-500 text-xs">${aluno.curso}</td>
+                <td class="py-3 px-4 text-center">
+                    <span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold uppercase">${aluno.status}</span>
+                </td>
+                <td class="py-3 px-4 text-right space-x-1">
+                    <button onclick="excluirAluno('${aluno.id}')" class="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded transition">
+                        <i data-feather="trash-2" class="h-4 w-4"></i>
+                    </button>
+               </td>
+            </tr>
+        `;
+    });
+    feather.replace();
+}
+// EXCLUIR DOCENTE
+async function excluirDocente(id_firebase) {
+    if(!confirm("Deseja realmente desligar este docente?")) return;
+    const response = await fetch(`/api/v1/docentes/${id_firebase}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token_siga')}` }
+    });
+    const result = await response.json();
+    if(result.sucesso) {
+        alert("Docente removido com sucesso.");
+        loadDocentes();
+    }
+}
+
+// CARREGAR CURSOS
+async function loadCursos() {
+    const cursos = await apiRequest('/cursos');
+    // Aqui você vai popular a tabela de cursos quando criá-la no HTML
+    console.log("Cursos carregados:", cursos);
+}
+
+// MOCK PARA DOCUMENTOS E NOTIFICAÇÕES (Evita erro no console ao clicar)
+async function loadDocumentos() { console.log("Carregando documentos..."); }
+async function updateNotificacao(id, acao) { console.log(`Notificação ${id} atualizada para ${acao}`); }
+
+
+async function loadDocentes() {
+    const docentes = await apiRequest('/docentes');
+    const tbody = document.getElementById('tabela-docentes');
+    if (!tbody || !docentes) return;
+
+    tbody.innerHTML = '';
+    docentes.forEach(doc => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="py-3 px-4 text-gray-500 font-mono">${doc.registro}</td>
+                <td class="py-3 px-4 text-gray-800 font-bold">${doc.nome}</td>
+                <td class="py-3 px-4 text-gray-500">${doc.telefone}</td>
+                <td class="py-3 px-4 text-gray-500">${doc.tipo_profissional}</td>
+                <td class="py-3 px-4 text-right">
+                    <button onclick="excluirDocente('${doc.id}')" class="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded transition">
+                        <i data-feather="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    feather.replace();
+}
+
+async function loadFinanceiro() {
+    const data = await apiRequest('/financeiro/mensalidades');
+    const tbody = document.getElementById('tabela-financeiro');
+    if (!tbody || !data) return;
+
+    tbody.innerHTML = '';
+    data.lista.forEach(item => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="py-4 px-4 text-gray-500">${item.vencimento}</td>
+                <td class="py-4 px-4 text-gray-800 font-bold">${item.aluno}</td>
+                <td class="py-4 px-4 text-gray-800">R$ ${item.valor}</td>
+                <td class="py-4 px-4 text-center"><span class="px-2.5 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold">${item.status}</span></td>
+                <td class="py-4 px-4 text-right">
+                    <button class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded text-xs font-bold transition">Emitir NF</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+// 6. EVENTOS DE FORMULÁRIO (ENVIO VIA FORMDATA PARA SUPORTAR FOTOS)
+document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.innerText = "Salvando..."; // Feedback visual (B)
+
+    const formData = new FormData(e.target);
+    const result = await apiRequest('/alunos/matricular', 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Aluno matriculado com sucesso!");
+        e.target.reset();
+        loadAlunos();
+    } else {
+        alert(result?.detail || "Erro ao salvar. Tente novamente."); // Tratamento (A)
+    }
+    btn.innerText = "Salvar / Sair"; // Restaura o botão
+});
+
+document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const result = await apiRequest('/cursos', 'POST', formData);
+    if (result && result.sucesso) {
+        alert("Curso registrado com sucesso!");
+        e.target.reset();
+    }
+});
+
+document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const result = await apiRequest('/docentes', 'POST', formData);
+    if (result && result.sucesso) {
+        alert("Docente cadastrado!");
+        e.target.reset();
+        loadDocentes();
+    }
+});
+
+document.getElementById('form-config')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const result = await apiRequest('/configuracoes', 'PUT', formData);
+    if (result && result.sucesso) {
+        alert("Configurações atualizadas!");
+        fecharModalSistema();
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNIVEAS - Portal do Professor</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
+
+    <!-- Sidebar Lateral Clara e Suave -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
+        <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
+            <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
+        </div>
+
+        <div class="flex-1 overflow-y-auto no-scrollbar py-4 px-2 space-y-1">
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Visão Geral</p>
+            <button onclick="mudarTela('dashboard')" id="btn-dashboard" class="menu-btn w-full flex items-center px-4 py-2.5 bg-teal-50 text-teal-700 border-l-4 border-teal-500 font-bold rounded-r-lg transition-colors">
+                <i data-feather="grid" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Painel Principal</span>
+            </button>
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Gestão Acadêmica</p>
+            <button onclick="mudarTela('turmas')" id="btn-turmas" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="users" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Minhas Turmas</span>
+            </button>
+            <button onclick="mudarTela('diario')" id="btn-diario" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="edit-3" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Diário Eletrônico</span>
+            </button>
+            <button onclick="mudarTela('material')" id="btn-material" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="folder" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Material Didático</span>
+            </button>
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Conta</p>
+            <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="user" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Meu Perfil</span>
+            </button>
+        </div>
+
+        <div class="p-4 border-t border-gray-100">
+            <a href="login.html" class="flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
+                <i data-feather="log-out" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Sair do Portal</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Área de Conteúdo Principal -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
+
+        <!-- Header Superior -->
+        <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
+            <div class="flex items-center">
+                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Painel Principal</h1>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-bold text-gray-900">Prof. Ricardo Costa</p>
+                    <p class="text-xs text-teal-600 font-medium">Desenvolvimento de Sistemas</p>
+                </div>
+                <div class="h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold shadow-sm cursor-pointer hover:bg-teal-100 transition border border-teal-100">
+                    RC
+                </div>
+            </div>
+        </header>
+
+        <!-- Container de Telas -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
+
+            <!-- TELA: DASHBOARD -->
+            <div id="tela-dashboard" class="tela block">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Turmas Ativas</p>
+                            <h3 class="text-3xl font-black text-gray-800 mt-1">4</h3>
+                        </div>
+                        <div class="p-4 bg-teal-50 text-teal-500 rounded-xl">
+                            <i data-feather="users" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Diários Pendentes</p>
+                            <h3 class="text-3xl font-black text-yellow-500 mt-1">2</h3>
+                        </div>
+                        <div class="p-4 bg-yellow-50 text-yellow-500 rounded-xl">
+                            <i data-feather="alert-circle" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Aulas na Semana</p>
+                            <h3 class="text-3xl font-black text-teal-500 mt-1">12</h3>
+                        </div>
+                        <div class="p-4 bg-teal-50 text-teal-500 rounded-xl">
+                            <i data-feather="calendar" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
+                            <i data-feather="clock" class="h-5 w-5 text-teal-500 mr-2"></i> Próximas Aulas (Hoje)
+                        </h4>
+                        <ul class="space-y-4">
+                            <li class="flex items-start p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div class="bg-teal-500 text-white rounded-lg p-2 text-center w-16 shrink-0">
+                                    <p class="text-sm font-black">19:00</p>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-bold text-gray-900">Banco de Dados Relacional</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">TURMA A - 2º Módulo (Presencial)</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div class="bg-gray-200 text-gray-600 rounded-lg p-2 text-center w-16 shrink-0">
+                                    <p class="text-sm font-black">20:40</p>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-bold text-gray-900">Lógica de Programação Avançada</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">TURMA B - 1º Módulo (Presencial)</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
+                            <i data-feather="bell" class="h-5 w-5 text-teal-500 mr-2"></i> Mural de Avisos (Secretaria)
+                        </h4>
+                        <div class="space-y-4">
+                            <div class="p-4 border-l-4 border-yellow-400 bg-yellow-50 rounded-r-xl">
+                                <p class="text-xs text-yellow-600 font-bold mb-1">Fechamento de Bimestre - Prazo Final</p>
+                                <p class="text-sm text-gray-700">Prezados professores, o sistema de notas do 1º bimestre será bloqueado no dia 20/11. Por favor, regularizem os diários eletrônicos.</p>
+                            </div>
+                            <div class="p-4 border-l-4 border-teal-500 bg-teal-50 rounded-r-xl">
+                                <p class="text-xs text-teal-600 font-bold mb-1">Reunião Pedagógica</p>
+                                <p class="text-sm text-gray-700">Agendada reunião geral de alinhamento para a próxima sexta-feira, às 14h, via Google Meet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: MINHAS TURMAS -->
+            <div id="tela-turmas" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
+                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
+                            Disciplinas e Turmas Alocadas
+                        </h4>
+                        <select class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                            <option>Semestre Atual (2026.2)</option>
+                            <option>Semestre Anterior (2026.1)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <!-- Card Turma -->
+                        <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="bg-teal-100 text-teal-700 p-2 rounded-lg"><i data-feather="database" class="h-5 w-5"></i></div>
+                                <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">2º Módulo</span>
+                            </div>
+                            <h3 class="text-lg font-black text-gray-900 mb-1">Banco de Dados Relacional</h3>
+                            <p class="text-sm text-gray-500 mb-4">Curso de Desenvolvimento de Sistemas (Técnico)</p>
+
+                            <div class="flex items-center justify-between text-xs text-gray-500 font-bold bg-white p-3 rounded-xl border border-gray-100">
+                                <span><i data-feather="users" class="h-3 w-3 inline mr-1"></i> 32 Alunos</span>
+                                <span><i data-feather="clock" class="h-3 w-3 inline mr-1"></i> 80h Carga</span>
+                            </div>
+                            <button onclick="mudarTela('diario')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
+                        </div>
+
+                        <!-- Card Turma -->
+                        <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="bg-blue-100 text-blue-700 p-2 rounded-lg"><i data-feather="code" class="h-5 w-5"></i></div>
+                                <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">1º Módulo</span>
+                            </div>
+                            <h3 class="text-lg font-black text-gray-900 mb-1">Lógica de Programação</h3>
+                            <p class="text-sm text-gray-500 mb-4">Curso de Desenvolvimento de Sistemas (Técnico)</p>
+
+                            <div class="flex items-center justify-between text-xs text-gray-500 font-bold bg-white p-3 rounded-xl border border-gray-100">
+                                <span><i data-feather="users" class="h-3 w-3 inline mr-1"></i> 45 Alunos</span>
+                                <span><i data-feather="clock" class="h-3 w-3 inline mr-1"></i> 60h Carga</span>
+                            </div>
+                            <button onclick="mudarTela('diario')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: DIÁRIO ELETRÔNICO (Lançamento de Faltas e Notas) -->
+            <div id="tela-diario" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
+                        Preenchimento do Diário Eletrônico
+                    </h4>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div class="lg:col-span-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Disciplina / Turma</label>
+                            <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                <option>Banco de Dados Relacional - TURMA A</option>
+                                <option>Lógica de Programação - TURMA B</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data da Aula</label>
+                            <input type="date" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                        </div>
+                        <div class="flex items-end">
+                            <button class="w-full bg-teal-50 text-teal-700 font-bold py-2 px-4 rounded-lg text-xs uppercase hover:bg-teal-100 border border-teal-200 transition">Listar Chamada</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Conteúdo Ministrado na Aula (Obrigatório)</label>
+                        <textarea rows="2" placeholder="Descreva brevemente o assunto tratado em sala de aula hoje..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white"></textarea>
+                    </div>
+
+                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
+                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-4 w-12">Nº</th>
+                                    <th class="py-3 px-4">Nome do Aluno</th>
+                                    <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
+                                    <th class="py-3 px-4 w-24 text-center">Nota 1</th>
+                                    <th class="py-3 px-4 w-24 text-center">Nota 2</th>
+                                    <th class="py-3 px-4 w-24 text-center">Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="py-3 px-4 text-gray-400">01</td>
+                                    <td class="py-3 px-4">Ana Carolina Silva</td>
+                                    <td class="py-3 px-4">
+                                        <input type="number" min="0" value="0" class="w-16 text-center border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:border-teal-500 bg-white font-bold">
+                                    </td>
+                                    <td class="py-3 px-4"><input type="number" step="0.1" value="8.5" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
+                                    <td class="py-3 px-4"><input type="number" step="0.1" placeholder="-" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
+                                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold tracking-wider">Em Curso</span></td>
+                                </tr>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="py-3 px-4 text-gray-400">02</td>
+                                    <td class="py-3 px-4">Marcos André Pereira</td>
+                                    <td class="py-3 px-4">
+                                        <input type="number" min="0" value="2" class="w-16 text-center border border-red-300 text-red-600 rounded-md p-1 text-sm focus:outline-none focus:border-teal-500 bg-red-50 font-bold">
+                                    </td>
+                                    <td class="py-3 px-4"><input type="number" step="0.1" value="9.0" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
+                                    <td class="py-3 px-4"><input type="number" step="0.1" placeholder="-" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
+                                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold tracking-wider">Em Curso</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-400 font-medium">As notas salvas são refletidas no portal do aluno em tempo real.</p>
+                        <button class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: MATERIAL DIDÁTICO -->
+            <div id="tela-material" class="tela hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Área de Upload -->
+                    <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                        <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
+                            Compartilhar Material
+                        </h4>
+                        <form class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Turma Destino</label>
+                                <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                    <option>Banco de Dados Relacional - TURMA A</option>
+                                    <option>Lógica de Programação - TURMA B</option>
+                                    <option>Todas as Minhas Turmas</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Título do Material</label>
+                                <input type="text" placeholder="Ex: Slide Aula 01 - Modelagem" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Descrição Breve</label>
+                                <textarea rows="2" placeholder="Leitura recomendada para a próxima aula..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Arquivo (PDF, PPT, DOC)</label>
+                                <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-teal-400 bg-gray-50 cursor-pointer transition">
+                                    <i data-feather="upload-cloud" class="h-6 w-6 text-teal-500 mx-auto mb-2"></i>
+                                    <span class="text-xs text-gray-500">Clique para selecionar o arquivo</span>
+                                    <input type="file" class="hidden">
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-gray-100">
+                                <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Publicar na Turma</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Lista de Materiais -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                        <h4 class="text-lg font-bold text-gray-900 flex items-center mb-6 border-b border-gray-50 pb-4">
+                            <i data-feather="folder" class="h-5 w-5 text-gray-400 mr-2"></i> Acervo Compartilhado
+                        </h4>
+
+                        <div class="space-y-3 overflow-y-auto flex-1 pr-2">
+                            <!-- Arquivo Card -->
+                            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-sm transition group">
+                                <div class="flex items-center">
+                                    <div class="bg-red-50 text-red-500 p-2 rounded-lg mr-4">
+                                        <i data-feather="file-text" class="h-6 w-6"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-800 text-sm">Apostila Completa - Banco de Dados.pdf</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">Enviado em 01/10/2026 • Turma A</p>
+                                    </div>
+                                </div>
+                                <button class="text-gray-300 hover:text-red-500 transition" title="Excluir"><i data-feather="trash-2" class="h-5 w-5"></i></button>
+                            </div>
+
+                            <!-- Arquivo Card -->
+                            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-sm transition group">
+                                <div class="flex items-center">
+                                    <div class="bg-blue-50 text-blue-500 p-2 rounded-lg mr-4">
+                                        <i data-feather="monitor" class="h-6 w-6"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-800 text-sm">Slides Aula 01 e 02.pptx</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">Enviado em 15/10/2026 • Turma A</p>
+                                    </div>
+                                </div>
+                                <button class="text-gray-300 hover:text-red-500 transition" title="Excluir"><i data-feather="trash-2" class="h-5 w-5"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: PERFIL -->
+            <div id="tela-perfil" class="tela hidden">
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
+                        Configurações da Conta
+                    </h4>
+                    <div class="flex flex-col sm:flex-row items-center gap-6 mb-8 border-b border-gray-100 pb-8">
+                        <div class="h-24 w-24 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-2xl border-2 border-teal-100">
+                            RC
+                        </div>
+                        <div class="text-center sm:text-left">
+                            <h2 class="text-xl font-black text-gray-900">Ricardo Costa Silva</h2>
+                            <p class="text-sm text-gray-500 mb-3">Professor Técnico • Registro: #PR0024</p>
+                            <button class="bg-gray-100 text-gray-700 border border-gray-200 px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-200">Alterar Foto</button>
+                        </div>
+                    </div>
+
+                    <form class="space-y-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail Institucional</label>
+                                <input type="email" value="ricardo.costa@univeas.com.br" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp</label>
+                                <input type="text" value="(91) 98322-1144" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-100 pt-5">
+                            <p class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4">Alterar Senha de Acesso</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nova Senha</label>
+                                    <input type="password" placeholder="Mínimo de 6 caracteres" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Confirmar Senha</label>
+                                    <input type="password" placeholder="Repita a senha" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-6">
+                            <button type="button" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Atualizar Dados</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        feather.replace();
+    });
+
+    function mudarTela(idTela) {
+        // Esconde todas as telas
+        document.querySelectorAll('.tela').forEach(tela => {
+            tela.classList.add('hidden');
+            tela.classList.remove('block');
+        });
+
+        // Mostra a selecionada
+        document.getElementById('tela-' + idTela).classList.remove('hidden');
+        document.getElementById('tela-' + idTela).classList.add('block');
+
+        // Reseta botões laterais
+        document.querySelectorAll('.menu-btn').forEach(btn => {
+            btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+            btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+        });
+
+        // Aplica ativo
+        const btnAtivo = document.getElementById('btn-' + idTela);
+        if (btnAtivo) {
+            btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+            btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        }
+
+        // Títulos
+        const titulos = {
+            'dashboard': 'Painel Principal',
+            'turmas': 'Minhas Turmas e Disciplinas',
+            'diario': 'Diário Eletrônico Docente',
+            'material': 'Acervo e Material Didático',
+            'perfil': 'Meu Perfil'
+        };
+        document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'UNIVEAS SGA';
+    }
+</script>
+</body>
+</html>
