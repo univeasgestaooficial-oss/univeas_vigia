@@ -11,7 +11,7 @@ from firebase_admin import credentials, firestore
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
 # Busca o JSON de credenciais armazenado de forma segura na Vercel
-firebase_env = os.getenv("FIREBASE_CREDENTIALS")
+firebase_env = os.getenv("UNIVEAS_FIRE_DB")
 
 if firebase_env and not firebase_admin._apps:
     try:
@@ -46,16 +46,11 @@ def checar_db():
 # ==========================================
 # 2.5 AUTENTICAÇÃO DO ADMINISTRADOR
 # ==========================================
-@app.post("/master")
+@app.post("/api/v1/master")
 async def login_administrador(senha: str = Form(...)):
-    """Valida a senha única do admin puxando da variável de ambiente da Vercel"""
-
-    # Busca a variável ADMIN_PASSWORD configurada no painel da Vercel
     senha_segura_vercel = os.getenv("KEY_ADMIN")
-
     if not senha_segura_vercel:
-        raise HTTPException(status_code=500, detail="Erro interno: Variável ADMIN_PASSWORD não configurada na Vercel.")
-
+        raise HTTPException(status_code=500, detail="Erro interno: Variável KEY_ADMIN não configurada na Vercel.")
     if senha == senha_segura_vercel:
         # Se a senha bater, retorna o token de acesso para o JS salvar no localStorage
         return {
