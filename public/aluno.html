@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNIVEAS - - Portal do Aluno</title>
+    <title>UNIVEAS - Portal do Aluno</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -15,9 +15,38 @@
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
 
-    <!-- ==========================================
-         MENU LATERAL
-         ========================================== -->
+<!-- ==========================================
+     TELA DE LOGIN DO ALUNO (SEGURANÇA)
+     ========================================== -->
+<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop');">
+    <div class="absolute inset-0 bg-slate-900/85 backdrop-blur-sm"></div>
+
+    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-4 border-teal-500">
+        <div class="mx-auto mb-4 bg-teal-50 h-16 w-16 rounded-full flex items-center justify-center border border-teal-100">
+            <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="mx-auto mb-6 h-14 w-auto object-contain">        </div>
+        <h2 class="text-2xl font-black text-gray-900 mb-1">Portal do Aluno</h2>
+        <p class="text-sm text-gray-500 mb-6 font-medium">Acesso Restrito a Estudantes</p>
+
+        <form id="form-login" class="space-y-4">
+            <div>
+                <input type="text" id="input-matricula" placeholder="Nº da Matrícula (Ex: #2026...)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold uppercase">
+            </div>
+            <div>
+                <input type="password" id="input-cpf" placeholder="CPF (Apenas números)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold tracking-widest">
+            </div>
+            <button type="submit" id="btn-submit-login" class="w-full bg-teal-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md">
+                Acessar Portal
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ==========================================
+     CONTAINER DO SISTEMA (OCULTO ATÉ O LOGIN)
+     ========================================== -->
+<div id="app-container" class="hidden h-full w-full flex-1 flex">
+
+    <!-- MENU LATERAL -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
@@ -58,16 +87,14 @@
         </div>
 
         <div class="p-4 border-t border-gray-100">
-            <a href="login.html" class="flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
+            <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
                 <i data-feather="log-out" class="h-5 w-5 mr-3"></i>
                 <span class="text-sm">Sair do Portal</span>
-            </a>
+            </button>
         </div>
     </aside>
 
-    <!-- ==========================================
-         ÁREA CENTRAL DE CONTEÚDO
-         ========================================== -->
+    <!-- ÁREA CENTRAL DE CONTEÚDO -->
     <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
 
         <!-- HEADER -->
@@ -77,10 +104,9 @@
             </div>
             <div class="flex items-center space-x-4">
                 <div class="text-right hidden sm:block">
-                    <p class="text-sm font-bold text-gray-900">Carlos Eduardo de Souza</p>
-                    <p class="text-xs text-teal-600 font-medium">Matrícula: #20260941</p>
+                    <p id="nome-aluno-header" class="text-sm font-bold text-gray-900">Carregando...</p>
+                    <p id="matricula-aluno-header" class="text-xs text-teal-600 font-medium">Matrícula: ---</p>
                 </div>
-                <!-- Foto do Aluno -->
                 <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop" alt="Aluno" class="h-10 w-10 rounded-full border-2 border-teal-200 object-cover">
             </div>
         </header>
@@ -141,7 +167,7 @@
             </div>
 
             <!-- ============================================== -->
-            <!-- 1.1 TELA INTERNA: DISCIPLINA (disciplina.html) -->
+            <!-- 1.1 TELA INTERNA: DISCIPLINA -->
             <!-- ============================================== -->
             <div id="tela-disciplina" class="tela hidden">
                 <button onclick="mudarTela('semestre')" class="mb-6 flex items-center text-sm font-bold text-gray-500 hover:text-teal-600 transition">
@@ -439,11 +465,11 @@
                                 <form onsubmit="event.preventDefault(); alert('Mensagem enviada à secretaria com sucesso!');" class="space-y-4">
                                     <div>
                                         <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
-                                        <input type="text" value="Carlos Eduardo de Souza" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none">
+                                        <input type="text" id="form-sac-nome" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Matrícula</label>
-                                        <input type="text" value="#20260941" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none">
+                                        <input type="text" id="form-sac-matricula" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Assunto / Mensagem</label>
@@ -597,113 +623,188 @@
 
         </main>
     </div>
+</div>
 
-    <!-- ============================================== -->
-    <!-- MODAL DE PRESENÇA (DISCIPLINA) -->
-    <!-- ============================================== -->
-    <div id="modal-presenca" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center transform scale-95 transition-all">
-            <div class="w-16 h-16 bg-teal-100 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i data-feather="check-circle" class="h-8 w-8"></i>
-            </div>
-            <h3 class="text-xl font-black text-gray-900 mb-2">Confirme sua Presença</h3>
-            <p class="text-sm text-gray-500 mb-6 border-b border-gray-100 pb-4">
-                <span class="block font-bold text-gray-800">Banco de Dados Relacional</span>
-                Prof. Ricardo Costa<br>
-                Aula Presencial Virtual
-            </p>
-            <p class="text-xs text-gray-400 font-medium mb-6">Sua frequência será registrada automaticamente no diário do professor e no seu histórico parcial.</p>
-            <div class="flex space-x-3">
-                <button onclick="fecharModalPresenca()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-gray-200 transition">Cancelar</button>
-                <button onclick="confirmarPresenca()" class="flex-1 bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition">Confirmar</button>
-            </div>
+<!-- ============================================== -->
+<!-- MODAL DE PRESENÇA (DISCIPLINA) -->
+<!-- ============================================== -->
+<div id="modal-presenca" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center transform scale-95 transition-all">
+        <div class="w-16 h-16 bg-teal-100 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i data-feather="check-circle" class="h-8 w-8"></i>
+        </div>
+        <h3 class="text-xl font-black text-gray-900 mb-2">Confirme sua Presença</h3>
+        <p class="text-sm text-gray-500 mb-6 border-b border-gray-100 pb-4">
+            <span class="block font-bold text-gray-800">Banco de Dados Relacional</span>
+            Prof. Ricardo Costa<br>
+            Aula Presencial Virtual
+        </p>
+        <p class="text-xs text-gray-400 font-medium mb-6">Sua frequência será registrada automaticamente no diário do professor e no seu histórico parcial.</p>
+        <div class="flex space-x-3">
+            <button onclick="fecharModalPresenca()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-gray-200 transition">Cancelar</button>
+            <button onclick="confirmarPresenca()" class="flex-1 bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition">Confirmar</button>
         </div>
     </div>
+</div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        feather.replace();
+// ==========================================
+// INTEGRAÇÃO API E SEGURANÇA - ALUNO
+// ==========================================
+const API_BASE_URL = "/api/v1";
 
-        // Simula bloqueio de Inadimplência baseado em regra de negócio
-        const isInadimplente = false; // Mude para true para ver a trava no topo da tela
-        if(isInadimplente) {
-            document.getElementById('aviso-inadimplencia').classList.remove('hidden');
+document.addEventListener('DOMContentLoaded', () => {
+    feather.replace();
+
+    // Simula bloqueio de Inadimplência baseado em regra de negócio
+    const isInadimplente = false;
+    if(isInadimplente) {
+        document.getElementById('aviso-inadimplencia').classList.remove('hidden');
+    }
+
+    if (localStorage.getItem('token_siga_aluno')) {
+        liberarAcessoAluno();
+    }
+});
+
+// Ação de Login do Aluno
+document.getElementById('form-login')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-login');
+    btn.innerText = "Autenticando...";
+
+    const matricula = document.getElementById('input-matricula').value.toUpperCase();
+    const cpf = document.getElementById('input-cpf').value;
+
+    const formData = new FormData();
+    formData.append('matricula', matricula);
+    formData.append('cpf', cpf);
+
+    try {
+        const response = await fetch('/api/v1/auth/aluno', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.sucesso) {
+            localStorage.setItem('token_siga_aluno', data.token_siga);
+            localStorage.setItem('nome_aluno', data.nome_aluno);
+            localStorage.setItem('matricula_aluno', data.matricula);
+            liberarAcessoAluno();
+        } else {
+            alert(data.detail || "Matrícula ou CPF não localizados.");
+            btn.innerText = "Acessar Portal";
         }
+    } catch (error) {
+        alert("Erro ao conectar com o servidor da Instituição.");
+        btn.innerText = "Acessar Portal";
+    }
+});
+
+function liberarAcessoAluno() {
+    document.getElementById('tela-login').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+
+    const nome = localStorage.getItem('nome_aluno');
+    const matricula = localStorage.getItem('matricula_aluno');
+
+    if(nome) {
+        document.getElementById('nome-aluno-header').innerText = nome;
+        const inputSacNome = document.getElementById('form-sac-nome');
+        if (inputSacNome) inputSacNome.value = nome;
+    }
+    if(matricula) {
+        document.getElementById('matricula-aluno-header').innerText = `Matrícula: ${matricula}`;
+        const inputSacMatricula = document.getElementById('form-sac-matricula');
+        if (inputSacMatricula) inputSacMatricula.value = matricula;
+    }
+
+    mudarTela('semestre');
+}
+
+function fazerLogout() {
+    localStorage.removeItem('token_siga_aluno');
+    localStorage.removeItem('nome_aluno');
+    localStorage.removeItem('matricula_aluno');
+    location.reload();
+}
+
+// Navegação Visual do Aluno
+function mudarTela(idTela) {
+    document.querySelectorAll('.tela').forEach(t => {
+        t.classList.add('hidden');
+        t.classList.remove('block');
     });
 
-    function mudarTela(idTela) {
-        document.querySelectorAll('.tela').forEach(t => {
-            t.classList.add('hidden');
-            t.classList.remove('block');
-        });
-
-        const telaAtiva = document.getElementById('tela-' + idTela);
-        if(telaAtiva) {
-            telaAtiva.classList.remove('hidden');
-            telaAtiva.classList.add('block');
-        }
-
-        document.querySelectorAll('.menu-btn').forEach(btn => {
-            btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
-            btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
-        });
-
-        const btnAtivo = document.getElementById('btn-' + idTela);
-        if (btnAtivo) {
-            btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
-            btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
-        }
-
-        const titulos = {
-            'semestre': 'Disciplinas do Semestre',
-            'notas': 'Notas e Boletim',
-            'calendario': 'Calendário Letivo',
-            'curso': 'Meu Curso',
-            'financeiro': 'Financeiro',
-            'documentos': 'Emissão de Documentos',
-            'atendimento': 'Atendimento ao Aluno (SAC)',
-            'disciplina': 'Sala de Aula Virtual'
-        };
-        const titleEl = document.getElementById('titulo-pagina');
-        if(titleEl && titulos[idTela]) {
-            titleEl.innerText = titulos[idTela];
-        }
+    const telaAtiva = document.getElementById('tela-' + idTela);
+    if(telaAtiva) {
+        telaAtiva.classList.remove('hidden');
+        telaAtiva.classList.add('block');
     }
 
-    // Navegação Interna para Disciplina específica
-    function abrirDisciplina(codigo, nome) {
-        document.getElementById('disc-codigo').innerText = codigo;
-        document.getElementById('disc-nome').innerText = nome;
-        mudarTela('disciplina');
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+    });
+
+    const btnAtivo = document.getElementById('btn-' + idTela);
+    if (btnAtivo) {
+        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+        btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
     }
 
-    // Modal de Presença
-    function abrirModalPresenca() {
-        const modal = document.getElementById('modal-presenca');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        setTimeout(() => {
-            modal.classList.remove('opacity-0');
-            modal.querySelector('div').classList.remove('scale-95');
-            modal.querySelector('div').classList.add('scale-100');
-        }, 10);
+    const titulos = {
+        'semestre': 'Disciplinas do Semestre',
+        'notas': 'Notas e Boletim',
+        'calendario': 'Calendário Letivo',
+        'curso': 'Meu Curso',
+        'financeiro': 'Situação Financeira',
+        'documentos': 'Emissão de Documentos',
+        'atendimento': 'Atendimento ao Aluno (SAC)',
+        'disciplina': 'Sala de Aula Virtual'
+    };
+    const titleEl = document.getElementById('titulo-pagina');
+    if(titleEl && titulos[idTela]) {
+        titleEl.innerText = titulos[idTela];
     }
+}
 
-    function fecharModalPresenca() {
-        const modal = document.getElementById('modal-presenca');
+// Ações Visuais e Interativas
+function abrirDisciplina(codigo, nome) {
+    document.getElementById('disc-codigo').innerText = codigo;
+    document.getElementById('disc-nome').innerText = nome;
+    mudarTela('disciplina');
+}
+
+function abrirModalPresenca() {
+    const modal = document.getElementById('modal-presenca');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
         modal.classList.remove('opacity-0');
-        modal.querySelector('div').classList.remove('scale-100');
-        modal.querySelector('div').classList.add('scale-95');
-        setTimeout(() => {
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
-        }, 200);
-    }
+        modal.querySelector('div').classList.remove('scale-95');
+        modal.querySelector('div').classList.add('scale-100');
+    }, 10);
+}
 
-    function confirmarPresenca() {
-        fecharModalPresenca();
-        alert('Presença validada e enviada ao diário do professor com sucesso!');
-    }
+function fecharModalPresenca() {
+    const modal = document.getElementById('modal-presenca');
+    modal.classList.remove('opacity-0');
+    modal.querySelector('div').classList.remove('scale-100');
+    modal.querySelector('div').classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+async function confirmarPresenca() {
+    // Apenas simulação de carregamento da chamada
+    fecharModalPresenca();
+    alert('Presença validada e enviada ao diário do professor com sucesso!');
+}
 </script>
 </body>
 </html>
