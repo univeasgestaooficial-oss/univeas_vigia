@@ -1,10 +1,232 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNIVEAS - Educação e Tecnologia</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head><body class="bg-slate-50 text-gray-800 antialiased selection:bg-teal-500 selection:text-white">
 
+    <!-- HEADER / MENU DE NAVEGAÇÃO FIXO -->
+    <header class="fixed top-0 left-0 right-0 bg-white backdrop-blur-md border-b border-gray-100 z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <!-- Logo Dinâmica puxada do Admin ou Padrão -->
+                <img id="logo-instituicao" src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-12 w-auto object-contain">
+            </div>
+
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-bold text-gray-600">
+                <a href="#cursos" class="hover:text-teal-600 transition-colors">Cursos</a>
+                <a href="#sobre" class="hover:text-teal-600 transition-colors">A Instituição</a>
+                <a href="#localizacao" class="hover:text-teal-600 transition-colors">Localização</a>
+                <a href="#contato" class="hover:text-teal-600 transition-colors">Contato</a>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <a href="aluno.html" class="px-5 py-2.5 rounded-xl border border-teal-500 text-teal-600 font-bold text-xs uppercase tracking-wider hover:bg-teal-50 transition-all duration-300">
+                    Área do Aluno
+                </a>
+                <a href="professor.html" class="hidden sm:inline-block px-5 py-2.5 rounded-xl bg-teal-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 hover:shadow-md transition-all duration-300">
+                    Portal do Professor
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO SECTION (BANNER PRINCIPAL COM ANIMAÇÃO) -->
+    <section class="relative pt-32 pb-20 md:pt-44 md:pb-32 bg-slate-900 text-white overflow-hidden">
+        <div class="absolute inset-0 opacity-40 bg-cover bg-center mix-blend-overlay transition-transform duration-1000 scale-105" style="background-image: url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop');"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-transparent"></div>
+
+        <div class="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="space-y-6 animate-fade-in">
+                <span class="inline-block px-3 py-1 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs font-bold uppercase tracking-widest">
+                    Inscrições Abertas 2026.2
+                </span>
+                <h1 id="hero-titulo" class="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                    Transforme seu Futuro com Educação Tecnológica de Ponta.
+                </h1>
+                <p id="hero-subtitulo" class="text-gray-300 text-base md:text-lg font-medium leading-relaxed">
+                    Cursos técnicos e profissionalizantes validados pelo mercado. Estude com quem é referência em inovação em Vigia e região.
+                </p>
+                <div class="pt-4 flex flex-col sm:flex-row gap-4">
+                    <a href="#cursos" class="bg-teal-500 text-white font-bold py-3.5 px-8 rounded-xl text-center text-xs uppercase tracking-wider hover:bg-teal-600 shadow-lg shadow-teal-500/30 hover:-translate-y-0.5 transition-all">
+                        Explorar Cursos
+                    </a>
+                    <a id="btn-whatsapp-hero" href="#" target="_blank" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold py-3.5 px-8 rounded-xl text-center text-xs uppercase tracking-wider backdrop-blur-sm transition-all flex items-center justify-center gap-2">
+                        <i data-feather="message-circle" class="w-4 h-4 text-teal-400"></i> Falar no WhatsApp
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO DE CURSOS DINÂMICOS (VINDOS DO ADMIN/FIREBASE) -->
+    <section id="cursos" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
+                <h2 class="text-xs font-bold text-teal-600 uppercase tracking-widest">Nossa Grade Acadêmica</h2>
+                <h3 class="text-3xl md:text-4xl font-black text-gray-900">Cursos com Inscrições Ativas</h3>
+                <p class="text-gray-500 text-sm">Informações de valores, duração e vagas atualizadas diretamente pela secretaria.</p>
+            </div>
+
+            <!-- Grid onde o JS injetará os cursos vindos do banco -->
+            <div id="container-cursos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Card Skeleton/Carregando padrão -->
+                <div class="border border-gray-100 rounded-3xl p-6 bg-gray-50 animate-pulse">
+                    <div class="h-48 bg-gray-200 rounded-2xl mb-4"></div>
+                    <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO INSTITUCIONAL / DIFERENCIAIS -->
+    <section id="sobre" class="py-24 bg-gray-50 border-t border-gray-100">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div class="space-y-6">
+                <span class="text-xs font-bold text-teal-600 uppercase tracking-widest">Sobre a UNIVEAS</span>
+                <h3 class="text-3xl md:text-4xl font-black text-gray-900">Tradição em ensino técnico e compromisso com o seu sucesso profissional.</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Nossa instituição nasceu com o propósito de conectar estudantes às reais necessidades do mercado de trabalho atual. Com laboratórios modernos, professores experientes e uma plataforma digital integrada (SGA), garantimos autonomia e excelência para alunos e docentes.
+                </p>
+                <div class="grid grid-cols-2 gap-6 pt-4">
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                        <h4 class="text-3xl font-black text-teal-600">100%</h4>
+                        <p class="text-xs text-gray-500 font-bold uppercase mt-1">Sincronizado Digital</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                        <h4 class="text-3xl font-black text-teal-600">+500</h4>
+                        <p class="text-xs text-gray-500 font-bold uppercase mt-1">Alunos Capacitados</p>
+                    </div>
+                </div>
+            </div>
+            <div class="relative">
+                <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1000&auto=format&fit=crop" alt="Alunos estudando" class="rounded-3xl shadow-2xl object-cover h-[450px] w-full">
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO DE CONTATO E LOCALIZAÇÃO (DINÂMICO) -->
+    <section id="localizacao" class="py-24 bg-white border-t border-gray-100">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div class="space-y-6">
+                    <span class="text-xs font-bold text-teal-600 uppercase tracking-widest">Onde Estamos</span>
+                    <h3 class="text-3xl font-black text-gray-900">Venha nos fazer uma visita ou entre em contato</h3>
+
+                    <div class="space-y-4 pt-2">
+                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4"><i data-feather="map-pin" class="w-6 h-6"></i></div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase">Endereço Oficial</p>
+                                <p id="info-endereco" class="text-sm font-bold text-gray-800 mt-0.5">Av. Lauro Sodré, Centro, Vigia - PA</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4"><i data-feather="phone-call" class="w-6 h-6"></i></div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase">Central de Atendimento / WhatsApp</p>
+                                <p id="info-telefone" class="text-sm font-bold text-gray-800 mt-0.5">(91) 98325-2639</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-100 rounded-3xl overflow-hidden h-[380px] border border-gray-200 flex items-center justify-center relative">
+                    <div class="text-center p-6">
+                        <i data-feather="map" class="w-12 h-12 text-gray-400 mx-auto mb-2 opacity-60"></i>
+                        <p class="text-sm font-bold text-gray-600">Mapa Institucional Integrado</p>
+                        <p class="text-xs text-gray-400 mt-1">Vigia de Nazaré, Pará</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RODAPÉ -->
+    <footer class="bg-slate-950 text-white py-12 border-t border-slate-900">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+            <div>
+                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-10 w-auto object-contain brightness-0 invert mx-auto md:mx-0 mb-3">
+                <p class="text-xs text-gray-400">© 2026 UNIVEAS. Todos os direitos reservados. Sistema acadêmico integrado.</p>
+            </div>
+            <div class="flex items-center space-x-6 text-xs text-gray-400">
+                <a href="login.html" class="hover:text-teal-400 transition-colors">Área do Aluno</a>
+                <a href="professor.html" class="hover:text-teal-400 transition-colors">Portal Docente</a>
+                <a href="admin.html" class="hover:text-teal-400 transition-colors font-bold text-teal-500">Painel Master</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SCRIPT DE CARREGAMENTO DINÂMICO DA API -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+            carregarDadosPublicosSite();
+        });
+
+        async function carregarDadosPublicosSite() {
+            try {
+                // Requisição na rota do FastAPI que busca as configurações e cursos cadastrados no Admin
+                const response = await fetch('/api/v1/site/conteudo');
+                if (response.ok) {
+                    const dados = await response.json();
+
+                    // Se o admin cadastrou telefone ou endereço personalizado, o site se atualiza sozinho
+                    if(dados.telefone) {
+                        document.getElementById('info-telefone').innerText = dados.telefone;
+                        document.getElementById('btn-whatsapp-hero').href = `https://wa.me/55${dados.telefone.replace(/\D/g,'')}`;
+                    }
+                    if(dados.endereco) {
+                        document.getElementById('info-endereco').innerText = dados.endereco;
+                    }
+
+                    // Se houver cursos cadastrados no Firestore, renderiza os cards dinamicamente com animação
+                    if(dados.cursos && dados.cursos.length > 0) {
+                        const container = document.getElementById('container-cursos');
+                        container.innerHTML = ''; // Limpa o skeleton
+
+                        dados.cursos.forEach(curso => {
+                            container.innerHTML += `
+                                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group flex flex-col">
+                                    <div class="relative h-52 bg-gray-100 overflow-hidden">
+                                        <img src="${curso.imagem || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                        <span class="absolute top-4 left-4 bg-teal-500 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">${curso.modalidade || 'Presencial/EAD'}</span>
+                                    </div>
+                                    <div class="p-6 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1">${curso.categoria || 'Técnico Profissionalizante'}</p>
+                                            <h3 class="font-black text-gray-900 text-xl group-hover:text-teal-600 transition-colors">${curso.nome}</h3>
+                                            <p class="text-xs text-gray-500 mt-2 line-clamp-2">${curso.descricao || 'Curso completo com certificação reconhecida e foco em resultados.'}</p>
+                                        </div>
+                                        <div class="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-[10px] text-gray-400 font-bold uppercase">Investimento</p>
+                                                <p class="text-lg font-black text-gray-900">R$ ${curso.valor || '249,90'}<span class="text-xs font-normal text-gray-500">/mês</span></p>
+                                            </div>
+                                            <a href="login.html" class="bg-teal-50 hover:bg-teal-500 text-teal-600 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all duration-300">
+                                                Matricule-se
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                }
+            } catch (error) {
+                console.log("Modo estático ativado: aguardando conexão com a API do FastAPI.");
+            }
+        }
+    </script>
 </body>
 </html>
