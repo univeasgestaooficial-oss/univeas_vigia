@@ -11,7 +11,7 @@ from firebase_admin import credentials, firestore
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
 # Busca o JSON de credenciais armazenado de forma segura na Vercel
-firebase_env = os.getenv("FIREBASE_CREDENTIALS")
+firebase_env = os.getenv("UNIVEAS_FIRE_DB")
 
 if firebase_env and not firebase_admin._apps:
     try:
@@ -51,7 +51,7 @@ async def login_administrador(senha: str = Form(...)):
     """Valida a senha única do admin puxando da variável de ambiente da Vercel"""
 
     # Busca a variável ADMIN_PASSWORD configurada no painel da Vercel
-    senha_segura_vercel = os.getenv("ADMIN_PASSWORD")
+    senha_segura_vercel = os.getenv("KEY_ADMIN")
 
     if not senha_segura_vercel:
         raise HTTPException(status_code=500, detail="Erro interno: Variável ADMIN_PASSWORD não configurada na Vercel.")
@@ -65,6 +65,61 @@ async def login_administrador(senha: str = Form(...)):
         }
     else:
         raise HTTPException(status_code=401, detail="Senha incorreta. Acesso negado.")
+
+
+# ==========================================
+# 2.6 AUTENTICAÇÃO DO PROFESSOR (DOCENTE)
+# ==========================================
+@app.post("/api/v1/auth/docente")
+async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
+    """Valida o acesso do professor consultando a coleção 'docentes' no Firestore"""
+    checar_db()
+
+    # Faz a busca no banco procurando o documento exato
+    docs = db.collection("docentes").where("registro", "==", registro).where("cpf", "==", cpf).stream()
+
+    docente_encontrado = None
+    for doc in docs:
+        docente_encontrado = {"id": doc.id, **doc.to_dict()}
+        break  # Pega o primeiro que bater
+
+    if docente_encontrado:
+        # Se encontrou, gera o token e devolve os dados
+        return {
+            "sucesso": True,
+            "token_siga": f"docente_{docente_encontrado['id']}",
+            "nome_professor": docente_encontrado["nome"],
+            "registro": docente_encontrado["registro"]
+        }
+    else:
+        raise HTTPException(status_code=401, detail="Registro ou CPF incorretos. Acesso negado.")
+
+
+# ==========================================
+# 2.7 AUTENTICAÇÃO DO ALUNO (ESTUDANTE)
+# ==========================================
+@app.post("/api/v1/auth/aluno")
+async def login_aluno(matricula: str = Form(...), cpf: str = Form(...)):
+    """Valida o acesso do aluno consultando a coleção 'alunos' no Firestore"""
+    checar_db()
+
+    # Faz a busca no banco procurando o documento exato
+    docs = db.collection("alunos").where("matricula", "==", matricula).where("cpf", "==", cpf).stream()
+
+    aluno_encontrado = None
+    for doc in docs:
+        aluno_encontrado = {"id": doc.id, **doc.to_dict()}
+        break
+
+    if aluno_encontrado:
+        return {
+            "sucesso": True,
+            "token_siga": f"aluno_{aluno_encontrado['id']}",
+            "nome_aluno": aluno_encontrado["nome"],
+            "matricula": aluno_encontrado["matricula"]
+        }
+    else:
+        raise HTTPException(status_code=401, detail="Matrícula ou CPF incorretos. Acesso negado.")
 
 
 # ==========================================
