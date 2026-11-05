@@ -15,6 +15,38 @@
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
 
+<!-- ==========================================
+     TELA DE LOGIN DO PROFESSOR
+     ========================================== -->
+<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop');">
+    <div class="absolute inset-0 bg-slate-900/85 backdrop-blur-sm"></div>
+
+    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-4 border-teal-500">
+        <div class="mx-auto mb-4 bg-teal-50 h-16 w-16 rounded-full flex items-center justify-center border border-teal-100">
+            <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="mx-auto mb-6 h-14 w-auto object-contain">
+        </div>
+        <h2 class="text-2xl font-black text-gray-900 mb-1">Portal Acadêmico</h2>
+        <p class="text-sm text-gray-500 mb-6 font-medium">Acesso Exclusivo para Docentes</p>
+
+        <form id="form-login" class="space-y-4">
+            <div>
+                <input type="text" id="input-registro" placeholder="Nº de Registro (Ex: #PR...)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold uppercase">
+            </div>
+            <div>
+                <input type="password" id="input-cpf" placeholder="CPF (Apenas números)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold tracking-widest">
+            </div>
+            <button type="submit" id="btn-submit-login" class="w-full bg-teal-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md">
+                Entrar no Portal
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ==========================================
+     CONTAINER DO SISTEMA (ESCONDIDO INICIALMENTE)
+     ========================================== -->
+<div id="app-container" class="hidden h-full w-full flex-1 flex">
+
     <!-- Sidebar Lateral Clara e Suave -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
@@ -50,10 +82,10 @@
         </div>
 
         <div class="p-4 border-t border-gray-100">
-            <a href="login.html" class="flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
+            <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
                 <i data-feather="log-out" class="h-5 w-5 mr-3"></i>
                 <span class="text-sm">Sair do Portal</span>
-            </a>
+            </button>
         </div>
     </aside>
 
@@ -68,7 +100,7 @@
 
             <div class="flex items-center space-x-4">
                 <div class="text-right hidden sm:block">
-                    <p class="text-sm font-bold text-gray-900">Prof. Ricardo Costa</p>
+                    <p id="nome-docente-header" class="text-sm font-bold text-gray-900">Prof. Nome</p>
                     <p class="text-xs text-teal-600 font-medium">Desenvolvimento de Sistemas</p>
                 </div>
                 <div class="h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold shadow-sm cursor-pointer hover:bg-teal-100 transition border border-teal-100">
@@ -80,7 +112,9 @@
         <!-- Container de Telas -->
         <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
 
+            <!-- ========================================== -->
             <!-- TELA: DASHBOARD -->
+            <!-- ========================================== -->
             <div id="tela-dashboard" class="tela block">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
@@ -157,7 +191,9 @@
                 </div>
             </div>
 
+            <!-- ========================================== -->
             <!-- TELA: MINHAS TURMAS -->
+            <!-- ========================================== -->
             <div id="tela-turmas" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
@@ -207,7 +243,9 @@
                 </div>
             </div>
 
+            <!-- ========================================== -->
             <!-- TELA: DIÁRIO ELETRÔNICO (Lançamento de Faltas e Notas) -->
+            <!-- ========================================== -->
             <div id="tela-diario" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
                     <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
@@ -276,12 +314,14 @@
 
                     <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
                         <p class="text-xs text-gray-400 font-medium">As notas salvas são refletidas no portal do aluno em tempo real.</p>
-                        <button class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
+                        <button onclick="salvarDiario(this)" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
                     </div>
                 </div>
             </div>
 
+            <!-- ========================================== -->
             <!-- TELA: MATERIAL DIDÁTICO -->
+            <!-- ========================================== -->
             <div id="tela-material" class="tela hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <!-- Área de Upload -->
@@ -360,7 +400,9 @@
                 </div>
             </div>
 
+            <!-- ========================================== -->
             <!-- TELA: PERFIL -->
+            <!-- ========================================== -->
             <div id="tela-perfil" class="tela hidden">
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
                     <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
@@ -413,46 +455,209 @@
 
         </main>
     </div>
+</div> <!-- FECHAMENTO CORRIGIDO DA DIV APP-CONTAINER -->
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        feather.replace();
+// ==========================================
+// INTEGRAÇÃO API E SEGURANÇA - PROFESSOR
+// ==========================================
+const API_BASE_URL = "/api/v1";
+
+// Único evento de carregamento consolidado
+document.addEventListener('DOMContentLoaded', () => {
+    feather.replace();
+
+    // Se o professor já tem token salvo da sessão anterior, pula a tela de login
+    if (localStorage.getItem('token_siga_docente')) {
+        liberarAcessoDocente();
+    }
+});
+
+// Ação de Submeter o formulário de Login
+document.getElementById('form-login')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-login');
+    btn.innerText = "Autenticando...";
+
+    const registro = document.getElementById('input-registro').value.toUpperCase();
+    const cpf = document.getElementById('input-cpf').value;
+
+    const formData = new FormData();
+    formData.append('registro', registro);
+    formData.append('cpf', cpf);
+
+    try {
+        const response = await fetch('/api/v1/auth/docente', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.sucesso) {
+            // Sucesso: Salva as credenciais no navegador
+            localStorage.setItem('token_siga_docente', data.token_siga);
+            localStorage.setItem('nome_docente', data.nome_professor);
+            liberarAcessoDocente();
+        } else {
+            alert(data.detail || "Dados incorretos. Verifique com a secretaria.");
+            btn.innerText = "Entrar no Portal";
+        }
+    } catch (error) {
+        alert("Erro ao conectar com o servidor.");
+        btn.innerText = "Entrar no Portal";
+    }
+});
+
+// Função que revela o sistema após logar
+function liberarAcessoDocente() {
+    document.getElementById('tela-login').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+
+    // Substitui o placeholder no cabeçalho pelo nome real
+    const nomeReal = localStorage.getItem('nome_docente');
+    if(nomeReal) {
+        document.getElementById('nome-docente-header').innerText = nomeReal;
+    }
+
+    mudarTela('dashboard');
+}
+
+// Limpa sessão
+function fazerLogout() {
+    localStorage.removeItem('token_siga_docente');
+    localStorage.removeItem('nome_docente');
+    location.reload(); // Recarrega a página forçando mostrar o login novamente
+}
+
+// Navegação Visual
+function mudarTela(idTela) {
+    document.querySelectorAll('.tela').forEach(tela => {
+        tela.classList.add('hidden');
+        tela.classList.remove('block');
     });
 
-    function mudarTela(idTela) {
-        // Esconde todas as telas
-        document.querySelectorAll('.tela').forEach(tela => {
-            tela.classList.add('hidden');
-            tela.classList.remove('block');
-        });
+    document.getElementById('tela-' + idTela).classList.remove('hidden');
+    document.getElementById('tela-' + idTela).classList.add('block');
 
-        // Mostra a selecionada
-        document.getElementById('tela-' + idTela).classList.remove('hidden');
-        document.getElementById('tela-' + idTela).classList.add('block');
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+    });
 
-        // Reseta botões laterais
-        document.querySelectorAll('.menu-btn').forEach(btn => {
-            btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
-            btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
-        });
-
-        // Aplica ativo
-        const btnAtivo = document.getElementById('btn-' + idTela);
-        if (btnAtivo) {
-            btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
-            btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
-        }
-
-        // Títulos
-        const titulos = {
-            'dashboard': 'Painel Principal',
-            'turmas': 'Minhas Turmas e Disciplinas',
-            'diario': 'Diário Eletrônico Docente',
-            'material': 'Acervo e Material Didático',
-            'perfil': 'Meu Perfil'
-        };
-        document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'UNIVEAS SGA';
+    const btnAtivo = document.getElementById('btn-' + idTela);
+    if (btnAtivo) {
+        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+        btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
     }
+
+    const titulos = {
+        'dashboard': 'Painel Principal',
+        'turmas': 'Minhas Turmas e Disciplinas',
+        'diario': 'Diário Eletrônico Docente',
+        'material': 'Acervo e Material Didático',
+        'perfil': 'Meu Perfil'
+    };
+    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'UNIVEAS SGA';
+
+    // Dispara a busca real na API dependendo da aba que o professor clicou
+    if(idTela === 'dashboard') loadDashboardDocente();
+    if(idTela === 'turmas') loadTurmas();
+}
+
+// Configuração Base do Fetch
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    // Atenção aqui: o professor usa um token diferente do administrador
+    const headers = { 'Authorization': `Bearer ${localStorage.getItem('token_siga_docente')}` };
+    const config = { method, headers };
+
+    if (data) {
+        if (data instanceof FormData) {
+            config.body = data;
+        } else {
+            headers['Content-Type'] = 'application/json';
+            config.body = JSON.stringify(data);
+        }
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        if (response.status === 401) {
+            alert("Sua sessão expirou.");
+            fazerLogout();
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Erro:`, error);
+    }
+}
+
+// Chamadas de Leitura
+async function loadDashboardDocente() {
+    const data = await apiRequest('/docente/dashboard');
+    if (data) console.log("Dashboard do professor atualizado via API.");
+}
+
+async function loadTurmas() {
+    const turmas = await apiRequest('/docente/turmas');
+    if (turmas) console.log("Turmas listadas:", turmas);
+}
+
+// Envio do Diário Eletrônico
+async function salvarDiario(btnElement) {
+    const textoOriginal = btnElement.innerText;
+    btnElement.innerText = "Salvando...";
+    btnElement.disabled = true;
+
+    const formData = new FormData();
+    formData.append("turma_id", document.querySelector('#tela-diario select').value);
+    formData.append("data_aula", document.querySelector('#tela-diario input[type="date"]').value || new Date().toISOString().split('T')[0]);
+    formData.append("conteudo", document.querySelector('#tela-diario textarea').value || "Conteúdo não especificado");
+
+    // Simulação do payload de notas
+    const notasMock = [{ id: "aluno1", falta: 0, nota1: 8.5 }];
+    formData.append("notas_faltas", JSON.stringify(notasMock));
+
+    const result = await apiRequest('/docente/diario/salvar', 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Lançamentos sincronizados com o banco de dados (Firestore)!");
+    } else {
+        alert("Falha de conexão. Tente novamente.");
+    }
+
+    btnElement.innerText = textoOriginal;
+    btnElement.disabled = false;
+}
+
+// Upload de Material
+document.querySelector('#tela-material form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Enviando...";
+
+    const formData = new FormData();
+    formData.append("turma_id", e.target.querySelectorAll('select')[0].value);
+    formData.append("titulo", e.target.querySelectorAll('input[type="text"]')[0].value);
+
+    const fileInput = e.target.querySelector('input[type="file"]');
+    if (fileInput.files.length > 0) {
+        formData.append("arquivo", fileInput.files[0]);
+    } else {
+        alert("Você esqueceu de anexar o arquivo.");
+        btn.innerText = textoOriginal;
+        return;
+    }
+
+    const result = await apiRequest('/docente/material/upload', 'POST', formData);
+    if (result && result.sucesso) {
+        alert("Material enviado com sucesso!");
+        e.target.reset();
+    }
+    btn.innerText = textoOriginal;
+});
 </script>
 </body>
 </html>
