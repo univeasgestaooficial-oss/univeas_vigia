@@ -840,7 +840,7 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
     formData.append('senha', senha);
 
     try {
-        const response = await fetch('/master', {
+        const response = await fetch(`${API_BASE_URL}/master`, {
             method: 'POST',
             body: formData
         });
