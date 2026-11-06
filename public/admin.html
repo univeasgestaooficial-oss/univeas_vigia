@@ -463,48 +463,30 @@
                                 <input type="number" name="valor_mensalidade" step="0.01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
                             </div>
                         </div>
-                        <!-- DESCRIÇÃO GERAL -->
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição Geral do Curso</label>
-                            <textarea name="descricao" rows="2" placeholder="Insira os objetivos e informações do curso..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
-                        </div>
-
-                        <!-- ESTRUTURA ACADÊMICA E AVALIAÇÕES (NOVO) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição Geral do Curso</label>
+                                <textarea name="descricao" rows="3" placeholder="Insira os objetivos e informações do curso..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
+                            </div>
+                            <!-- GRADE CURRICULAR DINÂMICA -->
                         <div class="border-t border-gray-100 pt-6 mt-6 mb-6">
-                            <h5 class="text-sm font-bold text-gray-700 mb-4 flex items-center">
-                                <i data-feather="layers" class="h-4 w-4 mr-2 text-teal-500"></i> Estrutura Acadêmica e Avaliações
-                            </h5>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Qtd. de Módulos</label>
-                                    <input type="number" name="qtd_modulos" min="1" placeholder="Ex: 4" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Avaliações por Módulo</label>
-                                    <input type="number" name="qtd_avaliacoes" min="1" placeholder="Ex: 2" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Metodologia / Tipo</label>
-                                    <select name="tipo_avaliacao" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                        <option value="misto">Provas Teóricas e Desafios</option>
-                                        <option value="projetos">Apenas Trabalhos / Projetos</option>
-                                        <option value="desafios">Desafios Práticos (Gameficado)</option>
-                                        <option value="provas">Apenas Provas Tradicionais</option>
-                                    </select>
-                                </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h5 class="text-sm font-bold text-gray-700 flex items-center">
+                                    <i data-feather="layers" class="h-4 w-4 mr-2 text-teal-500"></i> Grade Curricular do Curso
+                                </h5>
+                                <button type="button" onclick="adicionarDisciplina()" class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-100 transition flex items-center">
+                                    <i data-feather="plus" class="w-3 h-3 mr-1"></i> Adicionar Disciplina
+                                </button>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nomes dos Módulos (Separe por vírgula)</label>
-                                    <textarea name="nomes_modulos" rows="2" placeholder="Ex: Lógica Básica, Banco de Dados, Projeto Final..." required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Matriz Curricular (Detalhes extra)</label>
-                                    <textarea name="matriz_curricular" rows="2" placeholder="Descreva os assuntos abordados..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
-                                </div>
+                            <!-- Container onde as disciplinas aparecerão -->
+                            <div id="container-disciplinas" class="space-y-4">
+                                <!-- Os blocos de disciplina serão injetados aqui pelo JavaScript -->
                             </div>
+
+                            <!-- Campo oculto para enviar os dados estruturados para o Python -->
+                            <input type="hidden" name="disciplinas_json" id="disciplinas_json">
+                        </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -1202,27 +1184,6 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     btn.innerText = "Salvar / Sair"; // Restaura o botão
 });
 
-document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = e.target.querySelector('button[type="submit"]');
-    const textoOriginal = btn.innerText;
-    btn.innerText = "Salvando..."; // Dá um feedback visual na hora do clique
-
-    const formData = new FormData(e.target);
-    const result = await apiRequest('/cursos', 'POST', formData);
-
-    if (result && result.sucesso) {
-        alert("Curso registrado com sucesso!");
-        e.target.reset();
-        loadCursos(); // Já atualiza a lista de cursos pros outros formulários
-    } else {
-        // Se der qualquer erro (como erro 422 do Python ou 404), ele te avisa na tela!
-        alert(result?.detail || "Erro ao salvar o curso. Verifique o console (F12).");
-    }
-
-    btn.innerText = textoOriginal; // Restaura o texto do botão
-});
-
 document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -1243,6 +1204,118 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
         fecharModalSistema();
     }
 });
+
+    // --- SISTEMA DE GRADE CURRICULAR DINÂMICA ---
+let contadorDisciplina = 0;
+
+function adicionarDisciplina() {
+    contadorDisciplina++;
+    const container = document.getElementById('container-disciplinas');
+
+    const div = document.createElement('div');
+    div.className = 'bg-gray-50 p-5 rounded-xl border border-gray-200 relative item-disciplina transition-all';
+    div.id = `disciplina-box-${contadorDisciplina}`;
+
+    div.innerHTML = `
+        <button type="button" onclick="removerDisciplina(${contadorDisciplina})" class="absolute top-4 right-4 text-red-400 hover:text-red-600 transition">
+            <i data-feather="trash-2" class="w-4 h-4"></i>
+        </button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pr-8">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome da Disciplina / Módulo</label>
+                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" required placeholder="Ex: Banco de Dados">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período</label>
+                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-periodo" required placeholder="Ex: 1º Semestre, Módulo A">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Avaliação</label>
+                <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500 input-avaliacao" required>
+                    <option value="prova">Prova Tradicional</option>
+                    <option value="trabalho">Trabalho / Projeto</option>
+                    <option value="desafio">Desafio Gamificado</option>
+                    <option value="outros">Outros</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição / Ementa</label>
+            <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc" placeholder="Resumo do que será ensinado..."></textarea>
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Dias de Aula (Calendário)</label>
+            <div class="flex flex-wrap gap-4">
+                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias"> Seg</label>
+                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias"> Ter</label>
+                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias"> Qua</label>
+                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-teal-500 input-dias"> Qui</label>
+                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias"> Sex</label>
+                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias"> Sáb</label>
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    feather.replace(); // Recarrega o ícone de lixeira
+}
+
+function removerDisciplina(id) {
+    document.getElementById(`disciplina-box-${id}`).remove();
+}
+
+// Inicia com pelo menos 1 disciplina na tela
+window.addEventListener('load', () => { adicionarDisciplina(); });
+
+// INTERCEPTA O FORMULÁRIO DO CURSO PARA SALVAR AS DISCIPLINAS
+document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Varre todas as caixas de disciplinas criadas na tela
+    const blocosDisciplina = document.querySelectorAll('.item-disciplina');
+    if(blocosDisciplina.length === 0) {
+        alert("Você precisa adicionar pelo menos uma disciplina ao curso!");
+        return;
+    }
+
+    let arrayDisciplinas = [];
+
+    blocosDisciplina.forEach(bloco => {
+        // Pega os dias marcados
+        const diasMarcados = Array.from(bloco.querySelectorAll('.input-dias:checked')).map(cb => cb.value);
+
+        // Monta o objeto da disciplina
+        arrayDisciplinas.push({
+            nome: bloco.querySelector('.input-nome').value,
+            periodo: bloco.querySelector('.input-periodo').value,
+            avaliacao: bloco.querySelector('.input-avaliacao').value,
+            descricao: bloco.querySelector('.input-desc').value,
+            dias_aula: diasMarcados
+        });
+    });
+
+    // Guarda esse array dentro do campo oculto (em formato JSON)
+    document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
+
+    // O envio via API continua normal daqui pra baixo:
+    const btn = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Salvando...";
+
+    const formData = new FormData(e.target);
+    const result = await apiRequest('/cursos', 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Curso registrado com sucesso!");
+        e.target.reset();
+        document.getElementById('container-disciplinas').innerHTML = ''; // Limpa as disciplinas
+        adicionarDisciplina(); // Adiciona uma vazia
+        loadCursos();
+    } else {
+        alert(result?.detail || "Erro ao salvar o curso.");
+    }
+    btn.innerText = textoOriginal;
+});
+
         </script>
     </body>
 </html>
