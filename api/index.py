@@ -224,9 +224,22 @@ async def excluir_docente(docente_id: str):
 
 @app.get("/api/v1/cursos")
 async def listar_cursos():
+    """Lista todos os cursos"""
     checar_db()
     docs = db.collection("cursos").stream()
     return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+
+@app.get("/api/v1/cursos/{curso_id}")
+async def obter_curso(curso_id: str):
+    """Busca um curso específico pelo ID (usado para o modal de Edição)"""
+    checar_db()
+    doc = db.collection("cursos").document(curso_id).get()
+    
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Curso não encontrado.")
+        
+    return {"id": doc.id, **doc.to_dict()}
 
 
 @app.post("/api/v1/cursos")
@@ -257,14 +270,66 @@ async def registrar_curso(
         "qtd_modulos": qtd_modulos,
         "qtd_avaliacoes": qtd_avaliacoes,
         "tipo_avaliacao": tipo_avaliacao,
-        # Transforma "Logica, Banco, API" em uma lista real do Python: ["Logica", "Banco", "API"]
         "modulos_lista": [m.strip() for m in nomes_modulos.split(",")],
         "descricao": descricao,
-        "matriz_curricular": matriz_curricular
+        "matriz_curricular": matriz_curricular,
+        "grade_curricular": grade_curricular  # <- CORRIGIDO: Agora as disciplinas salvam no Firebase!
     }
 
     db.collection("cursos").add(novo_curso)
     return {"sucesso": True, "mensagem": "Curso registrado com matriz acadêmica!"}
+
+
+@app.put("/api/v1/cursos/{curso_id}")
+async def alterar_curso(
+        curso_id: str,
+        codigo: str = Form(None),
+        nome_curso: str = Form(None),
+        valor_mensalidade: float = Form(None),
+        qtd_modulos: int = Form(None),
+        qtd_avaliacoes: int = Form(None),
+        tipo_avaliacao: str = Form(None),
+        nomes_modulos: str = Form(None),
+        descricao: str = Form(None),
+        matriz_curricular: str = Form(None),
+        disciplinas_json: str = Form(None)
+):
+    """Edita um curso existente"""
+    checar_db()
+    ref = db.collection("cursos").document(curso_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Curso não encontrado.")
+
+    atualizacoes = {}
+    if codigo is not None: atualizacoes["codigo"] = codigo
+    if nome_curso is not None: atualizacoes["nome_curso"] = nome_curso
+    if valor_mensalidade is not None: atualizacoes["valor_mensalidade"] = float(valor_mensalidade)
+    if qtd_modulos is not None: atualizacoes["qtd_modulos"] = int(qtd_modulos)
+    if qtd_avaliacoes is not None: atualizacoes["qtd_avaliacoes"] = int(qtd_avaliacoes)
+    if tipo_avaliacao is not None: atualizacoes["tipo_avaliacao"] = tipo_avaliacao
+    if descricao is not None: atualizacoes["descricao"] = descricao
+    if matriz_curricular is not None: atualizacoes["matriz_curricular"] = matriz_curricular
+    
+    if nomes_modulos is not None:
+        atualizacoes["modulos_lista"] = [m.strip() for m in nomes_modulos.split(",")]
+        
+    if disciplinas_json is not None:
+        try:
+            atualizacoes["grade_curricular"] = json.loads(disciplinas_json)
+        except Exception:
+            pass
+
+    ref.update(atualizacoes)
+    return {"sucesso": True, "mensagem": "Curso atualizado com sucesso!"}
+
+
+@app.delete("/api/v1/cursos/{curso_id}")
+async def excluir_curso(curso_id: str):
+    """Exclui permanentemente um curso do banco de dados"""
+    checar_db()
+    db.collection("cursos").document(curso_id).delete()
+    return {"sucesso": True, "mensagem": "Curso excluído permanentemente."}
 
 
 # ==========================================
