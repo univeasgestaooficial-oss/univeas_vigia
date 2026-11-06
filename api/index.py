@@ -235,45 +235,48 @@ async def obter_curso(curso_id: str):
     """Busca um curso específico pelo ID (usado para o modal de Edição)"""
     checar_db()
     doc = db.collection("cursos").document(curso_id).get()
-    
+
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Curso não encontrado.")
-        
+
     return {"id": doc.id, **doc.to_dict()}
 
 
 @app.post("/api/v1/cursos")
 async def registrar_curso(
         codigo: str = Form(...),
+        categoria: str = Form(None),
         nome_curso: str = Form(...),
+        modalidade: str = Form(None),
+        duracao: str = Form(None),
+        valor_matricula: float = Form(None),
         valor_mensalidade: float = Form(...),
-        qtd_modulos: int = Form(...),
-        qtd_avaliacoes: int = Form(...),
-        tipo_avaliacao: str = Form(...),
-        nomes_modulos: str = Form(...),
         descricao: str = Form(""),
-        matriz_curricular: str = Form(""),
-        disciplinas_json: str = Form(...)
+        disciplinas_json: str = Form(...),
+        promocao_ativa: str = Form(None),
+        valor_promocional: str = Form(None)
 ):
     checar_db()
 
+    # Desempacota o JSON de disciplinas enviado pelas caixinhas
     try:
         grade_curricular = json.loads(disciplinas_json)
     except Exception:
         grade_curricular = []
 
-    # Prepara o pacote de dados com a nova arquitetura do curso
+    # Monta o pacote de dados exato com o que vem do frontend
     novo_curso = {
         "codigo": codigo,
+        "categoria": categoria,
         "nome_curso": nome_curso,
+        "modalidade": modalidade,
+        "duracao": duracao,
+        "valor_matricula": valor_matricula,
         "valor_mensalidade": valor_mensalidade,
-        "qtd_modulos": qtd_modulos,
-        "qtd_avaliacoes": qtd_avaliacoes,
-        "tipo_avaliacao": tipo_avaliacao,
-        "modulos_lista": [m.strip() for m in nomes_modulos.split(",")],
         "descricao": descricao,
-        "matriz_curricular": matriz_curricular,
-        "grade_curricular": grade_curricular  # <- CORRIGIDO: Agora as disciplinas salvam no Firebase!
+        "grade_curricular": grade_curricular, # <- Salva a matriz com Teoria/Prática perfeitamente
+        "promocao_ativa": promocao_ativa,
+        "valor_promocional": valor_promocional
     }
 
     db.collection("cursos").add(novo_curso)
@@ -310,10 +313,10 @@ async def alterar_curso(
     if tipo_avaliacao is not None: atualizacoes["tipo_avaliacao"] = tipo_avaliacao
     if descricao is not None: atualizacoes["descricao"] = descricao
     if matriz_curricular is not None: atualizacoes["matriz_curricular"] = matriz_curricular
-    
+
     if nomes_modulos is not None:
         atualizacoes["modulos_lista"] = [m.strip() for m in nomes_modulos.split(",")]
-        
+
     if disciplinas_json is not None:
         try:
             atualizacoes["grade_curricular"] = json.loads(disciplinas_json)
