@@ -1207,15 +1207,15 @@ function adicionarDisciplina() {
     div.id = `disciplina-box-${contadorDisciplina}`;
 
     div.innerHTML = `
-        <button type="button" onclick="removerDisciplina(${contadorDisciplina})" class="absolute top-4 right-4 text-red-400 hover:text-red-600 transition">
+        <button type="button" onclick="removerDisciplina(${contadorDisciplina})" class="absolute top-4 right-4 text-red-400 hover:text-red-600 transition" title="Remover Módulo">
             <i data-feather="trash-2" class="w-4 h-4"></i>
         </button>
 
         <!-- DATAS E STATUS DO MÓDULO -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 pr-8">
             <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome da Disciplina</label>
-                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" required>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Módulo / Disciplina</label>
+                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" placeholder="Ex: Módulo I - Anatomia" required>
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período (Início - Fim)</label>
@@ -1225,10 +1225,11 @@ function adicionarDisciplina() {
                 </div>
             </div>
             <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo Avaliação</label>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Avaliação</label>
                 <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500 input-avaliacao" required>
                     <option value="prova">Prova Tradicional</option>
                     <option value="trabalho">Trabalho / Projeto</option>
+                    <option value="pratica">Avaliação Prática</option>
                     <option value="desafio">Desafio Gamificado</option>
                 </select>
             </div>
@@ -1253,20 +1254,23 @@ function adicionarDisciplina() {
                 <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-estagio ch-calc">
             </div>
             <div>
-                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Total Disp. (h)</label>
+                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Total Módulo (h)</label>
                 <input type="number" readonly value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm bg-teal-100 font-bold text-teal-800 input-ch-total cursor-default">
             </div>
         </div>
 
         <div class="mb-4">
             <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Ementa / Descrição</label>
-            <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc"></textarea>
+            <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc" placeholder="Resumo do que será ensinado neste módulo..."></textarea>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Dias de Aula</label>
-                <div class="flex flex-wrap gap-3">
+        <!-- NOVO: DIAS E HORÁRIOS DEFINIDOS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- HORÁRIO DE AULAS -->
+            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                <label class="block text-[10px] font-bold text-teal-600 uppercase mb-2">Dias e Horários das Aulas</label>
+                <div class="flex flex-wrap gap-3 mb-3">
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias-aula"> Seg</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias-aula"> Ter</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias-aula"> Qua</label>
@@ -1274,16 +1278,38 @@ function adicionarDisciplina() {
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias-aula"> Sex</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias-aula"> Sáb</label>
                 </div>
+                <div class="flex space-x-3">
+                    <div class="flex-1">
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início</label>
+                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-teal-500 input-hora-aula-inicio" required>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Fim</label>
+                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-teal-500 input-hora-aula-fim" required>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Dias de Avaliação (Provas)</label>
-                <div class="flex flex-wrap gap-3">
+
+            <!-- HORÁRIO DE AVALIAÇÕES -->
+            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Dias e Horários das Avaliações</label>
+                <div class="flex flex-wrap gap-3 mb-3">
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-orange-500 input-dias-aval"> Seg</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-orange-500 input-dias-aval"> Ter</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-orange-500 input-dias-aval"> Qua</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-orange-500 input-dias-aval"> Qui</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-orange-500 input-dias-aval"> Sex</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-orange-500 input-dias-aval"> Sáb</label>
+                </div>
+                <div class="flex space-x-3">
+                    <div class="flex-1">
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início (Prova)</label>
+                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-hora-aval-inicio" required>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Fim (Prova)</label>
+                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-hora-aval-fim" required>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1306,17 +1332,14 @@ function adicionarDisciplina() {
 
 function removerDisciplina(id) {
     document.getElementById(`disciplina-box-${id}`).remove();
-    calcularCargaHorariaGeral(); // Recalcula o total se apagarmos uma disciplina
+    calcularCargaHorariaGeral();
 }
 
-// ESTA É A FUNÇÃO QUE ESTAVA FALTANDO PARA SOMAR TUDO:
 function calcularCargaHorariaGeral() {
     let totalCurso = 0;
-    // Pega o total individual de cada caixinha de disciplina
     document.querySelectorAll('.input-ch-total').forEach(input => {
         totalCurso += parseInt(input.value) || 0;
     });
-    // Joga o resultado lá pro topo, no campo geral do curso
     const campoTotal = document.getElementById('carga-horaria-total-curso');
     if(campoTotal) campoTotal.value = totalCurso + " Horas";
 }
@@ -1324,13 +1347,12 @@ function calcularCargaHorariaGeral() {
 // Inicia com pelo menos 1 disciplina na tela
 window.addEventListener('load', () => { adicionarDisciplina(); });
 
-
 document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const blocosDisciplina = document.querySelectorAll('.item-disciplina');
     if(blocosDisciplina.length === 0) {
-        alert("Adicione pelo menos uma disciplina!"); return;
+        alert("Adicione pelo menos um Módulo/Disciplina!"); return;
     }
 
     let arrayDisciplinas = [];
@@ -1344,6 +1366,13 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
             data_fim: bloco.querySelector('.input-data-fim').value,
             prazo_notas: bloco.querySelector('.input-prazo-notas').value,
             avaliacao: bloco.querySelector('.input-avaliacao').value,
+
+            // Novos campos capturados e enviados para o banco de dados:
+            hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
+            hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
+            hora_aval_inicio: bloco.querySelector('.input-hora-aval-inicio').value,
+            hora_aval_fim: bloco.querySelector('.input-hora-aval-fim').value,
+
             ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
             ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
             ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
