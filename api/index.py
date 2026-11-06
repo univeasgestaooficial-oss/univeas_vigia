@@ -193,19 +193,26 @@ async def listar_docentes():
 
 
 @app.post("/api/v1/docentes")
-async def cadastrar_docente(nome_prestador: str = Form(...), cpf_prestador: str = Form(...),
-                            tipo_profissional: str = Form(...)):
+async def cadastrar_docente(
+        nome_prestador: str = Form(...),
+        cpf_prestador: str = Form(...),
+        telefone_prestador: str = Form(...),
+        tipo_profissional: str = Form(...),
+        curso_id: str = Form(...)  # <- ADICIONADO AQUI PARA LIGAR AO CURSO
+):
     checar_db()
     registro_gerado = f"#PR{str(uuid.uuid4().int)[:4]}"
     novo_docente = {
         "registro": registro_gerado,
         "nome": nome_prestador,
         "cpf": cpf_prestador,
+        "telefone": telefone_prestador,
         "tipo_profissional": tipo_profissional,
+        "curso_id": curso_id,  # <- SALVANDO NO BANCO DE DADOS
         "status": "Ativo"
     }
     db.collection("docentes").add(novo_docente)
-    return {"sucesso": True, "mensagem": "Docente salvo."}
+    return {"sucesso": True, "mensagem": "Docente salvo com vínculo ao curso."}
 
 
 @app.delete("/api/v1/docentes/{docente_id}")
