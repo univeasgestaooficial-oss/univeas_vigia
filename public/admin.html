@@ -485,6 +485,30 @@
                             <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição Geral do Curso</label>
                             <textarea name="descricao" rows="2" placeholder="Insira os objetivos e informações do curso..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
                         </div>
+                        <!-- CONTAINER DA GRADE CURRICULAR (MÓDULOS) -->
+                        <div class="border-t border-gray-100 pt-6 mt-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h5 class="text-sm font-bold text-gray-800 flex items-center">
+                                    <span class="w-1 h-4 bg-teal-500 rounded mr-2 inline-block"></span> Grade Curricular e Módulos do Curso
+                                </h5>
+                                <button type="button" onclick="adicionarDisciplina()" class="bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center">
+                                    <i data-feather="plus" class="h-4 w-4 mr-1"></i> Adicionar Módulo
+                                </button>
+                            </div>
+
+                            <!-- Onde os módulos dinâmicos vão aparecer -->
+                            <div id="container-disciplinas" class="space-y-4"></div>
+                        </div>
+
+                        <!-- CAMPO OCULTO PARA ENVIAR O JSON DOS MÓDULOS AO PYTHON -->
+                        <input type="hidden" id="disciplinas_json" name="disciplinas_json">
+
+                        <!-- BOTÕES DE AÇÃO DO CURSO -->
+                        <div class="flex justify-end space-x-3 pt-6 border-t border-gray-100">
+                            <button type="reset" class="bg-gray-100 text-gray-600 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-200 transition">Cancelar</button>
+                            <button type="submit" class="bg-teal-500 text-white px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Registrar Curso</button>
+                        </div>
+                    </form>
             <!-- ============================================== -->
             <!-- 5. CORPO DOCENTE -->
             <!-- ============================================== -->
