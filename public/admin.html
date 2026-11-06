@@ -414,7 +414,7 @@
                 </div>
             </div>
 
-            <!-- ============================================== -->
+           <!-- ============================================== -->
             <!-- 4. CURSOS & MATRIZES -->
             <!-- ============================================== -->
             <div id="tela-cursos" class="tela hidden">
@@ -430,17 +430,14 @@
                         </button>
                     </div>
 
-                    <!-- ADICIONADO ID: form-curso -->
                     <form id="form-curso" class="space-y-6">
-
-
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Código</label>
                                 <input type="text" name="codigo" placeholder="Ex: TEC-01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Categoria do Curso</label>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Categoria</label>
                                 <select name="categoria" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
                                     <option value="tecnico">Técnico</option>
                                     <option value="profissionalizante">Profissionalizante</option>
@@ -451,90 +448,43 @@
                                 <input type="text" name="nome_curso" placeholder="Digite o nome..." required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+                       <!-- ATUALIZADO: Datas Computáveis e Carga Horária -->
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Modalidade</label>
-                                <select name="modalidade" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                <select name="modalidade" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-teal-500">
                                     <option value="ead">EAD</option>
                                     <option value="presencial">Presencial</option>
                                     <option value="hibrido">Híbrido</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Duração do Curso</label>
-                                <input type="text" name="duracao" placeholder="Ex: 18 Meses" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Início</label>
+                                <input type="date" name="data_inicio" required class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-teal-500 text-gray-600">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Valor de Matrícula (R$)</label>
-                                <input type="number" name="valor_matricula" step="0.01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Término</label>
+                                <input type="date" name="data_fim" required class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-teal-500 text-gray-600">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Valor Mensalidade (R$)</label>
-                                <input type="number" name="valor_mensalidade" step="0.01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                <label class="block text-[10px] font-bold text-teal-600 uppercase mb-1">CH Total (Automático)</label>
+                                <input type="text" id="carga-horaria-total-curso" readonly value="0 Horas" class="w-full border border-teal-200 bg-teal-50 rounded-lg px-3 py-2 text-sm font-bold text-teal-800 outline-none cursor-default">
                             </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição Geral do Curso</label>
-                                <textarea name="descricao" rows="3" placeholder="Insira os objetivos e informações do curso..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Matrícula (R$)</label>
+                                <input type="number" name="valor_matricula" step="0.01" required class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-teal-500">
                             </div>
-                            <!-- GRADE CURRICULAR DINÂMICA -->
-                        <div class="border-t border-gray-100 pt-6 mt-6 mb-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h5 class="text-sm font-bold text-gray-700 flex items-center">
-                                    <i data-feather="layers" class="h-4 w-4 mr-2 text-teal-500"></i> Grade Curricular do Curso
-                                </h5>
-                                <button type="button" onclick="adicionarDisciplina()" class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-100 transition flex items-center">
-                                    <i data-feather="plus" class="w-3 h-3 mr-1"></i> Adicionar Disciplina
-                                </button>
-                            </div>
-
-                            <!-- Container onde as disciplinas aparecerão -->
-                            <div id="container-disciplinas" class="space-y-4">
-                                <!-- Os blocos de disciplina serão injetados aqui pelo JavaScript -->
-                            </div>
-
-                            <!-- Campo oculto para enviar os dados estruturados para o Python -->
-                            <input type="hidden" name="disciplinas_json" id="disciplinas_json">
-                        </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Foto da Capa do Curso</label>
-                                <div class="border border-gray-200 rounded-lg px-3 py-2 bg-white flex items-center">
-                                    <input type="file" name="foto_capa" class="w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
-                                </div>
-                            </div>
-                            <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100">
-                                <div class="flex items-center justify-between mb-3">
-                                    <p class="text-xs font-bold text-teal-800 flex items-center uppercase tracking-wider">
-                                        <i data-feather="tag" class="h-4 w-4 mr-2"></i> Promoção Ativa?
-                                    </p>
-                                    <div class="flex space-x-4">
-                                        <label class="text-sm font-medium flex items-center cursor-pointer">
-                                            <input type="radio" name="promocao_ativa" value="sim" class="mr-1.5 text-teal-500 focus:ring-teal-500" onclick="document.getElementById('promo-valor-container').classList.remove('hidden')"> Sim
-                                        </label>
-                                        <label class="text-sm font-medium flex items-center cursor-pointer">
-                                            <input type="radio" name="promocao_ativa" value="nao" class="mr-1.5" checked onclick="document.getElementById('promo-valor-container').classList.add('hidden')"> Não
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="promo-valor-container" class="hidden transition-all">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Valor de Desconto Promocional (%) ou Brinde</label>
-                                    <input type="text" name="valor_promocional" placeholder="Ex: 20% de desconto ou Curso Extra" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 bg-white">
-                                </div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Mensalidade (R$)</label>
+                                <input type="number" name="valor_mensalidade" step="0.01" required class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-teal-500">
                             </div>
                         </div>
 
-                        <div class="flex justify-end space-x-3 pt-6 border-t border-gray-100">
-                            <button type="button" class="bg-gray-100 text-gray-600 font-bold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider hover:bg-gray-200 transition">Cancelar</button>
-                            <button type="submit" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition">Registrar Curso</button>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição Geral do Curso</label>
+                            <textarea name="descricao" rows="2" placeholder="Insira os objetivos e informações do curso..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500"></textarea>
                         </div>
-                    </form>
-                </div>
-            </div>
-
             <!-- ============================================== -->
             <!-- 5. CORPO DOCENTE -->
             <!-- ============================================== -->
@@ -786,9 +736,6 @@
                     </div>
                 </div>
             </div>
-
-        </main>
-    </div>
 
     <!-- ============================================== -->
     <!-- 8. CONFIGURAÇÃO (MODAL DE SOBREPOSIÇÃO) -->
@@ -1263,83 +1210,153 @@ function adicionarDisciplina() {
         <button type="button" onclick="removerDisciplina(${contadorDisciplina})" class="absolute top-4 right-4 text-red-400 hover:text-red-600 transition">
             <i data-feather="trash-2" class="w-4 h-4"></i>
         </button>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pr-8">
+
+        <!-- DATAS E STATUS DO MÓDULO -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 pr-8">
             <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome da Disciplina / Módulo</label>
-                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" required placeholder="Ex: Banco de Dados">
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome da Disciplina</label>
+                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" required>
             </div>
             <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período</label>
-                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-periodo" required placeholder="Ex: 1º Semestre, Módulo A">
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período (Início - Fim)</label>
+                <div class="flex space-x-2">
+                    <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-inicio" required title="Início do Módulo">
+                    <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-fim" required title="Fim do Módulo">
+                </div>
             </div>
             <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Avaliação</label>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo Avaliação</label>
                 <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500 input-avaliacao" required>
                     <option value="prova">Prova Tradicional</option>
                     <option value="trabalho">Trabalho / Projeto</option>
                     <option value="desafio">Desafio Gamificado</option>
-                    <option value="outros">Outros</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-[10px] font-bold text-red-500 uppercase mb-1">Prazo Limite (Notas)</label>
+                <input type="date" class="w-full border border-red-200 rounded-lg px-3 py-2 text-sm bg-red-50 text-red-700 focus:outline-red-500 input-prazo-notas" required title="Data limite para o professor fechar a pauta">
+            </div>
         </div>
+
+        <!-- CARGA HORÁRIA -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 bg-teal-50/50 p-3 rounded-lg border border-teal-100">
+            <div>
+                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Teoria (h)</label>
+                <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-teoria ch-calc">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Prática (h)</label>
+                <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-pratica ch-calc">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Estágio (h)</label>
+                <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-estagio ch-calc">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Total Disp. (h)</label>
+                <input type="number" readonly value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm bg-teal-100 font-bold text-teal-800 input-ch-total cursor-default">
+            </div>
+        </div>
+
         <div class="mb-4">
-            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição / Ementa</label>
-            <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc" placeholder="Resumo do que será ensinado..."></textarea>
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Ementa / Descrição</label>
+            <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc"></textarea>
         </div>
-        <div>
-            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Dias de Aula (Calendário)</label>
-            <div class="flex flex-wrap gap-4">
-                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias"> Seg</label>
-                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias"> Ter</label>
-                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias"> Qua</label>
-                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-teal-500 input-dias"> Qui</label>
-                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias"> Sex</label>
-                <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias"> Sáb</label>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-2">Dias de Aula</label>
+                <div class="flex flex-wrap gap-3">
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias-aula"> Seg</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias-aula"> Ter</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias-aula"> Qua</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-teal-500 input-dias-aula"> Qui</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias-aula"> Sex</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias-aula"> Sáb</label>
+                </div>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Dias de Avaliação (Provas)</label>
+                <div class="flex flex-wrap gap-3">
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-orange-500 input-dias-aval"> Seg</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-orange-500 input-dias-aval"> Ter</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-orange-500 input-dias-aval"> Qua</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-orange-500 input-dias-aval"> Qui</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-orange-500 input-dias-aval"> Sex</label>
+                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-orange-500 input-dias-aval"> Sáb</label>
+                </div>
             </div>
         </div>
     `;
     container.appendChild(div);
-    feather.replace(); // Recarrega o ícone de lixeira
+
+    // Eventos de cálculo da carga horária
+    const calcInputs = div.querySelectorAll('.ch-calc');
+    calcInputs.forEach(input => {
+        input.addEventListener('input', () => {
+            const teoria = parseInt(div.querySelector('.input-ch-teoria').value) || 0;
+            const pratica = parseInt(div.querySelector('.input-ch-pratica').value) || 0;
+            const estagio = parseInt(div.querySelector('.input-ch-estagio').value) || 0;
+            div.querySelector('.input-ch-total').value = (teoria + pratica + estagio);
+            calcularCargaHorariaGeral();
+        });
+    });
+    feather.replace();
 }
 
 function removerDisciplina(id) {
     document.getElementById(`disciplina-box-${id}`).remove();
+    calcularCargaHorariaGeral(); // Recalcula o total se apagarmos uma disciplina
+}
+
+// ESTA É A FUNÇÃO QUE ESTAVA FALTANDO PARA SOMAR TUDO:
+function calcularCargaHorariaGeral() {
+    let totalCurso = 0;
+    // Pega o total individual de cada caixinha de disciplina
+    document.querySelectorAll('.input-ch-total').forEach(input => {
+        totalCurso += parseInt(input.value) || 0;
+    });
+    // Joga o resultado lá pro topo, no campo geral do curso
+    const campoTotal = document.getElementById('carga-horaria-total-curso');
+    if(campoTotal) campoTotal.value = totalCurso + " Horas";
 }
 
 // Inicia com pelo menos 1 disciplina na tela
 window.addEventListener('load', () => { adicionarDisciplina(); });
 
-// INTERCEPTA O FORMULÁRIO DO CURSO PARA SALVAR AS DISCIPLINAS
+
 document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Varre todas as caixas de disciplinas criadas na tela
     const blocosDisciplina = document.querySelectorAll('.item-disciplina');
     if(blocosDisciplina.length === 0) {
-        alert("Você precisa adicionar pelo menos uma disciplina ao curso!");
-        return;
+        alert("Adicione pelo menos uma disciplina!"); return;
     }
 
     let arrayDisciplinas = [];
-
     blocosDisciplina.forEach(bloco => {
-        // Pega os dias marcados
-        const diasMarcados = Array.from(bloco.querySelectorAll('.input-dias:checked')).map(cb => cb.value);
+        const diasAula = Array.from(bloco.querySelectorAll('.input-dias-aula:checked')).map(cb => cb.value);
+        const diasAval = Array.from(bloco.querySelectorAll('.input-dias-aval:checked')).map(cb => cb.value);
 
-        // Monta o objeto da disciplina
         arrayDisciplinas.push({
             nome: bloco.querySelector('.input-nome').value,
-            periodo: bloco.querySelector('.input-periodo').value,
+            data_inicio: bloco.querySelector('.input-data-inicio').value,
+            data_fim: bloco.querySelector('.input-data-fim').value,
+            prazo_notas: bloco.querySelector('.input-prazo-notas').value,
             avaliacao: bloco.querySelector('.input-avaliacao').value,
+            ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
+            ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
+            ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
+            ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
             descricao: bloco.querySelector('.input-desc').value,
-            dias_aula: diasMarcados
+            dias_aula: diasAula,
+            dias_avaliacao: diasAval
         });
     });
 
     // Guarda esse array dentro do campo oculto (em formato JSON)
-    document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
+   document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
 
-    // O envio via API continua normal daqui pra baixo:
     const btn = e.target.querySelector('button[type="submit"]');
     const textoOriginal = btn.innerText;
     btn.innerText = "Salvando...";
@@ -1350,11 +1367,12 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     if (result && result.sucesso) {
         alert("Curso registrado com sucesso!");
         e.target.reset();
-        document.getElementById('container-disciplinas').innerHTML = ''; // Limpa as disciplinas
-        adicionarDisciplina(); // Adiciona uma vazia
+        document.getElementById('container-disciplinas').innerHTML = '';
+        document.getElementById('carga-horaria-total-curso').value = "0 Horas";
+        adicionarDisciplina();
         loadCursos();
     } else {
-        alert(result?.detail || "Erro ao salvar o curso.");
+        alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
     }
     btn.innerText = textoOriginal;
 });
