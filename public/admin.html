@@ -419,11 +419,21 @@
             <!-- ============================================== -->
             <div id="tela-cursos" class="tela hidden">
                 <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Configuração e Abertura de Cursos
-                    </h4>
+
+                    <!-- CABEÇALHO COM BOTÃO DA LISTA -->
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 border-b border-gray-100 pb-4 gap-4">
+                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Configuração e Abertura de Cursos
+                        </h4>
+                        <button type="button" onclick="abrirModalCursos()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
+                            <i data-feather="list" class="h-4 w-4 mr-2"></i> Ver Cursos Cadastrados
+                        </button>
+                    </div>
+
                     <!-- ADICIONADO ID: form-curso -->
                     <form id="form-curso" class="space-y-6">
+
+
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Código</label>
@@ -843,6 +853,39 @@
                     <button type="submit" class="bg-teal-500 text-white py-2.5 px-8 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Alterações</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+        <!-- ============================================== -->
+    <!-- 9. MODAL DE LISTA DE CURSOS -->
+    <!-- ============================================== -->
+    <div id="modal-lista-cursos" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-6 sm:p-8 transform scale-95 transition-all max-h-[90vh] flex flex-col">
+
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-4 shrink-0">
+                <h3 class="text-xl font-black text-gray-900 flex items-center">
+                    <i data-feather="book-open" class="text-teal-500 mr-3"></i> Cursos Cadastrados
+                </h3>
+                <button onclick="fecharModalCursos()" class="text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-6 w-6"></i></button>
+            </div>
+
+            <div class="overflow-y-auto no-scrollbar flex-1">
+                <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                            <th class="py-3 px-4">Código</th>
+                            <th class="py-3 px-4">Nome do Curso</th>
+                            <th class="py-3 px-4">Modalidade</th>
+                            <th class="py-3 px-4">Mensalidade</th>
+                            <th class="py-3 px-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-lista-cursos" class="divide-y divide-gray-100 font-medium">
+                        <!-- Os cursos serão injetados aqui via JS -->
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
 
@@ -1315,6 +1358,82 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     }
     btn.innerText = textoOriginal;
 });
+
+    // ==========================================
+// SISTEMA DE LISTAGEM E AÇÕES DE CURSOS
+// ==========================================
+
+function abrirModalCursos() {
+    const modal = document.getElementById('modal-lista-cursos');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    renderizarListaCursos(); // Busca do banco na hora que abre
+}
+
+function fecharModalCursos() {
+    const modal = document.getElementById('modal-lista-cursos');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+async function renderizarListaCursos() {
+    const cursos = await apiRequest('/cursos');
+    const tbody = document.getElementById('tabela-lista-cursos');
+    if (!tbody || !cursos) return;
+
+    tbody.innerHTML = '';
+    cursos.forEach(curso => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="py-3 px-4 text-gray-500 font-mono text-xs">${curso.codigo || '-'}</td>
+                <td class="py-3 px-4 text-gray-800 font-bold">${curso.nome_curso || 'Sem Nome'}</td>
+                <td class="py-3 px-4 text-gray-500 uppercase text-[10px] tracking-wider">${curso.modalidade || '-'}</td>
+                <td class="py-3 px-4 text-teal-600 font-black">R$ ${curso.valor_mensalidade || '0.00'}</td>
+                <td class="py-3 px-4 text-right space-x-1 flex justify-end">
+                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Imprimir Card do Curso">
+                        <i data-feather="printer" class="h-4 w-4"></i>
+                    </button>
+                    <button onclick="alterarCurso('${curso.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Curso">
+                        <i data-feather="edit" class="h-4 w-4"></i>
+                    </button>
+                    <button onclick="excluirCursoModal('${curso.id}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Excluir Curso">
+                        <i data-feather="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    feather.replace(); // Recarrega os ícones dentro da tabela
+}
+
+// Ações dos Botões
+async function excluirCursoModal(id_firebase) {
+    if(!confirm("CUIDADO: Tem certeza que deseja excluir este curso e sua grade curricular permanentemente?")) return;
+
+    // Você vai precisar adicionar a rota DELETE /api/v1/cursos/{id} no seu Python depois
+    const result = await apiRequest(`/cursos/${id_firebase}`, 'DELETE');
+
+    if(result && result.sucesso) {
+        alert("Curso excluído com sucesso.");
+        renderizarListaCursos(); // Atualiza a tabela do modal
+        loadCursos(); // Atualiza os selects do resto do sistema
+    } else {
+        alert(result?.detail || "Erro ao excluir o curso.");
+    }
+}
+
+function alterarCurso(id_firebase) {
+    alert("A funcionalidade de buscar os dados do curso e preencher o formulário para edição será implementada na próxima etapa.");
+    fecharModalCursos();
+}
+
+function imprimirCardCurso(id_firebase) {
+    alert("Gerando PDF do Card do Curso " + id_firebase + " (Com Ementa e Grade).");
+}
 
         </script>
     </body>
