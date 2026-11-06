@@ -817,7 +817,7 @@
 // ==========================================
 // UNIFIED SCRIPT - UI & API INTEGRATION
 // ==========================================
-const API_BASE_URL = "/api/v1";
+const API_BASE_URL = "https://univeasvigia.vercel.app/";
 
 // 1. INICIALIZAÇÃO
 document.addEventListener("DOMContentLoaded", () => {
@@ -936,6 +936,7 @@ function fecharModalSistema() {
 }
 
 // 4. UTILITÁRIOS DA API
+
 async function apiRequest(endpoint, method = 'GET', data = null) {
     const headers = {
         'Authorization': `Bearer ${localStorage.getItem('token_siga')}`
@@ -944,7 +945,6 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     const config = { method, headers };
 
     if (data) {
-        // Se for FormData (tem arquivos), não usa Content-Type JSON
         if (data instanceof FormData) {
             config.body = data;
         } else {
@@ -955,13 +955,27 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
         if (response.status === 401) {
             window.location.href = '/login.html';
             return null;
         }
+
+        // NOVO: Captura o erro real devolvido pelo Python
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`Erro do Servidor (${response.status}):`, errText);
+            try {
+                return JSON.parse(errText); // Tenta ler o detalhe do erro do FastAPI
+            } catch(e) {
+                return { detail: `Erro no Servidor: ${response.status}. Olhe o F12.` };
+            }
+        }
+
         return await response.json();
     } catch (error) {
         console.error(`Erro na requisição ${endpoint}:`, error);
+        return { detail: "Erro de Conexão. Verifique se o servidor da Vercel está online." };
     }
 }
 
@@ -1019,6 +1033,21 @@ async function loadAlunos() {
     });
     feather.replace();
 }
+
+// EXCLUIR ALUNO
+async function excluirAluno(id_firebase) {
+    if(!confirm("Tem certeza que deseja remover este aluno?")) return;
+
+    const result = await apiRequest(`/alunos/${id_firebase}`, 'DELETE');
+
+    if(result && result.sucesso) {
+        alert("Aluno removido com sucesso.");
+        loadAlunos(); // Atualiza a tabela na hora
+    } else {
+        alert(result?.detail || "Erro ao remover aluno.");
+    }
+}
+
 // EXCLUIR DOCENTE
 async function excluirDocente(id_firebase) {
     if(!confirm("Deseja realmente desligar este docente?")) return;
