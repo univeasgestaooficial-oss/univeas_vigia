@@ -261,10 +261,8 @@
                                         <input type="text" placeholder="Buscar curso na plataforma..." class="w-full border border-gray-200 rounded-l-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-teal-500">
                                         <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                                     </div>
-                                    <select name="curso_id" required class="w-1/3 border-y border-r border-gray-200 rounded-r-lg px-2 py-2 text-xs focus:outline-none focus:border-teal-500 bg-gray-50">
-                                        <option value="">Selecione...</option>
-                                        <option value="1">Dev. de Sistemas</option>
-                                        <option value="2">Eng. de Software</option>
+                                    <select name="curso_id" id="select-curso-aluno" required class="w-1/3 border-y border-r border-gray-200 rounded-r-lg px-2 py-2 text-xs focus:outline-none focus:border-teal-500 bg-gray-50">
+                                        <option value="">Carregando...</option>
                                     </select>
                                 </div>
                             </div>
@@ -566,6 +564,26 @@
                                     <input type="text" name="especialidade" placeholder="Ex: Programação" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
                                 </div>
                             </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno de Atuação</label>
+                                    <select name="turno_atuacao" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                        <option value="manha">Manhã</option>
+                                        <option value="tarde">Tarde</option>
+                                        <option value="noite">Noite</option>
+                                        <option value="integral">Integral</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Curso Vinculado (Atuação)</label>
+                                    <select name="curso_id" id="select-curso-docente" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                        <option value="">Selecione um curso...</option>
+                                        <!-- Será preenchido via JavaScript -->
+                                    </select>
+                                </div>
+                            </div>
+
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno de Atuação</label>
                                 <select name="turno_atuacao" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
@@ -817,7 +835,7 @@
 // ==========================================
 // UNIFIED SCRIPT - UI & API INTEGRATION
 // ==========================================
-const API_BASE_URL = "https://univeasvigia.vercel.app/api/v1";
+const API_BASE_URL = "https://univeasvigia.vercel.app/";
 
 // 1. INICIALIZAÇÃO
 document.addEventListener("DOMContentLoaded", () => {
@@ -1065,8 +1083,22 @@ async function excluirDocente(id_firebase) {
 // CARREGAR CURSOS
 async function loadCursos() {
     const cursos = await apiRequest('/cursos');
-    // Aqui você vai popular a tabela de cursos quando criá-la no HTML
-    console.log("Cursos carregados:", cursos);
+    if (!cursos) return;
+
+    const selectAluno = document.getElementById('select-curso-aluno');
+    const selectDocente = document.getElementById('select-curso-docente');
+
+    let optionsHTML = '<option value="">Selecione o curso...</option>';
+
+    // Varre os cursos que vieram do banco de dados (Python)
+    cursos.forEach(curso => {
+        // Usa o nome_curso que está no modelo Python e o ID do Firebase
+        optionsHTML += `<option value="${curso.id}">${curso.nome_curso || curso.codigo}</option>`;
+    });
+
+    // Injeta os cursos reais nos formulários
+    if (selectAluno) selectAluno.innerHTML = optionsHTML;
+    if (selectDocente) selectDocente.innerHTML = optionsHTML;
 }
 
 // MOCK PARA DOCUMENTOS E NOTIFICAÇÕES (Evita erro no console ao clicar)
