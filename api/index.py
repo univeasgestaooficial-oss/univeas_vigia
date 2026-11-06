@@ -234,15 +234,20 @@ async def registrar_curso(
         codigo: str = Form(...),
         nome_curso: str = Form(...),
         valor_mensalidade: float = Form(...),
-        # Novos campos da Estrutura Acadêmica:
         qtd_modulos: int = Form(...),
         qtd_avaliacoes: int = Form(...),
         tipo_avaliacao: str = Form(...),
         nomes_modulos: str = Form(...),
         descricao: str = Form(""),
-        matriz_curricular: str = Form("")
+        matriz_curricular: str = Form(""),
+        disciplinas_json: str = Form(...)
 ):
     checar_db()
+
+    try:
+        grade_curricular = json.loads(disciplinas_json)
+    except Exception:
+        grade_curricular = []
 
     # Prepara o pacote de dados com a nova arquitetura do curso
     novo_curso = {
