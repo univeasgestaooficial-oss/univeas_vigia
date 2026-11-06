@@ -11,7 +11,7 @@ from firebase_admin import credentials, firestore
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
 # Busca o JSON de credenciais armazenado de forma segura na Vercel
-firebase_env = os.getenv("FIREBASE_CREDENTIALS")
+firebase_env = os.getenv("FIREBASE-CREDENTIALS")
 
 if firebase_env and not firebase_admin._apps:
     try:
@@ -230,10 +230,36 @@ async def listar_cursos():
 
 
 @app.post("/api/v1/cursos")
-async def registrar_curso(codigo: str = Form(...), nome_curso: str = Form(...), valor_mensalidade: float = Form(...)):
+async def registrar_curso(
+        codigo: str = Form(...),
+        nome_curso: str = Form(...),
+        valor_mensalidade: float = Form(...),
+        # Novos campos da Estrutura Acadêmica:
+        qtd_modulos: int = Form(...),
+        qtd_avaliacoes: int = Form(...),
+        tipo_avaliacao: str = Form(...),
+        nomes_modulos: str = Form(...),
+        descricao: str = Form(""),
+        matriz_curricular: str = Form("")
+):
     checar_db()
-    db.collection("cursos").add({"codigo": codigo, "nome_curso": nome_curso, "valor_mensalidade": valor_mensalidade})
-    return {"sucesso": True}
+
+    # Prepara o pacote de dados com a nova arquitetura do curso
+    novo_curso = {
+        "codigo": codigo,
+        "nome_curso": nome_curso,
+        "valor_mensalidade": valor_mensalidade,
+        "qtd_modulos": qtd_modulos,
+        "qtd_avaliacoes": qtd_avaliacoes,
+        "tipo_avaliacao": tipo_avaliacao,
+        # Transforma "Logica, Banco, API" em uma lista real do Python: ["Logica", "Banco", "API"]
+        "modulos_lista": [m.strip() for m in nomes_modulos.split(",")],
+        "descricao": descricao,
+        "matriz_curricular": matriz_curricular
+    }
+
+    db.collection("cursos").add(novo_curso)
+    return {"sucesso": True, "mensagem": "Curso registrado com matriz acadêmica!"}
 
 
 # ==========================================
