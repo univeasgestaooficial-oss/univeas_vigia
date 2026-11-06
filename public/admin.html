@@ -1313,8 +1313,21 @@ function adicionarDisciplina() {
             </div>
 
             <!-- HORÁRIO DE AVALIAÇÕES -->
-            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Dias e Horários das Avaliações</label>
+            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Período e Horários das Avaliações</label>
+
+                <!-- NOVO: DATAS DE INÍCIO E FIM DA AVALIAÇÃO -->
+                <div class="flex space-x-3 mb-3">
+                    <div class="flex-1">
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1" title="Data de abertura (5 dias antes)">Abertura (Início)</label>
+                        <input type="date" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-data-aval-inicio" required>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1" title="Data de encerramento (5 dias depois)">Encerramento (Fim)</label>
+                        <input type="date" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-data-aval-fim" required>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap gap-3 mb-3">
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-orange-500 input-dias-aval"> Seg</label>
                     <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-orange-500 input-dias-aval"> Ter</label>
@@ -1394,6 +1407,8 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
             hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
             hora_aval_inicio: bloco.querySelector('.input-hora-aval-inicio').value,
             hora_aval_fim: bloco.querySelector('.input-hora-aval-fim').value,
+            data_aval_inicio: bloco.querySelector('.input-data-aval-inicio').value,
+            data_aval_fim: bloco.querySelector('.input-data-aval-fim').value,
 
             ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
             ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
