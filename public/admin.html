@@ -835,8 +835,7 @@
 // ==========================================
 // UNIFIED SCRIPT - UI & API INTEGRATION
 // ==========================================
-const API_BASE_URL = "https://univeasvigia.vercel.app/";
-
+const API_BASE_URL = "https://univeasvigia.vercel.app/api/v1";
 // 1. INICIALIZAÇÃO
 document.addEventListener("DOMContentLoaded", () => {
     feather.replace();
@@ -1172,12 +1171,23 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
 
 document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Salvando..."; // Dá um feedback visual na hora do clique
+
     const formData = new FormData(e.target);
     const result = await apiRequest('/cursos', 'POST', formData);
+
     if (result && result.sucesso) {
         alert("Curso registrado com sucesso!");
         e.target.reset();
+        loadCursos(); // Já atualiza a lista de cursos pros outros formulários
+    } else {
+        // Se der qualquer erro (como erro 422 do Python ou 404), ele te avisa na tela!
+        alert(result?.detail || "Erro ao salvar o curso. Verifique o console (F12).");
     }
+
+    btn.innerText = textoOriginal; // Restaura o texto do botão
 });
 
 document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
@@ -1200,6 +1210,6 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
         fecharModalSistema();
     }
 });
-</script>
-</body>
+        </script>
+    </body>
 </html>
