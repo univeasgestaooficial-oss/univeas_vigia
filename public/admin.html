@@ -1198,226 +1198,242 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
     }
 });
 
-    // --- SISTEMA DE GRADE CURRICULAR DINÂMICA ---
-let contadorDisciplina = 0;
+// --- SISTEMA DE GRADE CURRICULAR DINÂMICA ---
+    let contadorDisciplina = 0;
 
-function adicionarDisciplina() {
-    contadorDisciplina++;
-    const container = document.getElementById('container-disciplinas');
+    function adicionarDisciplina() {
+        contadorDisciplina++;
+        const container = document.getElementById('container-disciplinas');
 
-    const div = document.createElement('div');
-    div.className = 'bg-gray-50 p-5 rounded-xl border border-gray-200 relative item-disciplina transition-all';
-    div.id = `disciplina-box-${contadorDisciplina}`;
+        const div = document.createElement('div');
+        div.className = 'bg-gray-50 p-5 rounded-xl border border-gray-200 relative item-disciplina transition-all';
+        div.id = `disciplina-box-${contadorDisciplina}`;
 
-    div.innerHTML = `
-        <button type="button" onclick="removerDisciplina(${contadorDisciplina})" class="absolute top-4 right-4 text-red-400 hover:text-red-600 transition" title="Remover Módulo">
-            <i data-feather="trash-2" class="w-4 h-4"></i>
-        </button>
+        div.innerHTML = `
+            <button type="button" onclick="removerDisciplina(${contadorDisciplina})" class="absolute top-4 right-4 text-red-400 hover:text-red-600 transition" title="Remover Módulo">
+                <i data-feather="trash-2" class="w-5 h-5"></i>
+            </button>
 
-        <!-- DATAS E STATUS DO MÓDULO -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 pr-8">
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Módulo / Disciplina</label>
-                <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" placeholder="Ex: Módulo I - Anatomia" required>
-            </div>
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período (Início - Fim)</label>
-                <div class="flex space-x-2">
-                    <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-inicio" required title="Início do Módulo">
-                    <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-fim" required title="Fim do Módulo">
+            <!-- NOME E PERÍODO DO MÓDULO -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pr-8">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Módulo / Disciplina</label>
+                    <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" placeholder="Ex: Módulo I - Anatomia" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período de Duração (Início - Fim)</label>
+                    <div class="flex space-x-2">
+                        <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-inicio" required title="Início do Módulo">
+                        <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-fim" required title="Fim do Módulo">
+                    </div>
                 </div>
             </div>
-            <div>
-                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Avaliação</label>
-                <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500 input-avaliacao" required>
-                    <option value="prova">Prova Tradicional</option>
-                    <option value="trabalho">Trabalho / Projeto</option>
+
+            <!-- CARGA HORÁRIA -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 bg-teal-50/50 p-3 rounded-lg border border-teal-100">
+                <div>
+                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Teoria (h)</label>
+                    <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-teoria ch-calc">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Prática (h)</label>
+                    <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-pratica ch-calc">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Estágio (h)</label>
+                    <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-estagio ch-calc">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Total Módulo (h)</label>
+                    <input type="number" readonly value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm bg-teal-100 font-bold text-teal-800 input-ch-total cursor-default">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Ementa / Descrição</label>
+                <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc" placeholder="Resumo do que será ensinado neste módulo..."></textarea>
+            </div>
+
+            <!-- BLOCO INFERIOR: AULAS E AVALIAÇÕES -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- HORÁRIO DE AULAS -->
+                <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <label class="block text-[10px] font-bold text-teal-600 uppercase mb-3">Dias e Horários das Aulas</label>
+                        <div class="flex flex-wrap gap-3 mb-4">
+                            <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias-aula"> Seg</label>
+                            <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias-aula"> Ter</label>
+                            <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias-aula"> Qua</label>
+                            <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-teal-500 input-dias-aula"> Qui</label>
+                            <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias-aula"> Sex</label>
+                            <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias-aula"> Sáb</label>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3">
+                        <div class="flex-1">
+                            <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início</label>
+                            <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-teal-500 input-hora-aula-inicio" required>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Fim</label>
+                            <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-teal-500 input-hora-aula-fim" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NOVO: MÚLTIPLAS AVALIAÇÕES DINÂMICAS -->
+                <div class="bg-orange-50/30 p-4 rounded-lg border border-orange-200 shadow-sm flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-3 border-b border-orange-100 pb-2">
+                        <label class="block text-[10px] font-bold text-orange-600 uppercase">Calendário de Avaliações</label>
+                        <button type="button" onclick="adicionarAvaliacao(${contadorDisciplina})" class="bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1.5 rounded text-[10px] font-bold uppercase transition flex items-center shadow-sm">
+                            <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Prova/Trabalho
+                        </button>
+                    </div>
+                    <div id="container-avaliacoes-${contadorDisciplina}" class="space-y-2 flex-1">
+                        <!-- Avaliações injetadas aqui -->
+                    </div>
+                </div>
+
+            </div>
+        `;
+        container.appendChild(div);
+
+        // Eventos de cálculo da carga horária
+        const calcInputs = div.querySelectorAll('.ch-calc');
+        calcInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                const teoria = parseInt(div.querySelector('.input-ch-teoria').value) || 0;
+                const pratica = parseInt(div.querySelector('.input-ch-pratica').value) || 0;
+                const estagio = parseInt(div.querySelector('.input-ch-estagio').value) || 0;
+                div.querySelector('.input-ch-total').value = (teoria + pratica + estagio);
+                calcularCargaHorariaGeral();
+            });
+        });
+
+        // Adiciona automaticamente a primeira avaliação em branco
+        adicionarAvaliacao(contadorDisciplina);
+        feather.replace();
+    }
+
+    // FUNÇÃO PARA INJETAR AVALIAÇÕES DENTRO DO MÓDULO
+    function adicionarAvaliacao(moduloId) {
+        const container = document.getElementById(`container-avaliacoes-${moduloId}`);
+        const div = document.createElement('div');
+        div.className = 'item-avaliacao flex items-end gap-2 bg-white p-2 rounded-lg border border-orange-100 shadow-sm relative transition-all hover:border-orange-300';
+
+        div.innerHTML = `
+            <div class="flex-1">
+                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Tipo</label>
+                <select class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs bg-white focus:outline-orange-500 input-aval-tipo">
+                    <option value="prova">Prova Escrita</option>
+                    <option value="trabalho">Trabalho/Seminário</option>
                     <option value="pratica">Avaliação Prática</option>
                     <option value="desafio">Desafio Gamificado</option>
                 </select>
             </div>
-            <div>
-                <label class="block text-[10px] font-bold text-red-500 uppercase mb-1">Prazo Limite (Notas)</label>
-                <input type="date" class="w-full border border-red-200 rounded-lg px-3 py-2 text-sm bg-red-50 text-red-700 focus:outline-red-500 input-prazo-notas" required title="Data limite para o professor fechar a pauta">
+            <div class="flex-1">
+                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Data</label>
+                <input type="date" class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs focus:outline-orange-500 input-aval-data" required>
             </div>
-        </div>
-
-        <!-- CARGA HORÁRIA -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 bg-teal-50/50 p-3 rounded-lg border border-teal-100">
-            <div>
-                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Teoria (h)</label>
-                <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-teoria ch-calc">
+            <div class="w-20">
+                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Início</label>
+                <input type="time" class="w-full border border-gray-200 rounded px-1 py-1.5 text-xs focus:outline-orange-500 input-aval-hora-inicio">
             </div>
-            <div>
-                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Prática (h)</label>
-                <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-pratica ch-calc">
+            <div class="w-20">
+                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Fim</label>
+                <input type="time" class="w-full border border-gray-200 rounded px-1 py-1.5 text-xs focus:outline-orange-500 input-aval-hora-fim">
             </div>
-            <div>
-                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Estágio (h)</label>
-                <input type="number" min="0" value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm focus:outline-teal-500 input-ch-estagio ch-calc">
-            </div>
-            <div>
-                <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Total Módulo (h)</label>
-                <input type="number" readonly value="0" class="w-full border border-teal-200 rounded-lg px-3 py-1.5 text-sm bg-teal-100 font-bold text-teal-800 input-ch-total cursor-default">
-            </div>
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Ementa / Descrição</label>
-            <textarea rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-desc" placeholder="Resumo do que será ensinado neste módulo..."></textarea>
-        </div>
-
-        <!-- NOVO: DIAS E HORÁRIOS DEFINIDOS -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            <!-- HORÁRIO DE AULAS -->
-            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                <label class="block text-[10px] font-bold text-teal-600 uppercase mb-2">Dias e Horários das Aulas</label>
-
-                <!-- CAIXAS DE SELEÇÃO DOS DIAS RESTAURADAS -->
-                <div class="flex flex-wrap gap-3 mb-3">
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias-aula"> Seg</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias-aula"> Ter</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias-aula"> Qua</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-teal-500 input-dias-aula"> Qui</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias-aula"> Sex</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias-aula"> Sáb</label>
-                </div>
-
-                <div class="flex space-x-3">
-                    <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início</label>
-                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-teal-500 input-hora-aula-inicio" required>
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Fim</label>
-                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-teal-500 input-hora-aula-fim" required>
-                    </div>
-                </div>
-            </div>
-
-            <!-- HORÁRIO DE AVALIAÇÕES -->
-            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-                <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Período e Horários das Avaliações</label>
-
-                <!-- DATAS DE ABERTURA E ENCERRAMENTO -->
-                <div class="flex space-x-3 mb-4">
-                    <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Abertura (Início)</label>
-                        <input type="date" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-data-aval-inicio" required>
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Encerramento (Fim)</label>
-                        <input type="date" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-data-aval-fim" required>
-                    </div>
-                </div>
-
-                <!-- HORÁRIOS DE DISPONIBILIDADE DA PROVA (CHECKBOXES APAGADOS DAQUI) -->
-                <div class="flex space-x-3">
-                    <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início (Prova)</label>
-                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-hora-aval-inicio" required>
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Fim (Prova)</label>
-                        <input type="time" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-hora-aval-fim" required>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    container.appendChild(div);
-
-    // Eventos de cálculo da carga horária
-    const calcInputs = div.querySelectorAll('.ch-calc');
-    calcInputs.forEach(input => {
-        input.addEventListener('input', () => {
-            const teoria = parseInt(div.querySelector('.input-ch-teoria').value) || 0;
-            const pratica = parseInt(div.querySelector('.input-ch-pratica').value) || 0;
-            const estagio = parseInt(div.querySelector('.input-ch-estagio').value) || 0;
-            div.querySelector('.input-ch-total').value = (teoria + pratica + estagio);
-            calcularCargaHorariaGeral();
-        });
-    });
-    feather.replace();
-}
-
-function removerDisciplina(id) {
-    document.getElementById(`disciplina-box-${id}`).remove();
-    calcularCargaHorariaGeral();
-}
-
-function calcularCargaHorariaGeral() {
-    let totalCurso = 0;
-    document.querySelectorAll('.input-ch-total').forEach(input => {
-        totalCurso += parseInt(input.value) || 0;
-    });
-    const campoTotal = document.getElementById('carga-horaria-total-curso');
-    if(campoTotal) campoTotal.value = totalCurso + " Horas";
-}
-
-// Inicia com pelo menos 1 disciplina na tela
-window.addEventListener('load', () => { adicionarDisciplina(); });
-
-document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const blocosDisciplina = document.querySelectorAll('.item-disciplina');
-    if(blocosDisciplina.length === 0) {
-        alert("Adicione pelo menos um Módulo/Disciplina!"); return;
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 p-1.5 rounded transition mb-0.5" title="Remover Avaliação">
+                <i data-feather="x" class="w-3 h-3"></i>
+            </button>
+        `;
+        container.appendChild(div);
+        feather.replace();
     }
 
-    let arrayDisciplinas = [];
-    blocosDisciplina.forEach(bloco => {
-        const diasAula = Array.from(bloco.querySelectorAll('.input-dias-aula:checked')).map(cb => cb.value);
-
-        arrayDisciplinas.push({
-            nome: bloco.querySelector('.input-nome').value,
-            data_inicio: bloco.querySelector('.input-data-inicio').value,
-            data_fim: bloco.querySelector('.input-data-fim').value,
-            prazo_notas: bloco.querySelector('.input-prazo-notas').value,
-            avaliacao: bloco.querySelector('.input-avaliacao').value,
-
-            hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
-            hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
-
-            data_aval_inicio: bloco.querySelector('.input-data-aval-inicio').value,
-            data_aval_fim: bloco.querySelector('.input-data-aval-fim').value,
-            hora_aval_inicio: bloco.querySelector('.input-hora-aval-inicio').value,
-            hora_aval_fim: bloco.querySelector('.input-hora-aval-fim').value,
-
-            ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
-            ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
-            ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
-            ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
-            descricao: bloco.querySelector('.input-desc').value,
-
-            dias_aula: diasAula
-        });
-    });
-
-    // Guarda esse array dentro do campo oculto (em formato JSON)
-   document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    const textoOriginal = btn.innerText;
-    btn.innerText = "Salvando...";
-
-    const formData = new FormData(e.target);
-    const result = await apiRequest('/cursos', 'POST', formData);
-
-    if (result && result.sucesso) {
-        alert("Curso registrado com sucesso!");
-        e.target.reset();
-        document.getElementById('container-disciplinas').innerHTML = '';
-        document.getElementById('carga-horaria-total-curso').value = "0 Horas";
-        adicionarDisciplina();
-        loadCursos();
-    } else {
-        alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
+    function removerDisciplina(id) {
+        document.getElementById(`disciplina-box-${id}`).remove();
+        calcularCargaHorariaGeral();
     }
-    btn.innerText = textoOriginal;
-});
+
+    function calcularCargaHorariaGeral() {
+        let totalCurso = 0;
+        document.querySelectorAll('.input-ch-total').forEach(input => {
+            totalCurso += parseInt(input.value) || 0;
+        });
+        const campoTotal = document.getElementById('carga-horaria-total-curso');
+        if(campoTotal) campoTotal.value = totalCurso + " Horas";
+    }
+
+    // Inicia com pelo menos 1 disciplina na tela
+    window.addEventListener('load', () => { adicionarDisciplina(); });
+
+    document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const blocosDisciplina = document.querySelectorAll('.item-disciplina');
+        if(blocosDisciplina.length === 0) {
+            alert("Adicione pelo menos um Módulo/Disciplina!"); return;
+        }
+
+        let arrayDisciplinas = [];
+
+        blocosDisciplina.forEach(bloco => {
+            // Pega os dias marcados
+            const diasAula = Array.from(bloco.querySelectorAll('.input-dias-aula:checked')).map(cb => cb.value);
+
+            // Captura todas as avaliações deste módulo específico
+            let avaliacoesDesteModulo = [];
+            const blocosAvaliacoes = bloco.querySelectorAll('.item-avaliacao');
+
+            blocosAvaliacoes.forEach(aval => {
+                avaliacoesDesteModulo.push({
+                    tipo: aval.querySelector('.input-aval-tipo').value,
+                    data: aval.querySelector('.input-aval-data').value,
+                    hora_inicio: aval.querySelector('.input-aval-hora-inicio').value,
+                    hora_fim: aval.querySelector('.input-aval-hora-fim').value
+                });
+            });
+
+            arrayDisciplinas.push({
+                nome: bloco.querySelector('.input-nome').value,
+                data_inicio: bloco.querySelector('.input-data-inicio').value,
+                data_fim: bloco.querySelector('.input-data-fim').value,
+                hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
+                hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
+                ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
+                ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
+                ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
+                ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
+                descricao: bloco.querySelector('.input-desc').value,
+                dias_aula: diasAula,
+                avaliacoes: avaliacoesDesteModulo // As avaliações agora vão como um Array aninhado
+            });
+        });
+
+        // Guarda esse array dentro do campo oculto (em formato JSON) para enviar ao Python
+        document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
+
+        const btn = e.target.querySelector('button[type="submit"]');
+        const textoOriginal = btn.innerText;
+        btn.innerText = "Salvando...";
+
+        const formData = new FormData(e.target);
+        const result = await apiRequest('/cursos', 'POST', formData);
+
+        if (result && result.sucesso) {
+            alert("Curso registrado com sucesso!");
+            e.target.reset();
+            document.getElementById('container-disciplinas').innerHTML = '';
+            document.getElementById('carga-horaria-total-curso').value = "0 Horas";
+            adicionarDisciplina(); // Recria a primeira disciplina limpa
+            loadCursos();
+        } else {
+            alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
+        }
+        btn.innerText = textoOriginal;
+    });
 
     // ==========================================
 // SISTEMA DE LISTAGEM E AÇÕES DE CURSOS
