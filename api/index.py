@@ -356,3 +356,104 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
     db.collection("mensalidades").document(mensalidade_id).update(
         {"status": "Pago", "data_pagamento": datetime.now().isoformat()})
     return {"sucesso": True, "mensagem": "Baixa realizada."}
+
+
+# ==========================================
+# 6. MÓDULO DO DOCENTE (PORTAL DO PROFESSOR)
+# ==========================================
+from fastapi import Header
+
+
+def validar_token_docente(authorization: str):
+    """Extrai o ID do docente do token de sessão enviado pelo JS"""
+    if not authorization or not authorization.startswith("Bearer docente_"):
+        raise HTTPException(status_code=401, detail="Acesso não autorizado.")
+    return authorization.replace("Bearer docente_", "")
+
+
+@app.get("/api/v1/docente/dashboard")
+async def obter_dashboard_docente(authorization: str = Header(None)):
+    """Rota para carregar os números da tela principal do professor"""
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    # Busca quantas turmas/cursos este professor tem
+    # (Como o seu sistema é direto, ele busca os cursos vinculados ao ID do professor)
+    doc_prof = db.collection("docentes").document(docente_id).get()
+
+    if not doc_prof.exists:
+        raise HTTPException(status_code=404, detail="Perfil de professor não encontrado")
+
+    dados_prof = doc_prof.to_dict()
+    curso_id = dados_prof.get("curso_id")
+
+    return {
+        "turmas_ativas": 1 if curso_id else 0,
+        "diarios_pendentes": 0,
+        "aulas_semana": 0,
+        "curso_vinculado": curso_id
+    }
+
+
+@app.get("/api/v1/docente/turmas")
+async def listar_turmas_docente(authorization: str = Header(None)):
+    """Carrega as disciplinas para exibir nos cards da aba 'Minhas Turmas'"""
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    doc_prof = db.collection("docentes").document(docente_id).get()
+    dados_prof = doc_prof.to_dict()
+    curso_id = dados_prof.get("curso_id")
+
+    if not curso_id:
+        return []
+
+    # Busca os detalhes do curso que ele leciona
+    curso_ref = db.collection("cursos").document(curso_id).get()
+    if not curso_ref.exists:
+        return []
+
+    curso_dados = curso_ref.to_dict()
+
+    # Transforma os módulos da grade curricular em "Turmas/Disciplinas" para o professor
+    turmas_formatadas = []
+    for modulo in curso_dados.get("grade_curricular", []):
+        turmas_formatadas.append({
+            "id": f"{curso_id}_{modulo.get('nome')}",
+            "nome_disciplina": modulo.get("nome"),
+            "curso_pai": curso_dados.get("nome_curso"),
+            "carga_horaria": modulo.get("ch_total", 0)
+        })
+
+    return turmas_formatadas
+
+
+@app.post("/api/v1/docente/diario/salvar")
+async def salvar_diario_eletronico(
+        turma_id: str = Form(...),
+        data_aula: str = Form(...),
+        conteudo: str = Form(...),
+        notas_faltas: str = Form(...),
+        authorization: str = Header(None)
+):
+    """Salva as notas, faltas e o conteúdo ministrado pelo professor"""
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    try:
+        lista_notas = json.loads(notas_faltas)
+    except Exception:
+        lista_notas = []
+
+    registro_diario = {
+        "docente_id": docente_id,
+        "turma_id": turma_id,
+        "data_aula": data_aula,
+        "conteudo_ministrado": conteudo,
+        "avaliacoes": lista_notas,
+        "data_registro": datetime.now().isoformat()
+    }
+
+    db.collection("diarios").add(registro_diario)
+
+    return {"sucesso": True, "mensagem": "Diário registrado com sucesso!"}
