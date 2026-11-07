@@ -1292,14 +1292,6 @@ function adicionarDisciplina() {
             <!-- HORÁRIO DE AULAS -->
             <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                 <label class="block text-[10px] font-bold text-teal-600 uppercase mb-2">Dias e Horários das Aulas</label>
-                <div class="flex flex-wrap gap-3 mb-3">
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-teal-500 input-dias-aula"> Seg</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-teal-500 input-dias-aula"> Ter</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-teal-500 input-dias-aula"> Qua</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-teal-500 input-dias-aula"> Qui</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-teal-500 input-dias-aula"> Sex</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-teal-500 input-dias-aula"> Sáb</label>
-                </div>
                 <div class="flex space-x-3">
                     <div class="flex-1">
                         <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início</label>
@@ -1316,26 +1308,19 @@ function adicionarDisciplina() {
             <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
                 <label class="block text-[10px] font-bold text-orange-500 uppercase mb-2">Período e Horários das Avaliações</label>
 
-                <!-- NOVO: DATAS DE INÍCIO E FIM DA AVALIAÇÃO -->
-                <div class="flex space-x-3 mb-3">
+                <!-- DATAS DE ABERTURA E ENCERRAMENTO -->
+                <div class="flex space-x-3 mb-4">
                     <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1" title="Data de abertura (5 dias antes)">Abertura (Início)</label>
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Abertura (Início)</label>
                         <input type="date" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-data-aval-inicio" required>
                     </div>
                     <div class="flex-1">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1" title="Data de encerramento (5 dias depois)">Encerramento (Fim)</label>
+                        <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Encerramento (Fim)</label>
                         <input type="date" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-orange-500 input-data-aval-fim" required>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-3 mb-3">
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Seg" class="mr-1.5 text-orange-500 input-dias-aval"> Seg</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Ter" class="mr-1.5 text-orange-500 input-dias-aval"> Ter</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qua" class="mr-1.5 text-orange-500 input-dias-aval"> Qua</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Qui" class="mr-1.5 text-orange-500 input-dias-aval"> Qui</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sex" class="mr-1.5 text-orange-500 input-dias-aval"> Sex</label>
-                    <label class="flex items-center text-xs text-gray-600 font-medium cursor-pointer"><input type="checkbox" value="Sab" class="mr-1.5 text-orange-500 input-dias-aval"> Sáb</label>
-                </div>
+                <!-- HORÁRIOS DE DISPONIBILIDADE DA PROVA (CHECKBOXES APAGADOS DAQUI) -->
                 <div class="flex space-x-3">
                     <div class="flex-1">
                         <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Hora Início (Prova)</label>
@@ -1393,7 +1378,6 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     let arrayDisciplinas = [];
     blocosDisciplina.forEach(bloco => {
         const diasAula = Array.from(bloco.querySelectorAll('.input-dias-aula:checked')).map(cb => cb.value);
-        const diasAval = Array.from(bloco.querySelectorAll('.input-dias-aval:checked')).map(cb => cb.value);
 
         arrayDisciplinas.push({
             nome: bloco.querySelector('.input-nome').value,
@@ -1402,21 +1386,21 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
             prazo_notas: bloco.querySelector('.input-prazo-notas').value,
             avaliacao: bloco.querySelector('.input-avaliacao').value,
 
-            // Novos campos capturados e enviados para o banco de dados:
             hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
             hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
-            hora_aval_inicio: bloco.querySelector('.input-hora-aval-inicio').value,
-            hora_aval_fim: bloco.querySelector('.input-hora-aval-fim').value,
+
             data_aval_inicio: bloco.querySelector('.input-data-aval-inicio').value,
             data_aval_fim: bloco.querySelector('.input-data-aval-fim').value,
+            hora_aval_inicio: bloco.querySelector('.input-hora-aval-inicio').value,
+            hora_aval_fim: bloco.querySelector('.input-hora-aval-fim').value,
 
             ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
             ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
             ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
             ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
             descricao: bloco.querySelector('.input-desc').value,
-            dias_aula: diasAula,
-            dias_avaliacao: diasAval
+
+            dias_aula: diasAula
         });
     });
 
