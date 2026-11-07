@@ -2,11 +2,10 @@ import os
 import json
 import uuid
 from datetime import datetime
-from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
-from firebase_admin import credentials, firestore
-
+from fastapi import FastAPI, Form, HTTPException, File, UploadFile
+from firebase_admin import credentials, firestore, storage
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
@@ -17,7 +16,10 @@ if firebase_env and not firebase_admin._apps:
     try:
         cred_dict = json.loads(firebase_env)
         cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred)
+
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'seu-projeto-id.appspot.com'
+        })
     except Exception as e:
         print(f"Erro ao inicializar Firebase: {e}")
 
@@ -254,17 +256,18 @@ async def registrar_curso(
         descricao: str = Form(""),
         disciplinas_json: str = Form(...),
         promocao_ativa: str = Form(None),
-        valor_promocional: str = Form(None)
+        valor_promocional: str = Form(None),
+        foto_capa: str = Form(None) # <- AGORA RECEBE APENAS O TEXTO DO LINK
 ):
     checar_db()
 
-    # Desempacota o JSON de disciplinas enviado pelas caixinhas
+    # Processa a matriz de disciplinas
     try:
         grade_curricular = json.loads(disciplinas_json)
     except Exception:
         grade_curricular = []
 
-    # Monta o pacote de dados exato com o que vem do frontend
+    # Monta o pacote de dados
     novo_curso = {
         "codigo": codigo,
         "categoria": categoria,
@@ -274,13 +277,14 @@ async def registrar_curso(
         "valor_matricula": valor_matricula,
         "valor_mensalidade": valor_mensalidade,
         "descricao": descricao,
-        "grade_curricular": grade_curricular, # <- Salva a matriz com Teoria/Prática perfeitamente
+        "grade_curricular": grade_curricular,
         "promocao_ativa": promocao_ativa,
-        "valor_promocional": valor_promocional
+        "valor_promocional": valor_promocional,
+        "foto_capa": foto_capa # <- SALVA O LINK DIRETO NO BANCO
     }
 
     db.collection("cursos").add(novo_curso)
-    return {"sucesso": True, "mensagem": "Curso registrado com matriz acadêmica!"}
+    return {"sucesso": True, "mensagem": "Curso registrado com matriz acadêmica e link da foto!"}
 
 
 @app.put("/api/v1/cursos/{curso_id}")
