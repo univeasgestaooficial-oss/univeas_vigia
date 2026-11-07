@@ -11,7 +11,7 @@ from firebase_admin import credentials, firestore
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
 # Busca o JSON de credenciais armazenado de forma segura na Vercel
-firebase_env = os.getenv("FIREBASE_CREDENTIALS")
+firebase_env = os.getenv("FIREBASE-CREDENTIALS")
 
 if firebase_env and not firebase_admin._apps:
     try:
