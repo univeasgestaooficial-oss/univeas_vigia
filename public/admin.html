@@ -1106,32 +1106,6 @@ async function excluirDocente(id_firebase) {
     }
 }
 
-// CARREGAR CURSOS
-async function loadCursos() {
-    const cursos = await apiRequest('/cursos');
-    if (!cursos) return;
-
-    const selectAluno = document.getElementById('select-curso-aluno');
-    const selectDocente = document.getElementById('select-curso-docente');
-
-    let optionsHTML = '<option value="">Selecione o curso...</option>';
-
-    // Varre os cursos que vieram do banco de dados (Python)
-    cursos.forEach(curso => {
-        // Usa o nome_curso que está no modelo Python e o ID do Firebase
-        optionsHTML += `<option value="${curso.id}">${curso.nome_curso || curso.codigo}</option>`;
-    });
-
-    // Injeta os cursos reais nos formulários
-    if (selectAluno) selectAluno.innerHTML = optionsHTML;
-    if (selectDocente) selectDocente.innerHTML = optionsHTML;
-}
-
-// MOCK PARA DOCUMENTOS E NOTIFICAÇÕES (Evita erro no console ao clicar)
-async function loadDocumentos() { console.log("Carregando documentos..."); }
-async function updateNotificacao(id, acao) { console.log(`Notificação ${id} atualizada para ${acao}`); }
-
-
 async function loadDocentes() {
     const docentes = await apiRequest('/docentes');
     const tbody = document.getElementById('tabela-docentes');
@@ -1459,12 +1433,54 @@ function fecharModalCursos() {
     }, 300);
 }
 
+// CARREGAR CURSOS (CORRIGIDO COM TRAVA DE SEGURANÇA)
+async function loadCursos() {
+    const resposta = await apiRequest('/cursos');
+    if (!resposta) return;
+
+    // Se a API retornar um erro (ex: 500), evita que o site quebre
+    if (resposta.detail) {
+        console.error("Erro da API ao buscar cursos:", resposta.detail);
+        return;
+    }
+
+    // Garante que é um array, adaptando caso a API retorne { cursos: [...] }
+    const cursos = Array.isArray(resposta) ? resposta : (resposta.cursos || resposta.dados || []);
+
+    const selectAluno = document.getElementById('select-curso-aluno');
+    const selectDocente = document.getElementById('select-curso-docente');
+
+    let optionsHTML = '<option value="">Selecione o curso...</option>';
+
+    cursos.forEach(curso => {
+        optionsHTML += `<option value="${curso.id}">${curso.nome_curso || curso.codigo}</option>`;
+    });
+
+    if (selectAluno) selectAluno.innerHTML = optionsHTML;
+    if (selectDocente) selectDocente.innerHTML = optionsHTML;
+}
+
+// RENDERIZAR LISTA NO MODAL (CORRIGIDO COM TRAVA DE SEGURANÇA)
 async function renderizarListaCursos() {
-    const cursos = await apiRequest('/cursos');
+    const resposta = await apiRequest('/cursos');
     const tbody = document.getElementById('tabela-lista-cursos');
-    if (!tbody || !cursos) return;
+    if (!tbody || !resposta) return;
+
+    // Mostra o erro na tabela caso a API falhe
+    if (resposta.detail) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500 font-bold text-xs">Erro na API: ${resposta.detail}</td></tr>`;
+        return;
+    }
+
+    const cursos = Array.isArray(resposta) ? resposta : (resposta.cursos || resposta.dados || []);
 
     tbody.innerHTML = '';
+
+    if (cursos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500 font-medium text-xs">Nenhum curso encontrado.</td></tr>`;
+        return;
+    }
+
     cursos.forEach(curso => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
