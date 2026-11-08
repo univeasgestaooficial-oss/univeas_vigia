@@ -244,6 +244,44 @@ async def obter_curso(curso_id: str):
     return {"id": doc.id, **doc.to_dict()}
 
 
+@app.put("/api/v1/cursos/{curso_id}")
+async def atualizar_curso(
+        curso_id: str,
+        codigo: str = Form(...),
+        nome_curso: str = Form(...),
+        categoria: str = Form(...),
+        modalidade: str = Form(...),
+        valor_matricula: float = Form(...),
+        valor_mensalidade: float = Form(...),
+        descricao: str = Form(""),
+        foto_capa: str = Form(""),
+        disciplinas_json: str = Form("[]")
+):
+    # Aqui mantemos apenas a checagem do banco de dados
+    checar_db()
+
+    try:
+        grade = json.loads(disciplinas_json)
+    except Exception:
+        grade = []
+
+    dados_atualizados = {
+        "codigo": codigo,
+        "nome_curso": nome_curso.upper(),
+        "categoria": categoria,
+        "modalidade": modalidade,
+        "valor_matricula": valor_matricula,
+        "valor_mensalidade": valor_mensalidade,
+        "descricao": descricao,
+        "foto_capa": foto_capa,
+        "grade_curricular": grade,
+        "data_atualizacao": datetime.now().isoformat()
+    }
+
+    db.collection("cursos").document(curso_id).update(dados_atualizados)
+
+    return {"sucesso": True, "mensagem": "Curso atualizado com sucesso"}
+
 @app.post("/api/v1/cursos")
 async def registrar_curso(
         codigo: str = Form(...),
