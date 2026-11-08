@@ -1878,7 +1878,7 @@ function alterarCurso(id_firebase) {
             if(selectSemestre) selectSemestre.value = modulo.semestre || '1º Semestre';
 
             bloco.querySelector('.input-nome').value = modulo.nome || '';
-            
+
             const inputFotoMod = bloco.querySelector('.input-foto-modulo');
             if(inputFotoMod) {
                 inputFotoMod.value = modulo.foto_modulo || modulo.foto || modulo.imagem || modulo.capa_modulo || '';
@@ -1941,8 +1941,50 @@ async function excluirCursoModal(id_firebase) {
     }
 }
 
-function imprimirCardCurso(id_firebase) {
-    alert("Gerando PDF do Card do Curso " + id_firebase + " (Com Ementa e Grade).");
+async function imprimirCardCurso(id_firebase) {
+    // 1. Feedback visual (muda o ícone para um loading)
+    const btn = document.querySelector(`button[onclick="imprimirCardCurso('${id_firebase}')"]`);
+    const conteudoOriginal = btn.innerHTML;
+    btn.innerHTML = '<svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+    btn.disabled = true;
+
+    try {
+        // 2. Faz a requisição para o seu backend em Python (ajuste a rota se o seu Python usar outro nome)
+        const response = await fetch(`${API_BASE_URL}/cursos/${id_firebase}/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token_siga')}`
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            alert(err.detail || "Erro ao gerar o PDF no servidor.");
+            throw new Error("Falha na API");
+        }
+
+        // 3. Pega o arquivo binário gerado pelo Python e força o download no navegador
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Matriz_Curricular_${id_firebase}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+
+        // 4. Limpa a memória
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+    } catch (error) {
+        console.error("Erro no download do PDF:", error);
+    } finally {
+        // 5. Restaura o botão original
+        btn.innerHTML = conteudoOriginal;
+        btn.disabled = false;
+        feather.replace();
+    }
 }
 
 </script>
