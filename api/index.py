@@ -1,9 +1,4 @@
-from fastapi import Response
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-import io
+
 import os
 import json
 import uuid
@@ -12,7 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from fastapi import FastAPI, Form, HTTPException, File, UploadFile, Response
 from firebase_admin import credentials, firestore, storage
-from weasyprint import HTML
+import traceback
+import io
+from fastapi import Response
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
 
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
@@ -325,157 +327,161 @@ async def excluir_curso(curso_id: str):
 # ==========================================
 @app.get("/api/v1/cursos/{curso_id}/pdf")
 async def gerar_pdf_curso(curso_id: str):
-    checar_db()
-    doc_ref = db.collection("cursos").document(curso_id).get()
-    if not doc_ref.exists:
-        raise HTTPException(status_code=404, detail="Curso não encontrado.")
+    try:
+        checar_db()
+        doc_ref = db.collection("cursos").document(curso_id).get()
+        if not doc_ref.exists:
+            raise HTTPException(status_code=404, detail="Curso não encontrado no banco.")
 
-    curso = doc_ref.to_dict()
-    nome_curso = curso.get('nome_curso', 'CURSO')
-    grade = curso.get('grade_curricular', [])
+        curso = doc_ref.to_dict() or {}
+        nome_curso = curso.get('nome_curso', 'CURSO')
+        grade = curso.get('grade_curricular', [])
 
-    # Buffer em memória para gerar o PDF via ReportLab (100% compatível com Vercel)
-    buffer = io.BytesIO()
-    pdf = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=40, leftMargin=40,
-        topMargin=40, bottomMargin=40
-    )
+        buffer = io.BytesIO()
+        pdf = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=40, leftMargin=40,
+            topMargin=40, bottomMargin=40
+        )
 
-    elements = []
-    styles = getSampleStyleSheet()
+        elements = []
+        styles = getSampleStyleSheet()
 
-    # Estilos customizados
-    title_style = ParagraphStyle(
-        'HeaderTitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        textColor=colors.HexColor('#0f766e'),
-        alignment=1,  # Centralizado
-        spaceAfter=4
-    )
+        title_style = ParagraphStyle(
+            'HeaderTitle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=14,
+            textColor=colors.HexColor('#0f766e'),
+            alignment=1,
+            spaceAfter=4
+        )
 
-    subtitle_style = ParagraphStyle(
-        'HeaderSubtitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=9,
-        textColor=colors.HexColor('#334155'),
-        alignment=1,
-        spaceAfter=15
-    )
+        subtitle_style = ParagraphStyle(
+            'HeaderSubtitle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=8.5,
+            textColor=colors.HexColor('#334155'),
+            alignment=1,
+            spaceAfter=15
+        )
 
-    module_style = ParagraphStyle(
-        'ModuleTitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=10,
-        textColor=colors.HexColor('#0f172a'),
-        spaceBefore=10,
-        spaceAfter=5
-    )
+        module_style = ParagraphStyle(
+            'ModuleTitle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=10,
+            textColor=colors.HexColor('#0f172a'),
+            spaceBefore=10,
+            spaceAfter=5
+        )
 
-    # Cabeçalho Institucional
-    elements.append(Paragraph("UNIVEAS", title_style))
-    elements.append(Paragraph(
-        "UNIÃO VIGIENSE DE ENSINO E ASSISTÊNCIA À SAÚDE<br/>CNPJ: 53.199.321/0001-23 | Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA",
-        subtitle_style))
-    elements.append(Paragraph(f"<b>MATRIZ CURRICULAR DO CURSO: {nome_curso}</b>",
-                              ParagraphStyle('DocTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
-                                             fontSize=11, textColor=colors.HexColor('#0f172a'), alignment=1,
-                                             spaceAfter=15)))
+        elements.append(Paragraph("UNIVEAS", title_style))
+        elements.append(Paragraph(
+            "UNIÃO VIGIENSE DE ENSINO E ASSISTÊNCIA À SAÚDE<br/>CNPJ: 53.199.321/0001-23 | Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA",
+            subtitle_style))
+        elements.append(Paragraph(f"<b>MATRIZ CURRICULAR DO CURSO: {nome_curso}</b>",
+                                  ParagraphStyle('DocTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                                 fontSize=11, textColor=colors.HexColor('#0f172a'), alignment=1,
+                                                 spaceAfter=15)))
 
-    # Montagem dos Módulos em Tabelas
-    for i, m in enumerate(grade):
-        elements.append(Paragraph(f"MÓDULO {i + 1}: {m.get('nome', '').upper()}", module_style))
+        if not grade:
+            elements.append(Paragraph("<i>Nenhum módulo ou disciplina cadastrada na grade curricular deste curso.</i>",
+                                      styles['Normal']))
 
-        # Cabeçalho e linhas da tabela
-        table_data = [
-            ['DISCIPLINAS', 'TEORIA', 'PRÁTICA', 'ES', 'TOTAL']
-        ]
+        for i, m in enumerate(grade):
+            mod_nome = m.get('nome', f'Módulo {i + 1}')
+            elements.append(Paragraph(f"MÓDULO {i + 1}: {str(mod_nome).upper()}", module_style))
 
-        disciplinas = m.get('disciplinas', [])
-        t_mod, p_mod, es_mod, tot_mod = 0, 0, 0, 0
+            table_data = [
+                ['DISCIPLINAS', 'TEORIA', 'PRÁTICA', 'ES', 'TOTAL']
+            ]
 
-        if disciplinas:
-            for disc in disciplinas:
-                t = int(disc.get('ch_teoria', 0))
-                p = int(disc.get('ch_pratica', 0))
-                es = int(disc.get('ch_es', 0))
-                tot = t + p + es
+            disciplinas = m.get('disciplinas', [])
+            t_mod, p_mod, es_mod, tot_mod = 0, 0, 0, 0
 
+            if disciplinas and isinstance(disciplinas, list):
+                for disc in disciplinas:
+                    t = int(disc.get('ch_teoria', 0) or 0)
+                    p = int(disc.get('ch_pratica', 0) or 0)
+                    es = int(disc.get('ch_es', 0) or 0)
+                    tot = t + p + es
+
+                    t_mod += t
+                    p_mod += p
+                    es_mod += es
+                    tot_mod += tot
+
+                    table_data.append([
+                        str(disc.get('nome', 'Disciplina')),
+                        str(t) if t > 0 else '-',
+                        str(p) if p > 0 else '-',
+                        str(es) if es > 0 else '-',
+                        str(tot)
+                    ])
+            else:
+                t = int(m.get('ch_teoria', 0) or m.get('ch_total', 0) or 0)
                 t_mod += t
-                p_mod += p
-                es_mod += es
-                tot_mod += tot
-
+                tot_mod += t
                 table_data.append([
-                    disc.get('nome', 'Disciplina'),
-                    str(t) if t > 0 else '-',
-                    str(p) if p > 0 else '-',
-                    str(es) if es > 0 else '-',
-                    str(tot)
+                    str(m.get('nome', 'Módulo / Disciplina')),
+                    str(t), '-', '-', str(t)
                 ])
-        else:
-            t = int(m.get('ch_teoria', m.get('ch_total', 0)))
-            t_mod += t
-            tot_mod += t
+
             table_data.append([
-                m.get('nome', 'Módulo / Disciplina'),
-                str(t), '-', '-', str(t)
+                'CH DO MÓDULO',
+                str(t_mod),
+                str(p_mod),
+                str(es_mod) if es_mod > 0 else '-',
+                str(tot_mod)
             ])
 
-        # Linha de total do módulo
-        table_data.append([
-            'CH DO MÓDULO',
-            str(t_mod),
-            str(p_mod),
-            str(es_mod) if es_mod > 0 else '-',
-            str(tot_mod)
-        ])
+            t_obj = Table(table_data, colWidths=[240, 65, 65, 50, 63])
+            t_obj.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8.5),
+                ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#94a3b8')),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f1f5f9')),
+                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ]))
 
-        t_obj = Table(table_data, colWidths=[240, 65, 65, 50, 63])
-        t_obj.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            elements.append(t_obj)
+            elements.append(Spacer(1, 10))
+
+        elements.append(Spacer(1, 20))
+        sig_data = [
+            ['________________________________________', '________________________________________'],
+            ['Coordenação Pedagógica', 'Direção Geral']
+        ]
+        sig_table = Table(sig_data, colWidths=[241, 241])
+        sig_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 8.5),
-            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#94a3b8')),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f1f5f9')),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#334155')),
+            ('TOPPADDING', (0, 1), (-1, 1), 4),
         ]))
+        elements.append(sig_table)
 
-        elements.append(t_obj)
-        elements.append(Spacer(1, 10))
+        pdf.build(elements)
+        buffer.seek(0)
 
-    # Assinaturas
-    elements.append(Spacer(1, 20))
-    sig_data = [
-        ['________________________________________', '________________________________________'],
-        ['Coordenação Pedagógica', 'Direção Geral']
-    ]
-    sig_table = Table(sig_data, colWidths=[241, 241])
-    sig_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8.5),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#334155')),
-        ('TOPPADDING', (0, 1), (-1, 1), 4),
-    ]))
-    elements.append(sig_table)
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=Matriz_Curricular_{curso_id}.pdf"}
+        )
 
-    pdf.build(elements)
-    buffer.seek(0)
-
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=Matriz_Curricular_{curso_id}.pdf"}
-    )
+    except Exception as e:
+        print("--- ERRO CRITICO NA GERACAO DO PDF ---")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
 
 # ==========================================
 # 5. MÓDULO FINANCEIRO
