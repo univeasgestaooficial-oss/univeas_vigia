@@ -1421,9 +1421,13 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
             });
         });
 
+        // CAPTURA SEGURA DA FOTO DO MÓDULO
+        const inputFotoMod = bloco.querySelector('.input-foto-modulo');
+        const fotoModVal = inputFotoMod ? inputFotoMod.value.trim() : '';
+
         arrayDisciplinas.push({
             nome: bloco.querySelector('.input-nome').value,
-            foto_modulo: bloco.querySelector('.input-foto-modulo') ? bloco.querySelector('.input-foto-modulo').value : '', // <--- CAMPO NOVO SALVO AQUI
+            foto_modulo: fotoModVal,
             data_inicio: bloco.querySelector('.input-data-inicio').value,
             data_fim: bloco.querySelector('.input-data-fim').value,
             hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
@@ -1617,9 +1621,10 @@ function verDetalhesCurso(id_firebase) {
                 ? mod.dias_aula.join(', ')
                 : 'Não definidos';
 
-            // <--- IMAGEM DO MÓDULO AQUI NA VISUALIZAÇÃO --->
-            let imgModulo = (mod.foto_modulo && mod.foto_modulo.startsWith('http'))
-                ? `<img src="${mod.foto_modulo}" alt="Capa do Módulo" class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200 shadow-sm shrink-0">`
+            // <--- LEITURA SEGURA DA FOTO DO MÓDULO (Lendo todas as variações possíveis) --->
+            let fotoModuloUrl = mod.foto_modulo || mod.foto || mod.imagem || mod.capa_modulo || '';
+            let imgModulo = (fotoModuloUrl && fotoModuloUrl.startsWith('http'))
+                ? `<img src="${fotoModuloUrl}" alt="Capa do Módulo" class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200 shadow-sm shrink-0">`
                 : `<div class="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 shrink-0"><i data-feather="image" class="text-gray-400 w-6 h-6"></i></div>`;
 
             // HTML DE CADA MÓDULO (Com a foto alinhada ao lado)
@@ -1874,9 +1879,10 @@ function alterarCurso(id_firebase) {
             const bloco = document.getElementById(`disciplina-box-${blocoId}`);
 
             bloco.querySelector('.input-nome').value = modulo.nome || '';
-            // <--- PREENCHENDO O CAMPO DA FOTO NA EDIÇÃO --->
-            if(bloco.querySelector('.input-foto-modulo')) {
-                bloco.querySelector('.input-foto-modulo').value = modulo.foto_modulo || '';
+            // <--- PREENCHENDO O CAMPO DA FOTO NA EDIÇÃO (Lendo todas as variações) --->
+            const inputFotoMod = bloco.querySelector('.input-foto-modulo');
+            if(inputFotoMod) {
+                inputFotoMod.value = modulo.foto_modulo || modulo.foto || modulo.imagem || modulo.capa_modulo || '';
             }
 
             bloco.querySelector('.input-data-inicio').value = modulo.data_inicio || '';
