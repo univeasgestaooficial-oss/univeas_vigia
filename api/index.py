@@ -1,3 +1,4 @@
+
 import os
 import json
 import uuid
@@ -220,9 +221,21 @@ async def excluir_docente(docente_id: str):
 
 @app.get("/api/v1/cursos")
 async def listar_cursos():
-    checar_db()
-    docs = db.collection("cursos").stream()
-    return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+    """Lista todos os cursos com tratamento total contra erros de banco ou formato"""
+    try:
+        checar_db()
+        docs = db.collection("cursos").stream()
+        cursos = []
+        for doc in docs:
+            d = doc.to_dict() or {}
+            d["id"] = doc.id
+            cursos.append(d)
+        return cursos
+    except Exception as e:
+        print(f"--- ERRO AO LISTAR CURSOS: {e} ---")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno ao buscar cursos: {str(e)}")
 
 
 @app.get("/api/v1/cursos/{curso_id}")
