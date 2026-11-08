@@ -1563,120 +1563,128 @@ async function renderizarListaCursos() {
 // ==========================================
 // FUNÇÕES DE VISUALIZAÇÃO DE DETALHES
 // ==========================================
-// ==========================================
-// FUNÇÕES DE VISUALIZAÇÃO DE DETALHES
-// ==========================================
-// ==========================================
-// FUNÇÕES DE VISUALIZAÇÃO DE DETALHES COMPLETA
-// ==========================================
 function verDetalhesCurso(id_firebase) {
     const curso = cursosGlobais.find(c => c.id === id_firebase);
     if (!curso) return;
 
-    // 1. CÁLCULO DA CARGA HORÁRIA E MONTAGEM DA GRADE CURRICULAR
+    // 1. CORREÇÃO CRÍTICA: Garantir que a grade seja um Array (converte texto para objeto se necessário)
+    let grade = [];
+    try {
+        if (typeof curso.grade_curricular === 'string') {
+            grade = JSON.parse(curso.grade_curricular);
+        } else if (Array.isArray(curso.grade_curricular)) {
+            grade = curso.grade_curricular;
+        }
+    } catch (e) {
+        console.error("Erro ao ler a grade curricular:", e);
+    }
+
     let cargaTotal = 0;
-    const grade = curso.grade_curricular || [];
     let modulosHTML = '';
 
-    if(grade.length === 0) {
+    if (grade.length === 0) {
         modulosHTML = '<p class="text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-100">Nenhum módulo cadastrado na grade.</p>';
     } else {
         grade.forEach((mod, index) => {
-            cargaTotal += mod.ch_total || 0;
-            
-            // Renderização das Avaliações
+            cargaTotal += parseInt(mod.ch_total) || 0;
+
+            // MONTAGEM DAS AVALIAÇÕES
             let htmlAvaliacoes = '';
             const avaliacoes = mod.avaliacoes || [];
             if (avaliacoes.length > 0) {
-                htmlAvaliacoes = '<div class="mt-4 border-t border-gray-200 pt-3"><p class="text-[9px] font-bold text-orange-500 uppercase mb-2">Calendário de Avaliações:</p><div class="flex flex-wrap gap-2">';
+                htmlAvaliacoes = '<div class="mt-4 border-t border-gray-200 pt-3"><p class="text-[10px] font-black text-orange-600 uppercase mb-2"><i data-feather="calendar" class="w-3 h-3 inline mr-1"></i> Avaliações Cadastradas:</p><div class="flex flex-col gap-2">';
                 avaliacoes.forEach(aval => {
                     let tipoNome = aval.tipo ? aval.tipo.toUpperCase() : 'AVALIAÇÃO';
                     htmlAvaliacoes += `
-                        <span class="bg-orange-50 border border-orange-100 text-orange-700 px-2 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center">
-                            <i data-feather="file-text" class="w-3 h-3 mr-1.5"></i> 
-                            ${tipoNome}: ${aval.data || 'A definir'} (${aval.hora_inicio || '--:--'} às ${aval.hora_fim || '--:--'})
-                        </span>`;
+                        <div class="bg-orange-50 border border-orange-100 text-orange-800 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center justify-between">
+                            <span>${tipoNome}</span>
+                            <span class="bg-white px-2 py-1 rounded text-orange-600">Data: ${aval.data || 'A definir'} | Horário: ${aval.hora_inicio || '--:--'} às ${aval.hora_fim || '--:--'}</span>
+                        </div>`;
                 });
                 htmlAvaliacoes += '</div></div>';
             } else {
-                htmlAvaliacoes = '<div class="mt-3 border-t border-gray-200 pt-3"><p class="text-[10px] text-gray-400 font-medium italic">Nenhuma avaliação agendada para este módulo.</p></div>';
+                htmlAvaliacoes = '<div class="mt-3 border-t border-gray-200 pt-3"><p class="text-[10px] text-gray-400 font-medium italic">Nenhuma avaliação agendada.</p></div>';
             }
 
-            // Tratamento dos dias de aula
-            let diasAula = mod.dias_aula && mod.dias_aula.length > 0 ? mod.dias_aula.join(', ') : 'Não definidos';
+            // MONTAGEM DOS DIAS DE AULA
+            let diasAula = Array.isArray(mod.dias_aula) && mod.dias_aula.length > 0
+                ? mod.dias_aula.join(', ')
+                : 'Não definidos';
 
+            // HTML DE CADA MÓDULO
             modulosHTML += `
-                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 mb-4 shadow-sm hover:border-teal-300 transition-colors">
-                    <div class="flex justify-between items-start mb-2">
-                        <h5 class="font-black text-gray-800 text-sm uppercase">${index + 1}. ${mod.nome || 'Módulo sem nome'}</h5>
-                        <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-md font-bold">${mod.ch_total || 0}h</span>
+                <div class="bg-white p-5 rounded-xl border-2 border-gray-100 mb-4 shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                    <div class="flex justify-between items-start mb-2 pl-2">
+                        <h5 class="font-black text-gray-900 text-sm uppercase">${index + 1}. ${mod.nome || 'Módulo sem nome'}</h5>
+                        <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-md font-bold">${mod.ch_total || 0}h Total</span>
                     </div>
-                    <p class="text-xs text-gray-600 mb-4 leading-relaxed">${mod.descricao || 'Sem descrição cadastrada.'}</p>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] font-bold text-gray-500">
-                        <div class="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center">
-                            <i data-feather="calendar" class="w-3 h-3 mr-2 text-teal-500"></i> Período: ${mod.data_inicio || '--'} a ${mod.data_fim || '--'}
+                    <p class="text-xs text-gray-600 mb-4 pl-2">${mod.descricao || 'Sem descrição cadastrada.'}</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-bold text-gray-600 pl-2">
+                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
+                            <span class="text-gray-400 block mb-1 uppercase text-[9px]">Período do Módulo</span>
+                            ${mod.data_inicio || '--'} a ${mod.data_fim || '--'}
                         </div>
-                        <div class="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center">
-                            <i data-feather="clock" class="w-3 h-3 mr-2 text-teal-500"></i> Dias: ${diasAula}
+                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
+                            <span class="text-gray-400 block mb-1 uppercase text-[9px]">Dias de Aula</span>
+                            ${diasAula}
                         </div>
-                        <div class="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center">
-                            <i data-feather="watch" class="w-3 h-3 mr-2 text-teal-500"></i> Horário: ${mod.hora_aula_inicio || '--:--'} às ${mod.hora_aula_fim || '--:--'}
+                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
+                            <span class="text-gray-400 block mb-1 uppercase text-[9px]">Horário das Aulas</span>
+                            ${mod.hora_aula_inicio || '--:--'} às ${mod.hora_aula_fim || '--:--'}
                         </div>
-                    </div>
-                    
-                    <!-- Sub-divisão de Carga Horária (Teoria/Prática/Estágio) -->
-                    <div class="flex gap-4 mt-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                        <span>Teoria: ${mod.ch_teoria || 0}h</span>
-                        <span>Prática: ${mod.ch_pratica || 0}h</span>
-                        <span>Estágio: ${mod.ch_estagio || 0}h</span>
                     </div>
 
-                    ${htmlAvaliacoes}
+                    <div class="pl-2 mt-3">
+                        ${htmlAvaliacoes}
+                    </div>
                 </div>
             `;
         });
     }
 
-    // 2. PROFESSORES VINCULADOS
+    // 2. PROFESSORES VINCULADOS (Tratamento seguro)
     let professoresHTML = '';
-    const professores = curso.professores || curso.professores_vinculados || []; // Aceita o array que vier da API
+    let professores = [];
+    try {
+        if (typeof curso.professores === 'string') professores = JSON.parse(curso.professores);
+        else if (Array.isArray(curso.professores)) professores = curso.professores;
+    } catch(e) {}
+
     if (professores.length === 0) {
-        professoresHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhum docente vinculado ao curso no momento.</p>';
+        professoresHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhum docente vinculado.</p>';
     } else {
-        professoresHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+        professoresHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
         professores.forEach(prof => {
             let nomeProf = typeof prof === 'string' ? prof : (prof.nome || 'Professor');
-            let especProf = typeof prof === 'object' && prof.especialidade ? prof.especialidade : 'Docente';
             professoresHTML += `
                 <div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center shadow-sm">
                     <div class="bg-teal-50 p-2 rounded-lg text-teal-600 mr-3"><i data-feather="user" class="w-4 h-4"></i></div>
-                    <div>
-                        <p class="text-xs font-bold text-gray-800">${nomeProf}</p>
-                        <p class="text-[9px] font-bold text-gray-400 uppercase">${especProf}</p>
-                    </div>
+                    <p class="text-xs font-bold text-gray-800">${nomeProf}</p>
                 </div>`;
         });
         professoresHTML += '</div>';
     }
 
-    // 3. TURMAS CADASTRADAS
+    // 3. TURMAS CADASTRADAS (Tratamento seguro)
     let turmasHTML = '';
-    const turmas = curso.turmas || []; // Aceita o array que vier da API
+    let turmas = [];
+    try {
+        if (typeof curso.turmas === 'string') turmas = JSON.parse(curso.turmas);
+        else if (Array.isArray(curso.turmas)) turmas = curso.turmas;
+    } catch(e) {}
+
     if (turmas.length === 0) {
-        turmasHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhuma turma aberta para este curso.</p>';
+        turmasHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhuma turma aberta.</p>';
     } else {
         turmasHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
         turmas.forEach(turma => {
-            let nomeTurma = typeof turma === 'string' ? turma : (turma.nome || turma.identificacao || 'Turma');
-            let turnoTurma = typeof turma === 'object' && turma.turno ? turma.turno : 'Não definido';
+            let nomeTurma = typeof turma === 'string' ? turma : (turma.nome || 'Turma');
             turmasHTML += `
-                <div class="bg-blue-50/30 p-3 rounded-lg border border-blue-100 flex items-center justify-between shadow-sm">
-                    <div class="flex items-center">
-                        <div class="bg-blue-100 p-2 rounded-lg text-blue-600 mr-3"><i data-feather="users" class="w-4 h-4"></i></div>
-                        <span class="text-xs font-bold text-gray-800">${nomeTurma}</span>
-                    </div>
-                    <span class="bg-white border border-blue-100 text-blue-600 px-2 py-1 rounded text-[9px] font-bold uppercase">${turnoTurma}</span>
+                <div class="bg-blue-50/30 p-3 rounded-lg border border-blue-100 flex items-center shadow-sm">
+                    <div class="bg-blue-100 p-2 rounded-lg text-blue-600 mr-3"><i data-feather="users" class="w-4 h-4"></i></div>
+                    <span class="text-xs font-bold text-gray-800">${nomeTurma}</span>
                 </div>`;
         });
         turmasHTML += '</div>';
@@ -1690,7 +1698,7 @@ function verDetalhesCurso(id_firebase) {
         </div>`;
     }
 
-    // 5. MONTAGEM FINAL DO HTML DA FICHA
+    // 5. RENDERIZAÇÃO FINAL
     const htmlDetalhes = `
         ${bannerCapa}
 
@@ -1708,61 +1716,60 @@ function verDetalhesCurso(id_firebase) {
                     <i data-feather="edit-2" class="w-4 h-4 mr-2"></i> Editar Dados do Curso
                 </button>
             </div>
-            
+
             <div class="text-right bg-teal-500 p-5 rounded-2xl shadow-sm shrink-0 w-full sm:w-auto flex flex-col items-center sm:items-end justify-center">
                 <p class="text-[10px] font-bold text-teal-100 uppercase mb-1">Carga Horária Total</p>
                 <p class="text-3xl font-black text-white">${cargaTotal}h</p>
             </div>
         </div>
 
-        <!-- INDICADORES FINANCEIROS E CONFIGURAÇÕES -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <!-- INDICADORES FINANCEIROS -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Valor da Matrícula</p>
+                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Matrícula</p>
                 <p class="text-lg font-black text-gray-800">R$ ${curso.valor_matricula || '0.00'}</p>
             </div>
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Mensalidade Padrão</p>
+                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Mensalidade</p>
                 <p class="text-lg font-black text-gray-800">R$ ${curso.valor_mensalidade || '0.00'}</p>
             </div>
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Valor Promocional</p>
+                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Valor Promo</p>
                 <p class="text-lg font-black ${curso.promocao_ativa === 'Sim' ? 'text-teal-600' : 'text-gray-300 line-through'}">R$ ${curso.valor_promocional || '0.00'}</p>
             </div>
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Duração Estimada</p>
+                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Duração</p>
                 <p class="text-sm font-bold text-gray-800 mt-1">${curso.duracao || 'Não informado'}</p>
             </div>
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Promoção Ativa?</p>
+                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Promo Ativa?</p>
                 <p class="text-sm font-black ${curso.promocao_ativa === 'Sim' ? 'text-teal-600' : 'text-gray-800'} mt-1 uppercase">${curso.promocao_ativa || 'Não'}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            <!-- DESCRIÇÃO GERAL -->
             <div class="lg:col-span-2">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-teal-500 pl-2">Descrição do Curso</h4>
-                <p class="text-sm text-gray-600 bg-gray-50 p-5 rounded-xl border border-gray-200 leading-relaxed min-h-[100px]">${curso.descricao || 'Nenhuma descrição fornecida.'}</p>
+                <p class="text-sm text-gray-600 bg-gray-50 p-5 rounded-xl border border-gray-200 leading-relaxed">${curso.descricao || 'Nenhuma descrição fornecida.'}</p>
             </div>
-
-            <!-- BLOCOS DE TURMAS E PROFESSORES -->
             <div class="space-y-6">
                 <div>
-                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-blue-500 pl-2">Turmas em Andamento</h4>
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-blue-500 pl-2">Turmas Abertas</h4>
                     ${turmasHTML}
                 </div>
                 <div>
-                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-teal-500 pl-2">Corpo Docente Vinculado</h4>
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-teal-500 pl-2">Docentes Vinculados</h4>
                     ${professoresHTML}
                 </div>
             </div>
         </div>
 
-        <!-- GRADE CURRICULAR COMPLETA -->
-        <div>
-            <div class="flex items-center justify-between mb-4">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-4 border-teal-500 pl-2">Grade Curricular Detalhada</h4>
+        <!-- LISTA DE MÓDULOS E AVALIAÇÕES (DESTAQUE MÁXIMO) -->
+        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+            <div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
+                <h4 class="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center">
+                    <i data-feather="book" class="mr-2 text-teal-500"></i> Grade Curricular e Cronograma
+                </h4>
                 <span class="bg-gray-800 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${grade.length} Módulos</span>
             </div>
             ${modulosHTML}
@@ -1770,12 +1777,10 @@ function verDetalhesCurso(id_firebase) {
     `;
 
     document.getElementById('conteudo-detalhes-curso').innerHTML = htmlDetalhes;
-
     document.getElementById('container-tabela-cursos').classList.replace('block', 'hidden');
     document.getElementById('container-detalhes-curso').classList.replace('hidden', 'block');
     document.getElementById('titulo-modal-cursos').innerHTML = '<i data-feather="info" class="text-teal-500 mr-3"></i> Ficha Completa do Curso';
-    
-    // Re-inicia os ícones Feather após injetar o novo HTML
+
     feather.replace();
 }
 
