@@ -1567,16 +1567,14 @@ function verDetalhesCurso(id_firebase) {
     const curso = cursosGlobais.find(c => c.id === id_firebase);
     if (!curso) return;
 
-    // 1. CORREÇÃO CRÍTICA: Garantir que a grade seja um Array (converte texto para objeto se necessário)
+    // A MÁGICA QUE RESOLVE: Procura em todos os possíveis nomes que a API pode devolver
+    let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
     let grade = [];
     try {
-        if (typeof curso.grade_curricular === 'string') {
-            grade = JSON.parse(curso.grade_curricular);
-        } else if (Array.isArray(curso.grade_curricular)) {
-            grade = curso.grade_curricular;
-        }
+        if (typeof gradeRaw === 'string') grade = JSON.parse(gradeRaw);
+        else if (Array.isArray(gradeRaw)) grade = gradeRaw;
     } catch (e) {
-        console.error("Erro ao ler a grade curricular:", e);
+        console.error("Erro JSON Módulos:", e);
     }
 
     let cargaTotal = 0;
@@ -1833,7 +1831,16 @@ function alterarCurso(id_firebase) {
     document.getElementById('container-disciplinas').innerHTML = '';
     contadorDisciplina = 0;
 
-    const grade = curso.grade_curricular || [];
+    // MESMA CORREÇÃO PARA A EDIÇÃO DA GRADE
+    let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
+    let grade = [];
+    try {
+        if (typeof gradeRaw === 'string') grade = JSON.parse(gradeRaw);
+        else if (Array.isArray(gradeRaw)) grade = gradeRaw;
+    } catch (e) {
+        console.error("Erro JSON Módulos Edição:", e);
+    }
+
     if (grade.length === 0) {
         adicionarDisciplina();
     } else {
@@ -1858,7 +1865,6 @@ function alterarCurso(id_firebase) {
                 if (diasSalvos.includes(cb.value)) cb.checked = true;
             });
 
-            // CORREÇÃO: Limpa a avaliação em branco padrão antes de inserir as salvas
             const containerAval = document.getElementById(`container-avaliacoes-${blocoId}`);
             if (containerAval) containerAval.innerHTML = '';
 
@@ -1908,6 +1914,6 @@ function imprimirCardCurso(id_firebase) {
     alert("Gerando PDF do Card do Curso " + id_firebase + " (Com Ementa e Grade).");
 }
 
-        </script>
-    </body>
+</script>
+</body>
 </html>
