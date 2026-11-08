@@ -1320,42 +1320,40 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
         feather.replace();
     }
 
-    // FUNÇÃO PARA INJETAR AVALIAÇÕES DENTRO DO MÓDULO
-    function adicionarAvaliacao(moduloId) {
-        const container = document.getElementById(`container-avaliacoes-${moduloId}`);
-        const div = document.createElement('div');
-        div.className = 'item-avaliacao flex items-end gap-2 bg-white p-2 rounded-lg border border-orange-100 shadow-sm relative transition-all hover:border-orange-300';
+    function adicionarAvaliacao(moduloId, dados = null) {
+    const container = document.getElementById(`container-avaliacoes-${moduloId}`);
+    const div = document.createElement('div');
+    div.className = 'item-avaliacao flex items-end gap-2 bg-white p-2 rounded-lg border border-orange-100 shadow-sm relative transition-all hover:border-orange-300';
 
-        div.innerHTML = `
-            <div class="flex-1">
-                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Tipo</label>
-                    <select class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs bg-white focus:outline-orange-500 input-aval-tipo">
-                    <option value="prova">Prova Escrita</option>
-                    <option value="trabalho">Trabalho/Seminário</option>
-                            <option value="pratica">Avaliação Prática</option>
-                    <option value="desafio">Desafio Gamificado</option>
-                </select>
-            </div>
-            <div class="flex-1">
-                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Data</label>
-                <input type="date" class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs focus:outline-orange-500 input-aval-data" required>
-            </div>
-            <div class="w-20">
-                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Início</label>
-                <input type="time" class="w-full border border-gray-200 rounded px-1 py-1.5 text-xs focus:outline-orange-500 input-aval-hora-inicio">
-            </div>
-            <div class="w-20">
-                <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Fim</label>
-                <input type="time" class="w-full border border-gray-200 rounded px-1 py-1.5 text-xs focus:outline-orange-500 input-aval-hora-fim">
-            </div>
-            <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 p-1.5 rounded transition mb-0.5" title="Remover Avaliação">
-                <i data-feather="x" class="w-3 h-3"></i>
-            </button>
-        `;
-        container.appendChild(div);
-        feather.replace();
-    }
-
+    div.innerHTML = `
+        <div class="flex-1">
+            <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Tipo</label>
+            <select class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs bg-white focus:outline-orange-500 input-aval-tipo">
+                <option value="prova" ${dados?.tipo === 'prova' ? 'selected' : ''}>Prova Escrita</option>
+                <option value="trabalho" ${dados?.tipo === 'trabalho' ? 'selected' : ''}>Trabalho/Seminário</option>
+                <option value="pratica" ${dados?.tipo === 'pratica' ? 'selected' : ''}>Avaliação Prática</option>
+                <option value="desafio" ${dados?.tipo === 'desafio' ? 'selected' : ''}>Desafio Gamificado</option>
+            </select>
+        </div>
+        <div class="flex-1">
+            <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Data</label>
+            <input type="date" value="${dados?.data || ''}" class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs focus:outline-orange-500 input-aval-data">
+        </div>
+        <div class="w-20">
+            <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Início</label>
+            <input type="time" value="${dados?.hora_inicio || ''}" class="w-full border border-gray-200 rounded px-1 py-1.5 text-xs focus:outline-orange-500 input-aval-hora-inicio">
+        </div>
+        <div class="w-20">
+            <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Fim</label>
+            <input type="time" value="${dados?.hora_fim || ''}" class="w-full border border-gray-200 rounded px-1 py-1.5 text-xs focus:outline-orange-500 input-aval-hora-fim">
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 p-1.5 rounded transition mb-0.5" title="Remover Avaliação">
+            <i data-feather="x" class="w-3 h-3"></i>
+        </button>
+    `;
+    container.appendChild(div);
+    feather.replace();
+}
     function removerDisciplina(id) {
         document.getElementById(`disciplina-box-${id}`).remove();
         calcularCargaHorariaGeral();
@@ -1390,18 +1388,14 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
         let avaliacoesDesteModulo = [];
         const blocosAvaliacoes = bloco.querySelectorAll('.item-avaliacao');
 
+        // AGORA SALVA TUDO, MESMO SE ESTIVER EM BRANCO NO TESTE
         blocosAvaliacoes.forEach(aval => {
-            const dataAval = aval.querySelector('.input-aval-data').value;
-            // CORREÇÃO: Só salva se a data foi preenchida, ignorando a caixinha em branco
-            if (dataAval) {
-                avaliacoesDesteModulo.push({
-                    tipo: aval.querySelector('.input-aval-tipo').value,
-                    data: dataAval,
-                    hora_inicio: aval.querySelector('.input-aval-hora-inicio').value,
-                    // CORREÇÃO: Captura a hora final corretamente
-                    hora_fim: aval.querySelector('.input-aval-hora-fim') ? aval.querySelector('.input-aval-hora-fim').value : ''
-                });
-            }
+            avaliacoesDesteModulo.push({
+                tipo: aval.querySelector('.input-aval-tipo').value,
+                data: aval.querySelector('.input-aval-data').value || "A definir",
+                hora_inicio: aval.querySelector('.input-aval-hora-inicio').value || "--:--",
+                hora_fim: aval.querySelector('.input-aval-hora-fim') ? aval.querySelector('.input-aval-hora-fim').value || "--:--" : "--:--"
+            });
         });
 
         arrayDisciplinas.push({
@@ -1420,7 +1414,6 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
         });
     });
 
-    // Guarda esse array no campo oculto em formato JSON
     document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
 
     const btn = e.target.querySelector('button[type="submit"]');
