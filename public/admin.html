@@ -473,6 +473,25 @@
                                 <input type="number" name="valor_mensalidade" step="0.01" required class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-teal-500">
                             </div>
                         </div>
+                        
+                         <!-- NOVOS CAMPOS: DURAÇÃO, PROMOÇÃO E VALOR PROMOCIONAL -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Duração Estimada</label>
+                                <input type="text" name="duracao" placeholder="Ex: 18 meses" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Promoção Ativa?</label>
+                                <select name="promocao_ativa" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-teal-500">
+                                    <option value="Não">Não</option>
+                                    <option value="Sim">Sim</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Valor Promocional (R$)</label>
+                                <input type="number" name="valor_promocional" step="0.01" placeholder="Ex: 150.00" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                            </div>
+                        </div>
 
                         <!-- DESCRIÇÃO E LINK DA FOTO DE CAPA -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1548,17 +1567,28 @@ function verDetalhesCurso(id_firebase) {
     const curso = cursosGlobais.find(c => c.id === id_firebase);
     if (!curso) return;
 
-    // Calcula a carga horária total somando os módulos
     let cargaTotal = 0;
     const grade = curso.grade_curricular || [];
     grade.forEach(mod => { cargaTotal += mod.ch_total || 0; });
 
-    // Gera o HTML dos Módulos
     let modulosHTML = '';
     if(grade.length === 0) {
         modulosHTML = '<p class="text-sm text-gray-500">Nenhum módulo cadastrado na grade.</p>';
     } else {
         grade.forEach((mod, index) => {
+            let htmlAvaliacoes = '';
+            const avaliacoes = mod.avaliacoes || [];
+            if (avaliacoes.length > 0) {
+                htmlAvaliacoes = '<div class="mt-3 border-t border-gray-200 pt-3"><p class="text-[9px] font-bold text-orange-500 uppercase mb-1.5">Avaliações Agendadas:</p><div class="flex flex-wrap gap-2">';
+                avaliacoes.forEach(aval => {
+                    let tipoNome = aval.tipo.toUpperCase();
+                    htmlAvaliacoes += `<span class="bg-orange-50 border border-orange-100 text-orange-700 px-2 py-1 rounded text-[10px] font-bold shadow-sm">
+                        ${tipoNome}: ${aval.data} (${aval.hora_inicio || '--:--'} às ${aval.hora_fim || '--:--'})
+                    </span>`;
+                });
+                htmlAvaliacoes += '</div></div>';
+            }
+
             modulosHTML += `
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-3">
                     <div class="flex justify-between items-start mb-2">
@@ -1571,14 +1601,24 @@ function verDetalhesCurso(id_firebase) {
                         <span class="bg-white border border-gray-200 px-2 py-1 rounded">Dias: ${(mod.dias_aula || []).join(', ')}</span>
                         <span class="bg-white border border-gray-200 px-2 py-1 rounded">Horário: ${mod.hora_aula_inicio} às ${mod.hora_aula_fim}</span>
                     </div>
+                    ${htmlAvaliacoes}
                 </div>
             `;
         });
     }
 
-    // Monta o visual completo da tela de detalhes
+    // Verifica se tem link de foto de capa para montar o banner
+    let bannerCapa = '';
+    if (curso.foto_capa && curso.foto_capa.startsWith('http')) {
+        bannerCapa = `<div class="w-full h-40 mb-6 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+            <img src="${curso.foto_capa}" alt="Capa do Curso" class="w-full h-full object-cover">
+        </div>`;
+    }
+
     const htmlDetalhes = `
-        <div class="flex items-start justify-between border-b border-gray-100 pb-4">
+        ${bannerCapa} <!-- Injeta o banner da imagem se existir -->
+
+        <div class="flex items-start justify-between border-b border-gray-100 pb-4 mb-6">
             <div>
                 <h2 class="text-2xl font-black text-gray-900">${curso.nome_curso}</h2>
                 <div class="flex gap-2 mt-2">
@@ -1593,7 +1633,8 @@ function verDetalhesCurso(id_firebase) {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- GRADE DE INFORMAÇÕES (Expansível para novos campos) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Valor da Matrícula</p>
                 <p class="text-lg font-black text-gray-800">R$ ${curso.valor_matricula}</p>
@@ -1602,9 +1643,19 @@ function verDetalhesCurso(id_firebase) {
                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Valor da Mensalidade</p>
                 <p class="text-lg font-black text-teal-600">R$ ${curso.valor_mensalidade}</p>
             </div>
+
+            <!-- ADICIONE SEUS NOVOS CAMPOS AQUI. EXEMPLO: -->
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Duração Estimada</p>
+                <p class="text-sm font-bold text-gray-800">${curso.duracao || 'Não informado'}</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Promoção Ativa</p>
+                <p class="text-sm font-bold text-gray-800">${curso.promocao_ativa || 'Não'}</p>
+            </div>
         </div>
 
-        <div>
+        <div class="mb-6">
             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 border-l-2 border-teal-500 pl-2">Descrição do Curso</h4>
             <p class="text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100">${curso.descricao || 'Nenhuma descrição fornecida.'}</p>
         </div>
@@ -1617,13 +1668,11 @@ function verDetalhesCurso(id_firebase) {
 
     document.getElementById('conteudo-detalhes-curso').innerHTML = htmlDetalhes;
 
-    // Troca a visualização (Esconde Tabela, Mostra Detalhes)
     document.getElementById('container-tabela-cursos').classList.replace('block', 'hidden');
     document.getElementById('container-detalhes-curso').classList.replace('hidden', 'block');
     document.getElementById('titulo-modal-cursos').innerHTML = '<i data-feather="info" class="text-teal-500 mr-3"></i> Ficha do Curso';
     feather.replace();
 }
-
 function voltarListaCursos() {
     // Volta para a tabela
     document.getElementById('container-detalhes-curso').classList.replace('block', 'hidden');
@@ -1657,6 +1706,12 @@ function alterarCurso(id_firebase) {
     form.modalidade.value = curso.modalidade || 'presencial';
     form.valor_matricula.value = curso.valor_matricula || '';
     form.valor_mensalidade.value = curso.valor_mensalidade || '';
+    
+     // PREENCHENDO OS NOVOS CAMPOS AO EDITAR
+    if (form.duracao) form.duracao.value = curso.duracao || '';
+    if (form.promocao_ativa) form.promocao_ativa.value = curso.promocao_ativa || 'Não';
+    if (form.valor_promocional) form.valor_promocional.value = curso.valor_promocional || '';
+    
     form.descricao.value = curso.descricao || '';
     form.foto_capa.value = curso.foto_capa || '';
 
