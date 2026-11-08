@@ -4,12 +4,13 @@ import uuid
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
-from fastapi import FastAPI, Form, HTTPException, File, UploadFile
+from fastapi import FastAPI, Form, HTTPException, File, UploadFile, Response
 from firebase_admin import credentials, firestore, storage
+from weasyprint import HTML
+
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
-# Busca o JSON de credenciais armazenado de forma segura na Vercel
 firebase_env = os.getenv("FIREBASE_CREDENTIALS")
 
 if firebase_env and not firebase_admin._apps:
@@ -23,7 +24,6 @@ if firebase_env and not firebase_admin._apps:
     except Exception as e:
         print(f"Erro ao inicializar Firebase: {e}")
 
-# Instância global do banco de dados
 db = firestore.client() if firebase_admin._apps else None
 
 # ==========================================
@@ -54,7 +54,6 @@ async def login_administrador(senha: str = Form(...)):
     if not senha_segura_vercel:
         raise HTTPException(status_code=500, detail="Erro interno: Variável KEY_ADMIN não configurada na Vercel.")
     if senha == senha_segura_vercel:
-        # Se a senha bater, retorna o token de acesso para o JS salvar no localStorage
         return {
             "sucesso": True,
             "token_siga": "admin_token_autorizado",
@@ -69,19 +68,15 @@ async def login_administrador(senha: str = Form(...)):
 # ==========================================
 @app.post("/api/v1/auth/docente")
 async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
-    """Valida o acesso do professor consultando a coleção 'docentes' no Firestore"""
     checar_db()
-
-    # Faz a busca no banco procurando o documento exato
     docs = db.collection("docentes").where("registro", "==", registro).where("cpf", "==", cpf).stream()
 
     docente_encontrado = None
     for doc in docs:
         docente_encontrado = {"id": doc.id, **doc.to_dict()}
-        break  # Pega o primeiro que bater
+        break
 
     if docente_encontrado:
-        # Se encontrou, gera o token e devolve os dados
         return {
             "sucesso": True,
             "token_siga": f"docente_{docente_encontrado['id']}",
@@ -97,10 +92,7 @@ async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
 # ==========================================
 @app.post("/api/v1/auth/aluno")
 async def login_aluno(matricula: str = Form(...), cpf: str = Form(...)):
-    """Valida o acesso do aluno consultando a coleção 'alunos' no Firestore"""
     checar_db()
-
-    # Faz a busca no banco procurando o documento exato
     docs = db.collection("alunos").where("matricula", "==", matricula).where("cpf", "==", cpf).stream()
 
     aluno_encontrado = None
@@ -125,7 +117,6 @@ async def login_aluno(matricula: str = Form(...), cpf: str = Form(...)):
 
 @app.get("/api/v1/alunos")
 async def listar_alunos():
-    """LÊ dados reais do banco (R - Read)"""
     checar_db()
     docs = db.collection("alunos").stream()
     alunos = [{"id": doc.id, **doc.to_dict()} for doc in docs]
@@ -137,7 +128,6 @@ async def matricular_aluno(
         nome: str = Form(...), cpf: str = Form(...), email: str = Form(...),
         telefone: str = Form(...), endereco: str = Form(...), curso_id: str = Form(...)
 ):
-    """SALVA um novo aluno no banco (C - Create)"""
     checar_db()
     matricula_gerada = f"#{datetime.now().strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
 
@@ -153,14 +143,12 @@ async def matricular_aluno(
         "data_cadastro": datetime.now().isoformat()
     }
 
-    # Adiciona a coleção 'alunos'
     _, doc_ref = db.collection("alunos").add(novo_aluno)
     return {"sucesso": True, "id": doc_ref.id, "matricula": matricula_gerada}
 
 
 @app.put("/api/v1/alunos/{aluno_id}")
 async def alterar_aluno(aluno_id: str, nome: str = Form(None), status: str = Form(None)):
-    """ALTERA dados de um aluno existente (U - Update)"""
     checar_db()
     ref = db.collection("alunos").document(aluno_id)
 
@@ -177,7 +165,6 @@ async def alterar_aluno(aluno_id: str, nome: str = Form(None), status: str = For
 
 @app.delete("/api/v1/alunos/{aluno_id}")
 async def excluir_aluno(aluno_id: str):
-    """EXCLUI um aluno do banco (D - Delete)"""
     checar_db()
     db.collection("alunos").document(aluno_id).delete()
     return {"sucesso": True, "mensagem": "Aluno removido com sucesso"}
@@ -200,7 +187,7 @@ async def cadastrar_docente(
         cpf_prestador: str = Form(...),
         telefone_prestador: str = Form(...),
         tipo_profissional: str = Form(...),
-        curso_id: str = Form(...)  # <- ADICIONADO AQUI PARA LIGAR AO CURSO
+        curso_id: str = Form(...)
 ):
     checar_db()
     registro_gerado = f"#PR{str(uuid.uuid4().int)[:4]}"
@@ -210,7 +197,7 @@ async def cadastrar_docente(
         "cpf": cpf_prestador,
         "telefone": telefone_prestador,
         "tipo_profissional": tipo_profissional,
-        "curso_id": curso_id,  # <- SALVANDO NO BANCO DE DADOS
+        "curso_id": curso_id,
         "status": "Ativo"
     }
     db.collection("docentes").add(novo_docente)
@@ -226,7 +213,6 @@ async def excluir_docente(docente_id: str):
 
 @app.get("/api/v1/cursos")
 async def listar_cursos():
-    """Lista todos os cursos"""
     checar_db()
     docs = db.collection("cursos").stream()
     return [{"id": doc.id, **doc.to_dict()} for doc in docs]
@@ -234,7 +220,6 @@ async def listar_cursos():
 
 @app.get("/api/v1/cursos/{curso_id}")
 async def obter_curso(curso_id: str):
-    """Busca um curso específico pelo ID (usado para o modal de Edição)"""
     checar_db()
     doc = db.collection("cursos").document(curso_id).get()
 
@@ -257,7 +242,6 @@ async def atualizar_curso(
         foto_capa: str = Form(""),
         disciplinas_json: str = Form("[]")
 ):
-    # Aqui mantemos apenas a checagem do banco de dados
     checar_db()
 
     try:
@@ -279,8 +263,8 @@ async def atualizar_curso(
     }
 
     db.collection("cursos").document(curso_id).update(dados_atualizados)
-
     return {"sucesso": True, "mensagem": "Curso atualizado com sucesso"}
+
 
 @app.post("/api/v1/cursos")
 async def registrar_curso(
@@ -295,17 +279,15 @@ async def registrar_curso(
         disciplinas_json: str = Form(...),
         promocao_ativa: str = Form(None),
         valor_promocional: str = Form(None),
-        foto_capa: str = Form(None) # <- AGORA RECEBE APENAS O TEXTO DO LINK
+        foto_capa: str = Form(None)
 ):
     checar_db()
 
-    # Processa a matriz de disciplinas
     try:
         grade_curricular = json.loads(disciplinas_json)
     except Exception:
         grade_curricular = []
 
-    # Monta o pacote de dados
     novo_curso = {
         "codigo": codigo,
         "categoria": categoria,
@@ -318,18 +300,317 @@ async def registrar_curso(
         "grade_curricular": grade_curricular,
         "promocao_ativa": promocao_ativa,
         "valor_promocional": valor_promocional,
-        "foto_capa": foto_capa # <- SALVA O LINK DIRETO NO BANCO
+        "foto_capa": foto_capa
     }
 
     db.collection("cursos").add(novo_curso)
     return {"sucesso": True, "mensagem": "Curso registrado com matriz acadêmica e link da foto!"}
 
+
 @app.delete("/api/v1/cursos/{curso_id}")
 async def excluir_curso(curso_id: str):
-    """Exclui permanentemente um curso do banco de dados"""
     checar_db()
     db.collection("cursos").document(curso_id).delete()
     return {"sucesso": True, "mensagem": "Curso excluído permanentemente."}
+
+
+# ==========================================
+# 4.1 ROTA CIRÚRGICA DE PDF (IMPRESSÃO DA MATRIZ)
+# ==========================================
+@app.get("/api/v1/cursos/{curso_id}/pdf")
+async def gerar_pdf_curso(curso_id: str):
+    checar_db()
+    doc = db.collection("cursos").document(curso_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Curso não encontrado.")
+
+    curso = doc.to_dict()
+    nome_curso = curso.get('nome_curso', 'CURSO')
+    grade = curso.get('grade_curricular', [])
+
+    modulos_html = ""
+    for i, m in enumerate(grade):
+        disciplinas = m.get('disciplinas', [])
+        linhas_tabela = ""
+        ch_teoria_mod = 0
+        ch_pratica_mod = 0
+        ch_es_mod = 0
+        ch_total_mod = 0
+
+        if disciplinas:
+            for disc in disciplinas:
+                t = int(disc.get('ch_teoria', 0))
+                p = int(disc.get('ch_pratica', 0))
+                es = int(disc.get('ch_es', 0))
+                tot = t + p + es
+
+                ch_teoria_mod += t
+                ch_pratica_mod += p
+                ch_es_mod += es
+                ch_total_mod += tot
+
+                linhas_tabela += f"""
+                <tr>
+                    <td>{disc.get('nome', 'Disciplina')}</td>
+                    <td style="text-align: center;">{t if t > 0 else '-'}</td>
+                    <td style="text-align: center;">{p if p > 0 else '-'}</td>
+                    <td style="text-align: center;">{es if es > 0 else '-'}</td>
+                    <td style="text-align: center; font-weight: bold;">{tot}</td>
+                </tr>
+                """
+        else:
+            t = int(m.get('ch_teoria', m.get('ch_total', 0)))
+            ch_teoria_mod += t
+            ch_total_mod += t
+            linhas_tabela += f"""
+            <tr>
+                <td>{m.get('nome', 'Módulo / Disciplina')}</td>
+                <td style="text-align: center;">{t}</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center; font-weight: bold;">{t}</td>
+            </tr>
+            """
+
+        cert_html = ""
+        cert_texto = m.get('certificacao_intermediaria', '')
+        if cert_texto:
+            cert_html = f'<div class="cert-heading">{cert_texto}</div>'
+
+        modulos_html += f"""
+        <div class="module-wrapper">
+            <div class="module-heading">Módulo {i + 1}: {m.get('nome', '')}</div>
+            {cert_html}
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="col-disciplina">Disciplinas</th>
+                        <th colspan="4">Carga Horária</th>
+                    </tr>
+                    <tr>
+                        <th class="col-ch">Teoria</th>
+                        <th class="col-ch">Prática</th>
+                        <th class="col-ch">ES</th>
+                        <th class="col-ch">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {linhas_tabela}
+                    <tr class="total-row">
+                        <td>CH DO MÓDULO</td>
+                        <td style="text-align: center;">{ch_teoria_mod}</td>
+                        <td style="text-align: center;">{ch_pratica_mod}</td>
+                        <td style="text-align: center;">{ch_es_mod if ch_es_mod > 0 else '-'}</td>
+                        <td style="text-align: center;">{ch_total_mod}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        """
+
+    html_completo = f"""<!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Matriz Curricular - {nome_curso}</title>
+        <style>
+            @page {{
+                size: A4;
+                margin: 15mm;
+                @bottom-right {{
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    color: #64748b;
+                    font-family: 'Helvetica', sans-serif;
+                }}
+                @bottom-left {{
+                    content: "UNIVEAS — Sistema Integrado de Gestão Acadêmica";
+                    font-size: 8.5pt;
+                    color: #64748b;
+                    font-family: 'Helvetica', sans-serif;
+                }}
+            }}
+            *, *::before, *::after {{ box-sizing: border-box; }}
+            body {{
+                font-family: 'Helvetica', 'Arial', sans-serif;
+                color: #1e293b;
+                line-height: 1.4;
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+                font-size: 10pt;
+            }}
+            .header-card {{
+                background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+            }}
+            .institution-name {{
+                font-size: 18pt;
+                font-weight: 900;
+                letter-spacing: 2px;
+                margin: 0 0 4px 0;
+                text-transform: uppercase;
+            }}
+            .institution-subtitle {{
+                font-size: 10.5pt;
+                font-weight: 600;
+                color: #ccfbf1;
+                margin: 0 0 8px 0;
+                text-transform: uppercase;
+            }}
+            .institution-info {{
+                font-size: 8.5pt;
+                color: #f1f5f9;
+                margin: 0;
+            }}
+            .doc-title-box {{
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-left: 5px solid #0f766e;
+                padding: 10px 15px;
+                border-radius: 6px;
+                margin-bottom: 15px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .doc-title {{
+                font-size: 11pt;
+                font-weight: bold;
+                color: #0f172a;
+                margin: 0;
+                text-transform: uppercase;
+            }}
+            .doc-meta {{
+                font-size: 9pt;
+                font-weight: bold;
+                color: #0f766e;
+                background: #f0fdf4;
+                padding: 4px 8px;
+                border-radius: 4px;
+                border: 1px solid #bbf7d0;
+            }}
+            .module-wrapper {{
+                margin-bottom: 15px;
+                page-break-inside: avoid;
+                background: white;
+                border-radius: 6px;
+                border: 1px solid #cbd5e1;
+                overflow: hidden;
+            }}
+            .module-heading {{
+                font-size: 9.5pt;
+                font-weight: bold;
+                color: #0f172a;
+                background-color: #f1f5f9;
+                border-bottom: 1px solid #cbd5e1;
+                padding: 6px 10px;
+                text-transform: uppercase;
+            }}
+            .cert-heading {{
+                font-size: 8.5pt;
+                font-weight: bold;
+                color: #1e293b;
+                background-color: #f8fafc;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 5px 10px;
+                text-transform: uppercase;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0;
+                font-size: 9pt;
+            }}
+            th, td {{
+                border: 1px solid #cbd5e1;
+                padding: 5px 8px;
+                vertical-align: middle;
+            }}
+            th {{
+                background-color: #f8fafc;
+                color: #334155;
+                font-weight: bold;
+                text-align: center;
+                text-transform: uppercase;
+                font-size: 8pt;
+            }}
+            .col-disciplina {{ text-align: left; width: 60%; color: #0f172a; }}
+            .col-ch {{ text-align: center; width: 10%; }}
+            .total-row td {{ font-weight: bold; background-color: #f8fafc; color: #0f766e; }}
+            .signature-section {{
+                margin-top: 35px;
+                page-break-inside: avoid;
+            }}
+            .signature-grid {{
+                width: 100%;
+                border-collapse: collapse;
+            }}
+            .signature-grid td {{
+                border: none;
+                text-align: center;
+                padding-top: 30px;
+                width: 50%;
+            }}
+            .signature-line {{
+                width: 75%;
+                margin: 0 auto 5px auto;
+                border-top: 1.5px solid #475569;
+            }}
+            .signature-text {{
+                font-size: 8.5pt;
+                color: #334155;
+                font-weight: bold;
+            }}
+        </style>
+    </head>
+    <body>
+
+        <div class="header-card">
+            <h1 class="institution-name">UNIVEAS</h1>
+            <div class="institution-subtitle">União Vigiense de Ensino e Assistência à Saúde</div>
+            <p class="institution-info">
+                CNPJ: 53.199.321/0001-23 &nbsp;|&nbsp; Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA
+            </p>
+        </div>
+
+        <div class="doc-title-box">
+            <div class="doc-title">Matriz Curricular do Curso {nome_curso}</div>
+            <div class="doc-meta">MÓDULO-AULA: 45 min</div>
+        </div>
+
+        {modulos_html}
+
+        <div class="signature-section">
+            <table class="signature-grid">
+                <tr>
+                    <td>
+                        <div class="signature-line"></div>
+                        <div class="signature-text">Coordenação Pedagógica</div>
+                    </td>
+                    <td>
+                        <div class="signature-line"></div>
+                        <div class="signature-text">Direção Geral</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+    </body>
+    </html>
+    """
+
+    pdf_bytes = HTML(string=html_content).write_pdf()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=Matriz_Curricular_{curso_id}.pdf"}
+    )
 
 
 # ==========================================
@@ -344,7 +625,6 @@ async def listar_mensalidades():
 
 @app.post("/api/v1/financeiro/baixar/{mensalidade_id}")
 async def dar_baixa_mensalidade(mensalidade_id: str):
-    """Carimba a mensalidade como PAGA"""
     checar_db()
     db.collection("mensalidades").document(mensalidade_id).update(
         {"status": "Pago", "data_pagamento": datetime.now().isoformat()})
@@ -358,7 +638,6 @@ from fastapi import Header
 
 
 def validar_token_docente(authorization: str):
-    """Extrai o ID do docente do token de sessão enviado pelo JS"""
     if not authorization or not authorization.startswith("Bearer docente_"):
         raise HTTPException(status_code=401, detail="Acesso não autorizado.")
     return authorization.replace("Bearer docente_", "")
@@ -366,12 +645,8 @@ def validar_token_docente(authorization: str):
 
 @app.get("/api/v1/docente/dashboard")
 async def obter_dashboard_docente(authorization: str = Header(None)):
-    """Rota para carregar os números da tela principal do professor"""
     checar_db()
     docente_id = validar_token_docente(authorization)
-
-    # Busca quantas turmas/cursos este professor tem
-    # (Como o seu sistema é direto, ele busca os cursos vinculados ao ID do professor)
     doc_prof = db.collection("docentes").document(docente_id).get()
 
     if not doc_prof.exists:
@@ -390,7 +665,6 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
 
 @app.get("/api/v1/docente/turmas")
 async def listar_turmas_docente(authorization: str = Header(None)):
-    """Carrega as disciplinas para exibir nos cards da aba 'Minhas Turmas'"""
     checar_db()
     docente_id = validar_token_docente(authorization)
 
@@ -401,14 +675,12 @@ async def listar_turmas_docente(authorization: str = Header(None)):
     if not curso_id:
         return []
 
-    # Busca os detalhes do curso que ele leciona
     curso_ref = db.collection("cursos").document(curso_id).get()
     if not curso_ref.exists:
         return []
 
     curso_dados = curso_ref.to_dict()
 
-    # Transforma os módulos da grade curricular em "Turmas/Disciplinas" para o professor
     turmas_formatadas = []
     for modulo in curso_dados.get("grade_curricular", []):
         turmas_formatadas.append({
@@ -429,7 +701,6 @@ async def salvar_diario_eletronico(
         notas_faltas: str = Form(...),
         authorization: str = Header(None)
 ):
-    """Salva as notas, faltas e o conteúdo ministrado pelo professor"""
     checar_db()
     docente_id = validar_token_docente(authorization)
 
@@ -448,5 +719,4 @@ async def salvar_diario_eletronico(
     }
 
     db.collection("diarios").add(registro_diario)
-
     return {"sucesso": True, "mensagem": "Diário registrado com sucesso!"}
