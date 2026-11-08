@@ -431,6 +431,7 @@
                     </div>
 
                     <form id="form-curso" class="space-y-6">
+                        <input type="hidden" id="curso_id_edit" name="curso_id_edit" value="">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Código</label>
@@ -1325,10 +1326,10 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
         div.innerHTML = `
             <div class="flex-1">
                 <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Tipo</label>
-                <select class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs bg-white focus:outline-orange-500 input-aval-tipo">
+                    <select class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs bg-white focus:outline-orange-500 input-aval-tipo">
                     <option value="prova">Prova Escrita</option>
                     <option value="trabalho">Trabalho/Seminário</option>
-                    <option value="pratica">Avaliação Prática</option>
+                            <option value="pratica">Avaliação Prática</option>
                     <option value="desafio">Desafio Gamificado</option>
                 </select>
             </div>
@@ -1412,28 +1413,36 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
             });
         });
 
-        // Guarda esse array dentro do campo oculto (em formato JSON) para enviar ao Python
-        document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
+        // ... (o código que varre os módulos e cria o arrayDisciplinas fica igualzinho) ...
+    document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
 
-        const btn = e.target.querySelector('button[type="submit"]');
-        const textoOriginal = btn.innerText;
-        btn.innerText = "Salvando...";
+    const btn = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Salvando...";
 
-        const formData = new FormData(e.target);
-        const result = await apiRequest('/cursos', 'POST', formData);
+    const formData = new FormData(e.target);
+    const cursoIdEdit = document.getElementById('curso_id_edit').value; // Pega o ID oculto
 
-        if (result && result.sucesso) {
-            alert("Curso registrado com sucesso!");
-            e.target.reset();
-            document.getElementById('container-disciplinas').innerHTML = '';
-            document.getElementById('carga-horaria-total-curso').value = "0 Horas";
-            adicionarDisciplina(); // Recria a primeira disciplina limpa
-            loadCursos();
-        } else {
-            alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
-        }
+    let result;
+    if (cursoIdEdit) {
+        // Se tem ID oculto, significa que estamos EDITANDO (Manda um PUT)
+        result = await apiRequest(`/cursos/${cursoIdEdit}`, 'PUT', formData);
+    } else {
+        // Se NÃO tem ID oculto, estamos CRIANDO UM NOVO (Manda um POST)
+        result = await apiRequest('/cursos', 'POST', formData);
+    }
+
+    if (result && result.sucesso) {
+        alert(cursoIdEdit ? "Curso atualizado com sucesso!" : "Curso registrado com sucesso!");
+
+        // Dispara o click no botão "Cancelar" para resetar a cor do botão e limpar os campos
+        document.querySelector('#form-curso button[type="reset"]').click();
+        loadCursos();
+    } else {
+        alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
         btn.innerText = textoOriginal;
-    });
+    }
+});
 
     // ==========================================
 // SISTEMA DE LISTAGEM E AÇÕES DE CURSOS
@@ -1483,28 +1492,30 @@ async function loadCursos() {
     if (selectDocente) selectDocente.innerHTML = optionsHTML;
 }
 
-// RENDERIZAR LISTA NO MODAL (CORRIGIDO COM TRAVA DE SEGURANÇA)
+/// ==========================================
+// SISTEMA DE LISTAGEM E AÇÕES DE CURSOS
+// ==========================================
+let cursosGlobais = []; // Guarda os cursos na memória para edição rápida
+
 async function renderizarListaCursos() {
     const resposta = await apiRequest('/cursos');
     const tbody = document.getElementById('tabela-lista-cursos');
     if (!tbody || !resposta) return;
 
-    // Mostra o erro na tabela caso a API falhe
     if (resposta.detail) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500 font-bold text-xs">Erro na API: ${resposta.detail}</td></tr>`;
         return;
     }
 
-    const cursos = Array.isArray(resposta) ? resposta : (resposta.cursos || resposta.dados || []);
-
+    cursosGlobais = Array.isArray(resposta) ? resposta : (resposta.cursos || resposta.dados || []);
     tbody.innerHTML = '';
 
-    if (cursos.length === 0) {
+    if (cursosGlobais.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500 font-medium text-xs">Nenhum curso encontrado.</td></tr>`;
         return;
     }
 
-    cursos.forEach(curso => {
+    cursosGlobais.forEach(curso => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
                 <td class="py-3 px-4 text-gray-500 font-mono text-xs">${curso.codigo || '-'}</td>
@@ -1525,8 +1536,80 @@ async function renderizarListaCursos() {
             </tr>
         `;
     });
-    feather.replace(); // Recarrega os ícones dentro da tabela
+    feather.replace();
 }
+
+function alterarCurso(id_firebase) {
+    fecharModalCursos(); // Fecha o modal da lista
+
+    // Procura o curso na memória
+    const curso = cursosGlobais.find(c => c.id === id_firebase);
+    if (!curso) { alert("Erro ao carregar dados do curso."); return; }
+
+    const form = document.getElementById('form-curso');
+
+    // 1. Preenche a "Casca" do curso e o ID oculto
+    document.getElementById('curso_id_edit').value = curso.id;
+    form.codigo.value = curso.codigo || '';
+    form.categoria.value = curso.categoria || 'tecnico';
+    form.nome_curso.value = curso.nome_curso || '';
+    form.modalidade.value = curso.modalidade || 'presencial';
+    form.valor_matricula.value = curso.valor_matricula || '';
+    form.valor_mensalidade.value = curso.valor_mensalidade || '';
+    form.descricao.value = curso.descricao || '';
+    form.foto_capa.value = curso.foto_capa || '';
+
+    // Mudar botão visualmente para avisar que é edição
+    form.querySelector('button[type="submit"]').innerText = "ATUALIZAR CURSO";
+    form.querySelector('button[type="submit"]').classList.replace('bg-teal-500', 'bg-yellow-500');
+    form.querySelector('button[type="submit"]').classList.replace('hover:bg-teal-600', 'hover:bg-yellow-600');
+
+    // 2. Recriar a Grade Curricular (Módulos)
+    document.getElementById('container-disciplinas').innerHTML = ''; // Limpa os atuais
+    contadorDisciplina = 0;
+
+    const grade = curso.grade_curricular || [];
+    if (grade.length === 0) {
+        adicionarDisciplina(); // Deixa 1 em branco se a grade vier vazia
+    } else {
+        grade.forEach(modulo => {
+            adicionarDisciplina(); // Cria o HTML do bloco
+            const bloco = document.getElementById(`disciplina-box-${contadorDisciplina}`);
+
+            // Preenche os inputs normais do módulo
+            bloco.querySelector('.input-nome').value = modulo.nome || '';
+            bloco.querySelector('.input-data-inicio').value = modulo.data_inicio || '';
+            bloco.querySelector('.input-data-fim').value = modulo.data_fim || '';
+            bloco.querySelector('.input-hora-aula-inicio').value = modulo.hora_aula_inicio || '';
+            bloco.querySelector('.input-hora-aula-fim').value = modulo.hora_aula_fim || '';
+            bloco.querySelector('.input-ch-teoria').value = modulo.ch_teoria || 0;
+            bloco.querySelector('.input-ch-pratica').value = modulo.ch_pratica || 0;
+            bloco.querySelector('.input-ch-estagio').value = modulo.ch_estagio || 0;
+            bloco.querySelector('.input-ch-total').value = modulo.ch_total || 0;
+            bloco.querySelector('.input-desc').value = modulo.descricao || '';
+
+            // Marca os dias da semana corretamente
+            const diasSalvos = modulo.dias_aula || [];
+            bloco.querySelectorAll('.input-dias-aula').forEach(cb => {
+                if (diasSalvos.includes(cb.value)) cb.checked = true;
+            });
+        });
+    }
+
+    calcularCargaHorariaGeral();
+}
+
+// Evento de "Cancelar / Limpar" para resetar o form de volta para o estado "Criar"
+document.querySelector('#form-curso button[type="reset"]').addEventListener('click', () => {
+    document.getElementById('curso_id_edit').value = ''; // Limpa o ID
+    const btnSubmit = document.querySelector('#form-curso button[type="submit"]');
+    btnSubmit.innerText = 'Registrar Curso';
+    btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
+    btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
+
+    document.getElementById('container-disciplinas').innerHTML = '';
+    setTimeout(() => adicionarDisciplina(), 10);
+});
 
 // Ações dos Botões
 async function excluirCursoModal(id_firebase) {
