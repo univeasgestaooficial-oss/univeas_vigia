@@ -473,7 +473,7 @@
                                 <input type="number" name="valor_mensalidade" step="0.01" required class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-teal-500">
                             </div>
                         </div>
-                        
+
                          <!-- NOVOS CAMPOS: DURAÇÃO, PROMOÇÃO E VALOR PROMOCIONAL -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
@@ -1563,6 +1563,9 @@ async function renderizarListaCursos() {
 // ==========================================
 // FUNÇÕES DE VISUALIZAÇÃO DE DETALHES
 // ==========================================
+// ==========================================
+// FUNÇÕES DE VISUALIZAÇÃO DE DETALHES
+// ==========================================
 function verDetalhesCurso(id_firebase) {
     const curso = cursosGlobais.find(c => c.id === id_firebase);
     if (!curso) return;
@@ -1573,7 +1576,7 @@ function verDetalhesCurso(id_firebase) {
 
     let modulosHTML = '';
     if(grade.length === 0) {
-        modulosHTML = '<p class="text-sm text-gray-500">Nenhum módulo cadastrado na grade.</p>';
+        modulosHTML = '<p class="text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-100">Nenhum módulo cadastrado na grade.</p>';
     } else {
         grade.forEach((mod, index) => {
             let htmlAvaliacoes = '';
@@ -1610,7 +1613,7 @@ function verDetalhesCurso(id_firebase) {
     // Verifica se tem link de foto de capa para montar o banner
     let bannerCapa = '';
     if (curso.foto_capa && curso.foto_capa.startsWith('http')) {
-        bannerCapa = `<div class="w-full h-40 mb-6 rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+        bannerCapa = `<div class="w-full h-48 mb-6 rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
             <img src="${curso.foto_capa}" alt="Capa do Curso" class="w-full h-full object-cover">
         </div>`;
     }
@@ -1618,46 +1621,53 @@ function verDetalhesCurso(id_firebase) {
     const htmlDetalhes = `
         ${bannerCapa} <!-- Injeta o banner da imagem se existir -->
 
-        <div class="flex items-start justify-between border-b border-gray-100 pb-4 mb-6">
-            <div>
-                <h2 class="text-2xl font-black text-gray-900">${curso.nome_curso}</h2>
-                <div class="flex gap-2 mt-2">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 pb-4 mb-6 gap-4">
+            <div class="flex-1">
+                <h2 class="text-2xl font-black text-gray-900 mb-2">${curso.nome_curso}</h2>
+                <div class="flex flex-wrap gap-2 mb-4">
                     <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">CÓD: ${curso.codigo}</span>
                     <span class="bg-teal-50 text-teal-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">${curso.categoria}</span>
                     <span class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">${curso.modalidade}</span>
                 </div>
+                <!-- BOTÃO DE EDITAR DIRETAMENTE NA FICHA -->
+                <button onclick="alterarCurso('${curso.id}')" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase flex items-center hover:bg-yellow-600 transition shadow-sm">
+                    <i data-feather="edit-2" class="w-4 h-4 mr-2"></i> Editar Dados do Curso
+                </button>
             </div>
-            <div class="text-right bg-teal-50 p-3 rounded-xl border border-teal-100">
-                <p class="text-[10px] font-bold text-teal-700 uppercase">Carga Horária Total</p>
-                <p class="text-xl font-black text-teal-800">${cargaTotal}h</p>
+
+            <div class="text-right bg-teal-50 p-4 rounded-xl border border-teal-100 shrink-0 w-full sm:w-auto flex flex-col items-center sm:items-end justify-center">
+                <p class="text-[10px] font-bold text-teal-700 uppercase mb-1">Carga Horária Total</p>
+                <p class="text-2xl font-black text-teal-800">${cargaTotal}h</p>
             </div>
         </div>
 
-        <!-- GRADE DE INFORMAÇÕES (Expansível para novos campos) -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <!-- GRADE DE INFORMAÇÕES COMPLETAS (5 COLUNAS) -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Valor da Matrícula</p>
-                <p class="text-lg font-black text-gray-800">R$ ${curso.valor_matricula}</p>
+                <p class="text-lg font-black text-gray-800">R$ ${curso.valor_matricula || '0.00'}</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Valor da Mensalidade</p>
-                <p class="text-lg font-black text-teal-600">R$ ${curso.valor_mensalidade}</p>
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Mensalidade Padrão</p>
+                <p class="text-lg font-black text-gray-800">R$ ${curso.valor_mensalidade || '0.00'}</p>
             </div>
-
-            <!-- ADICIONE SEUS NOVOS CAMPOS AQUI. EXEMPLO: -->
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Promocional</p>
+                <p class="text-lg font-black ${curso.promocao_ativa === 'Sim' ? 'text-teal-600' : 'text-gray-400 line-through'}">R$ ${curso.valor_promocional || '0.00'}</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Duração Estimada</p>
-                <p class="text-sm font-bold text-gray-800">${curso.duracao || 'Não informado'}</p>
+                <p class="text-sm font-bold text-gray-800 mt-1">${curso.duracao || 'Não informado'}</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Promoção Ativa</p>
-                <p class="text-sm font-bold text-gray-800">${curso.promocao_ativa || 'Não'}</p>
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Promoção Ativa?</p>
+                <p class="text-sm font-bold ${curso.promocao_ativa === 'Sim' ? 'text-teal-600' : 'text-gray-800'} mt-1">${curso.promocao_ativa || 'Não'}</p>
             </div>
         </div>
 
         <div class="mb-6">
             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 border-l-2 border-teal-500 pl-2">Descrição do Curso</h4>
-            <p class="text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100">${curso.descricao || 'Nenhuma descrição fornecida.'}</p>
+            <p class="text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-100 leading-relaxed">${curso.descricao || 'Nenhuma descrição fornecida.'}</p>
         </div>
 
         <div>
@@ -1673,6 +1683,7 @@ function verDetalhesCurso(id_firebase) {
     document.getElementById('titulo-modal-cursos').innerHTML = '<i data-feather="info" class="text-teal-500 mr-3"></i> Ficha do Curso';
     feather.replace();
 }
+
 function voltarListaCursos() {
     // Volta para a tabela
     document.getElementById('container-detalhes-curso').classList.replace('block', 'hidden');
@@ -1706,12 +1717,12 @@ function alterarCurso(id_firebase) {
     form.modalidade.value = curso.modalidade || 'presencial';
     form.valor_matricula.value = curso.valor_matricula || '';
     form.valor_mensalidade.value = curso.valor_mensalidade || '';
-    
+
      // PREENCHENDO OS NOVOS CAMPOS AO EDITAR
     if (form.duracao) form.duracao.value = curso.duracao || '';
     if (form.promocao_ativa) form.promocao_ativa.value = curso.promocao_ativa || 'Não';
     if (form.valor_promocional) form.valor_promocional.value = curso.valor_promocional || '';
-    
+
     form.descricao.value = curso.descricao || '';
     form.foto_capa.value = curso.foto_capa || '';
 
