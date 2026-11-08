@@ -1373,7 +1373,7 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
     // Inicia com pelo menos 1 disciplina na tela
     window.addEventListener('load', () => { adicionarDisciplina(); });
 
-    document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
+document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const blocosDisciplina = document.querySelectorAll('.item-disciplina');
@@ -1391,11 +1391,17 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
         const blocosAvaliacoes = bloco.querySelectorAll('.item-avaliacao');
 
         blocosAvaliacoes.forEach(aval => {
-            avaliacoesDesteModulo.push({
-                tipo: aval.querySelector('.input-aval-tipo').value,
-                data: aval.querySelector('.input-aval-data').value,
-                hora_inicio: aval.querySelector('.input-aval-hora-inicio').value
-            });
+            const dataAval = aval.querySelector('.input-aval-data').value;
+            // CORREÇÃO: Só salva se a data foi preenchida, ignorando a caixinha em branco
+            if (dataAval) {
+                avaliacoesDesteModulo.push({
+                    tipo: aval.querySelector('.input-aval-tipo').value,
+                    data: dataAval,
+                    hora_inicio: aval.querySelector('.input-aval-hora-inicio').value,
+                    // CORREÇÃO: Captura a hora final corretamente
+                    hora_fim: aval.querySelector('.input-aval-hora-fim') ? aval.querySelector('.input-aval-hora-fim').value : ''
+                });
+            }
         });
 
         arrayDisciplinas.push({
@@ -1410,7 +1416,7 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
             ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
             descricao: bloco.querySelector('.input-desc').value,
             dias_aula: diasAula,
-            avaliacoes: avaliacoesDesteModulo // Salva as avaliações dentro da disciplina
+            avaliacoes: avaliacoesDesteModulo
         });
     });
 
@@ -1422,23 +1428,19 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
     btn.innerText = "Salvando...";
 
     const formData = new FormData(e.target);
-    const cursoIdEdit = document.getElementById('curso_id_edit').value; // Checa se tem ID
+    const cursoIdEdit = document.getElementById('curso_id_edit').value;
 
     let result;
     if (cursoIdEdit) {
-        // Se tem ID oculto, manda atualizar o curso inteiro (PUT)
         result = await apiRequest(`/cursos/${cursoIdEdit}`, 'PUT', formData);
     } else {
-        // Se NÃO tem ID, cria um curso novo do zero (POST)
         result = await apiRequest('/cursos', 'POST', formData);
     }
 
     if (result && result.sucesso) {
         alert(cursoIdEdit ? "Curso atualizado com sucesso!" : "Curso registrado com sucesso!");
-
-        // Simula o clique no botão de reset para limpar o form e voltar para o modo "Criar"
         document.querySelector('#form-curso button[type="reset"]').click();
-        loadCursos(); // Recarrega as tabelas e selects do sistema
+        loadCursos();
     } else {
         alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
     }
@@ -1648,15 +1650,13 @@ function fecharModalCursos() {
 }
 
 function alterarCurso(id_firebase) {
-    fecharModalCursos(); // Fecha o modal da lista
+    fecharModalCursos();
 
-    // Procura o curso na memória
     const curso = cursosGlobais.find(c => c.id === id_firebase);
     if (!curso) { alert("Erro ao carregar dados do curso."); return; }
 
     const form = document.getElementById('form-curso');
 
-    // 1. Preenche a "Casca" do curso e o ID oculto
     document.getElementById('curso_id_edit').value = curso.id;
     form.codigo.value = curso.codigo || '';
     form.categoria.value = curso.categoria || 'tecnico';
@@ -1667,24 +1667,22 @@ function alterarCurso(id_firebase) {
     form.descricao.value = curso.descricao || '';
     form.foto_capa.value = curso.foto_capa || '';
 
-    // Mudar botão visualmente para avisar que é edição
     form.querySelector('button[type="submit"]').innerText = "ATUALIZAR CURSO";
     form.querySelector('button[type="submit"]').classList.replace('bg-teal-500', 'bg-yellow-500');
     form.querySelector('button[type="submit"]').classList.replace('hover:bg-teal-600', 'hover:bg-yellow-600');
 
-    // 2. Recriar a Grade Curricular (Módulos)
-    document.getElementById('container-disciplinas').innerHTML = ''; // Limpa os atuais
+    document.getElementById('container-disciplinas').innerHTML = '';
     contadorDisciplina = 0;
 
     const grade = curso.grade_curricular || [];
     if (grade.length === 0) {
-        adicionarDisciplina(); // Deixa 1 em branco se a grade vier vazia
+        adicionarDisciplina();
     } else {
         grade.forEach(modulo => {
-            adicionarDisciplina(); // Cria o HTML do bloco
-            const bloco = document.getElementById(`disciplina-box-${contadorDisciplina}`);
+            adicionarDisciplina();
+            const blocoId = contadorDisciplina;
+            const bloco = document.getElementById(`disciplina-box-${blocoId}`);
 
-            // Preenche os inputs normais do módulo
             bloco.querySelector('.input-nome').value = modulo.nome || '';
             bloco.querySelector('.input-data-inicio').value = modulo.data_inicio || '';
             bloco.querySelector('.input-data-fim').value = modulo.data_fim || '';
@@ -1696,11 +1694,23 @@ function alterarCurso(id_firebase) {
             bloco.querySelector('.input-ch-total').value = modulo.ch_total || 0;
             bloco.querySelector('.input-desc').value = modulo.descricao || '';
 
-            // Marca os dias da semana corretamente
             const diasSalvos = modulo.dias_aula || [];
             bloco.querySelectorAll('.input-dias-aula').forEach(cb => {
                 if (diasSalvos.includes(cb.value)) cb.checked = true;
             });
+
+            // CORREÇÃO: Limpa a avaliação em branco padrão antes de inserir as salvas
+            const containerAval = document.getElementById(`container-avaliacoes-${blocoId}`);
+            if (containerAval) containerAval.innerHTML = '';
+
+            const avaliacoesSalvas = modulo.avaliacoes || [];
+            if (avaliacoesSalvas.length === 0) {
+                adicionarAvaliacao(blocoId); // Deixa uma em branco se não tinha nada
+            } else {
+                avaliacoesSalvas.forEach(aval => {
+                    adicionarAvaliacao(blocoId, aval);
+                });
+            }
         });
     }
 
