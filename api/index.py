@@ -7,6 +7,7 @@ import firebase_admin
 from fastapi import FastAPI, Form, HTTPException, File, UploadFile
 from fastapi.responses import Response
 from firebase_admin import credentials, firestore, storage
+from fastapi.responses import HTMLResponse
 
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
@@ -233,56 +234,123 @@ async def obter_curso(curso_id: str):
 # ==========================================
 # 4.1 ROTA DE PDF DO CURSO (FALTAVA E CAUSAVA O ERRO)
 # ==========================================
-@app.get("/api/v1/cursos/{curso_id}/pdf")
+@app.get("/api/v1/cursos/{curso_id}/pdf", response_class=HTMLResponse)
 async def gerar_pdf_curso(curso_id: str):
     checar_db()
     doc = db.collection("cursos").document(curso_id).get()
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Curso não encontrado para gerar PDF.")
 
-    curso_data = doc.to_dict()
-    nome_curso = curso_data.get('nome_curso', 'CURSO')
+    curso = doc.to_dict()
+    nome_curso = curso.get('nome_curso', 'CURSO')
+    codigo = curso.get('codigo', 'N/A')
+    categoria = curso.get('categoria', 'Técnico').upper()
+    modalidade = curso.get('modalidade', 'Presencial').upper()
+    duracao = curso.get('duracao', 'Não informada')
+    valor_mat = curso.get('valor_matricula', '0.00')
+    valor_mens = curso.get('valor_mensalidade', '0.00')
+    descricao = curso.get('descricao', 'Nenhuma descrição informada.')
 
-    # Gera um PDF básico em texto/bytes simples para retorno imediato no navegador
-    conteudo_pdf = f"""%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 595 842] /Contents 4 0 R >>
-endobj
-4 0 obj
-<< /Length 55 >>
-stream
-BT
-/F1 18 Tf
-50 750 Td
-(MATRIZ CURRICULAR: {nome_curso}) Tj
-ET
-endstream
-endobj
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000262 00000 n 
-trailer
-<< /Size 5 /Root 1 0 R >>
-startxref
-348
-%%EOF"""
+    grade = curso.get('grade_curricular', [])
 
-    return Response(
-        content=conteudo_pdf.encode('latin1'),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=Matriz_Curricular_{curso_id}.pdf"}
-    )
+    # Calcula carga horária total
+    ch_total_geral = sum([int(m.get('ch_total', 0)) for m in grade])
 
+    # Monta o HTML institucional estilizado para impressão/PDF
+    modulos_html = ""
+    for i, m in enumerate(grade):
+        dias = ", ".join(m.get('dias_aula', [])) or "A definir"
+
+        avaliacoes_html = ""
+        for aval in m.get('avaliacoes', []):
+            avaliacoes_html += f"""
+                <div style="background: #fff7ed; border-left: 3px solid #f97316; padding: 6px 10px; margin-top: 4px; font-size: 11px;">
+                    <b>{aval.get('tipo', 'Avaliação').upper()}</b> — Data: {aval.get('data', 'A definir')} ({aval.get('hora_inicio', '--:--')} às {aval.get('hora_fim', '--:--')})
+                </div>
+            """
+
+        modulos_html += f"""
+        <div style="margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; page-break-inside: avoid; background: #ffffff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #14b8a6; padding-bottom: 8px; margin-bottom: 10px;">
+                <h3 style="margin: 0; color: #111827; font-size: 14px; text-transform: uppercase;">
+                    Módulo {i + 1}: {m.get('nome', 'Disciplina')}
+                </h3>
+                <span style="background: #14b8a6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">
+                    {m.get('ch_total', 0)}h Total
+                </span>
+            </div>
+            <p style="margin: 5px 0 10px 0; color: #4b5563; font-size: 12px;"><b>Semestre/Bloco:</b> {m.get('semestre', '1º Semestre')} | <b>Ementa:</b> {m.get('descricao', 'Sem descrição.')}</p>
+
+            <table style="width: 100%; font-size: 11px; color: #374151; margin-bottom: 8px; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 4px 0;"><b>Período:</b> {m.get('data_inicio', '--')} a {m.get('data_fim', '--')}</td>
+                    <td style="padding: 4px 0;"><b>Dias de Aula:</b> {dias}</td>
+                    <td style="padding: 4px 0;"><b>Horário:</b> {m.get('hora_aula_inicio', '--')} às {m.get('hora_aula_fim', '--')}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 4px 0;"><b>Teoria:</b> {m.get('ch_teoria', 0)}h</td>
+                    <td style="padding: 4px 0;"><b>Prática:</b> {m.get('ch_pratica', 0)}h</td>
+                    <td style="padding: 4px 0;"><b>Estágio:</b> {m.get('ch_estagio', 0)}h</td>
+                </tr>
+            </table>
+            {avaliacoes_html}
+        </div>
+        """
+
+    html_completo = f"""<!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Matriz Curricular - {nome_curso}</title>
+        <style>
+            @page {{ size: A4; margin: 20mm; }}
+            body {{ font-family: 'Helvetica', 'Arial', sans-serif; color: #1f2937; line-height: 1.5; margin: 0; padding: 0; }}
+            .header {{ text-align: center; border-bottom: 3px solid #14b8a6; padding-bottom: 15px; margin-bottom: 25px; }}
+            .header h1 {{ font-size: 20px; color: #111827; margin: 5px 0; text-transform: uppercase; }}
+            .header h2 {{ font-size: 14px; color: #14b8a6; margin: 0; text-transform: uppercase; letter-spacing: 1px; }}
+            .info-box {{ background: #f3f4f6; border-radius: 8px; padding: 15px; margin-bottom: 25px; font-size: 12px; }}
+            .info-grid {{ width: 100%; border-collapse: collapse; }}
+            .info-grid td {{ padding: 6px 10px; }}
+            .footer {{ margin-top: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; pt: 10px; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h2>ESCOLA UNIVEAS — Sistema Integrado de Gestão Acadêmica</h2>
+            <h1>Matriz Curricular Oficial</h1>
+        </div>
+
+        <div class="info-box">
+            <table class="info-grid">
+                <tr>
+                    <td><b>Curso:</b> {nome_curso}</td>
+                    <td><b>Código:</b> {codigo}</td>
+                </tr>
+                <tr>
+                    <td><b>Categoria:</b> {categoria}</td>
+                    <td><b>Modalidade:</b> {modalidade}</td>
+                </tr>
+                <tr>
+                    <td><b>Duração Estimada:</b> {duracao}</td>
+                    <td><b>Carga Horária Total:</b> <span style="color: #0d9488; font-weight: bold;">{ch_total_geral} Horas</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <h3 style="font-size: 14px; text-transform: uppercase; border-left: 4px solid #14b8a6; padding-left: 8px; margin-bottom: 15px; color: #111827;">
+            Estrutura Curricular e Cronograma de Módulos
+        </h3>
+
+        {modulos_html}
+
+        <div class="footer">
+            Documento gerado eletronicamente via SIGA UNIVEAS em {datetime.now().strftime('%d/%m/%Y às %H:%M')}.<br>
+            Travessa Lauro Sodré, Centro - Vigia de Nazaré / PA.
+        </div>
+    </body>
+    </html>
+    """
+    return html_completo
 
 @app.put("/api/v1/cursos/{curso_id}")
 async def atualizar_curso(
