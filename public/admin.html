@@ -48,6 +48,7 @@
     </div>
 </div>
 
+
     <!-- ENVOLVA O RESTO DO SISTEMA AQUI -->
     <div id="app-container" class="hidden h-full w-full flex-1 flex">
         <!-- Seu <aside> e <main> existentes entram aqui -->
@@ -1556,7 +1557,6 @@ async function renderizarListaCursos() {
                     <button onclick="verDetalhesCurso('${curso.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Ver Detalhes do Curso">
                         <i data-feather="eye" class="h-4 w-4"></i>
                     </button>
-                    <!-- NOVA FUNÇÃO DE IMPRESSÃO APLICADA AQUI -->
                     <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Imprimir Card do Curso">
                         <i data-feather="printer" class="h-4 w-4"></i>
                     </button>
@@ -1878,7 +1878,7 @@ function alterarCurso(id_firebase) {
             if(selectSemestre) selectSemestre.value = modulo.semestre || '1º Semestre';
 
             bloco.querySelector('.input-nome').value = modulo.nome || '';
-
+            
             const inputFotoMod = bloco.querySelector('.input-foto-modulo');
             if(inputFotoMod) {
                 inputFotoMod.value = modulo.foto_modulo || modulo.foto || modulo.imagem || modulo.capa_modulo || '';
@@ -1941,164 +1941,8 @@ async function excluirCursoModal(id_firebase) {
     }
 }
 
-// ==========================================
-// FUNÇÃO DE IMPRESSÃO SUPER PROFISSIONAL
-// ==========================================
 function imprimirCardCurso(id_firebase) {
-    const curso = cursosGlobais.find(c => c.id === id_firebase);
-    if (!curso) {
-        alert("Curso não encontrado.");
-        return;
-    }
-
-    let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
-    let grade = [];
-    try {
-        if (typeof gradeRaw === 'string') grade = JSON.parse(gradeRaw);
-        else if (Array.isArray(gradeRaw)) grade = gradeRaw;
-    } catch(e) { grade = []; }
-
-    let cargaTotal = 0;
-    let modulosHTML = '';
-
-    if (grade.length === 0) {
-        modulosHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #64748b; font-size: 13px;">Nenhum módulo cadastrado nesta matriz curricular.</td></tr>';
-    } else {
-        grade.forEach((mod) => {
-            let totalModulo = parseInt(mod.ch_total) || 0;
-            cargaTotal += totalModulo;
-            modulosHTML += `
-                <tr style="border-bottom: 1px solid #e2e8f0; page-break-inside: avoid;">
-                    <td style="padding: 12px; font-weight: bold; color: #1e293b; width: 20%; font-size: 12px;">${mod.semestre || 'Módulo Único'}</td>
-                    <td style="padding: 12px; color: #334155; width: 40%; font-weight: 600; font-size: 12px;">
-                        ${mod.nome || 'Módulo Sem Nome'}<br>
-                        <span style="font-size: 10px; font-weight: normal; color: #64748b;">${mod.descricao || 'Sem ementa detalhada'}</span>
-                    </td>
-                    <td style="padding: 12px; text-align: center; color: #0f172a; font-size: 11px; width: 25%;">
-                        Teoria: ${mod.ch_teoria || 0}h | Prática: ${mod.ch_pratica || 0}h<br>Estágio: ${mod.ch_estagio || 0}h
-                    </td>
-                    <td style="padding: 12px; text-align: center; color: #0d9488; font-weight: 900; font-size: 13px; width: 15%;">
-                        ${totalModulo}h
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    const dataAtual = new Date();
-    const dataFormatada = dataAtual.toLocaleDateString('pt-BR');
-    const horaFormatada = dataAtual.toLocaleTimeString('pt-BR');
-
-    const janelaImpressao = window.open('', '_blank');
-    janelaImpressao.document.write(`
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-            <meta charset="UTF-8">
-            <title>Matriz Curricular Oficial - ${curso.nome_curso}</title>
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-                @page { size: A4; margin: 15mm; }
-                body { font-family: 'Inter', sans-serif; color: #1e293b; margin: 0; padding: 0; background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-                /* CABEÇALHO */
-                .header { text-align: center; border-bottom: 4px solid #0d9488; padding-bottom: 20px; margin-bottom: 25px; }
-                .header img { height: 60px; margin-bottom: 12px; }
-                .header h1 { font-size: 24px; text-transform: uppercase; color: #0f172a; margin: 5px 0; font-weight: 900; letter-spacing: 0.5px; }
-                .header p { font-size: 12px; color: #64748b; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-
-                /* INFO DO CURSO */
-                .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-                .info-item { font-size: 12px; color: #475569; margin-bottom: 8px; }
-                .info-item strong { color: #1e293b; font-weight: 700; display: inline-block; width: 135px; }
-                .info-highlight { background: #ccfbf1; color: #115e59; padding: 4px 8px; border-radius: 4px; font-weight: 900; font-size: 14px; }
-
-                /* TABELA DE MÓDULOS */
-                .section-title { font-size: 14px; text-transform: uppercase; color: #0f766e; border-left: 5px solid #0d9488; padding-left: 12px; margin-bottom: 15px; font-weight: 900; letter-spacing: 0.5px; }
-
-                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; table-layout: fixed; }
-                th { background: #0d9488; color: #ffffff; text-align: left; padding: 14px 12px; text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 1px; border: 1px solid #0f766e; }
-                th.center { text-align: center; }
-                td { border: 1px solid #e2e8f0; vertical-align: top; }
-
-                /* RODAPÉ (ASSINATURAS E SISTEMA) */
-                .footer-signatures { margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; page-break-inside: avoid; }
-                .signature-line { border-top: 1px solid #475569; padding-top: 8px; font-size: 12px; font-weight: 700; color: #334155; }
-                .signature-sub { font-size: 10px; color: #64748b; font-weight: normal; margin-top: 4px; }
-
-                .footer-sys { margin-top: 40px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px; }
-
-                /* CONTROLE DE IMPRESSÃO */
-                @media print {
-                    .no-print { display: none !important; }
-                }
-                .btn-print { background: #0d9488; color: white; border: none; padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin: 20px auto; display: block; text-transform: uppercase; letter-spacing: 1px; }
-                .btn-print:hover { background: #0f766e; }
-            </style>
-        </head>
-        <body>
-            <div class="no-print" style="background: #f1f5f9; padding: 15px; text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 20px;">
-                <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Baixar Matriz Curricular (PDF)</button>
-                <p style="font-size: 12px; color: #64748b; margin-top: 5px;">Ajuste o formato para A4 nas configurações da impressora.</p>
-            </div>
-
-            <div class="header">
-                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS Logo">
-                <h1>Matriz Curricular Oficial</h1>
-                <p>Sistema Integrado de Gestão Acadêmica</p>
-            </div>
-
-            <div class="info-box">
-                <div>
-                    <div class="info-item"><strong>Nome do Curso:</strong> <span style="font-size: 14px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${curso.nome_curso || 'N/D'}</span></div>
-                    <div class="info-item"><strong>Código da Ficha:</strong> ${curso.codigo || 'N/D'}</div>
-                    <div class="info-item"><strong>Categoria:</strong> ${curso.categoria ? curso.categoria.toUpperCase() : 'N/D'}</div>
-                </div>
-                <div>
-                    <div class="info-item"><strong>Modalidade:</strong> ${curso.modalidade ? curso.modalidade.toUpperCase() : 'N/D'}</div>
-                    <div class="info-item"><strong>Duração Estimada:</strong> ${curso.duracao || 'Não informada'}</div>
-                    <div class="info-item mt-2"><strong>Carga Horária Total:</strong> <span class="info-highlight">${cargaTotal} Horas</span></div>
-                </div>
-            </div>
-
-            <h3 class="section-title">Estrutura Curricular e Módulos</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 20%;">Semestre / Bloco</th>
-                        <th style="width: 40%;">Módulo / Disciplina</th>
-                        <th style="width: 25%;" class="center">Detalhamento (C.H.)</th>
-                        <th style="width: 15%;" class="center">Total (h)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${modulosHTML}
-                </tbody>
-            </table>
-
-            <div class="footer-signatures">
-                <div>
-                    <div class="signature-line">Coordenação Pedagógica</div>
-                    <div class="signature-sub">Assinatura / Carimbo Institucional</div>
-                </div>
-                <div>
-                    <div class="signature-line">Direção Geral UNIVEAS</div>
-                    <div class="signature-sub">Assinatura / Carimbo Institucional</div>
-                </div>
-            </div>
-
-            <div class="footer-sys">
-                Documento emitido eletronicamente pelo Sistema UNIVEAS em ${dataFormatada} às ${horaFormatada}.<br>
-                Autenticidade sujeita à verificação na secretaria da instituição.
-            </div>
-
-            <script>
-                window.onload = function() { setTimeout(() => { window.print(); }, 500); };
-            </script>
-        </body>
-        </html>
-    `);
-    janelaImpressao.document.close();
+    alert("Gerando PDF do Card do Curso " + id_firebase + " (Com Ementa e Grade).");
 }
 
 </script>
