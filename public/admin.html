@@ -1531,10 +1531,11 @@ let cursosGlobais = [];
 async function renderizarListaCursos() {
     const resposta = await apiRequest('/cursos');
     const tbody = document.getElementById('tabela-lista-cursos');
-    if (!tbody || !resposta) return;
+    if (!tbody) return;
 
-    if (resposta.detail) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500 font-bold text-xs">Erro na API: ${resposta.detail}</td></tr>`;
+    if (!resposta || resposta.detail) {
+        const msgErro = resposta?.detail || "Erro de conexão com o servidor.";
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500 font-bold text-xs">Erro na API: ${msgErro}</td></tr>`;
         return;
     }
 
@@ -1542,7 +1543,7 @@ async function renderizarListaCursos() {
     tbody.innerHTML = '';
 
     if (cursosGlobais.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500 font-medium text-xs">Nenhum curso encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500 font-medium text-xs">Nenhum curso cadastrado no banco.</td></tr>`;
         return;
     }
 
@@ -1554,16 +1555,16 @@ async function renderizarListaCursos() {
                 <td class="py-3 px-4 text-gray-500 uppercase text-[10px] tracking-wider">${curso.modalidade || '-'}</td>
                 <td class="py-3 px-4 text-teal-600 font-black">R$ ${curso.valor_mensalidade || '0.00'}</td>
                 <td class="py-3 px-4 text-right space-x-1 flex justify-end">
-                    <button onclick="verDetalhesCurso('${curso.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Ver Detalhes do Curso">
+                    <button onclick="verDetalhesCurso('${curso.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Ver Detalhes">
                         <i data-feather="eye" class="h-4 w-4"></i>
                     </button>
-                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Imprimir Card do Curso">
+                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Imprimir PDF">
                         <i data-feather="printer" class="h-4 w-4"></i>
                     </button>
-                    <button onclick="alterarCurso('${curso.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Curso">
+                    <button onclick="alterarCurso('${curso.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar">
                         <i data-feather="edit" class="h-4 w-4"></i>
                     </button>
-                    <button onclick="excluirCursoModal('${curso.id}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Excluir Curso">
+                    <button onclick="excluirCursoModal('${curso.id}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Excluir">
                         <i data-feather="trash-2" class="h-4 w-4"></i>
                     </button>
                 </td>
@@ -1944,7 +1945,7 @@ async function excluirCursoModal(id_firebase) {
 function imprimirCardCurso(id_firebase) {
     // Abre a rota de PDF diretamente no navegador passando o ID do curso
     const token = localStorage.getItem('token_siga');
-    
+
     // Como o fetch com blob é mais seguro para passar o token Bearer e baixar o arquivo:
     fetch(`${API_BASE_URL}/cursos/${id_firebase}/pdf`, {
         method: 'GET',
