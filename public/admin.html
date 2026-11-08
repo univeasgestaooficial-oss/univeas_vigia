@@ -586,16 +586,6 @@
                                     </select>
                                 </div>
                             </div>
-
-                            <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno de Atuação</label>
-                                <select name="turno_atuacao" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                    <option value="manha">Manhã</option>
-                                    <option value="tarde">Tarde</option>
-                                    <option value="noite">Noite</option>
-                                    <option value="integral">Integral</option>
-                                </select>
-                            </div>
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
                                 <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center"><i data-feather="credit-card" class="h-3 w-3 mr-1.5"></i> Dados Bancários</p>
                                 <div class="grid grid-cols-3 gap-2">
@@ -1371,49 +1361,47 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
     window.addEventListener('load', () => { adicionarDisciplina(); });
 
     document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    e.preventDefault();
 
-        const blocosDisciplina = document.querySelectorAll('.item-disciplina');
-        if(blocosDisciplina.length === 0) {
-            alert("Adicione pelo menos um Módulo/Disciplina!"); return;
-        }
+    const blocosDisciplina = document.querySelectorAll('.item-disciplina');
+    if(blocosDisciplina.length === 0) {
+        alert("Adicione pelo menos um Módulo/Disciplina!"); return;
+    }
 
-        let arrayDisciplinas = [];
+    let arrayDisciplinas = [];
 
-        blocosDisciplina.forEach(bloco => {
-            // Pega os dias marcados
-            const diasAula = Array.from(bloco.querySelectorAll('.input-dias-aula:checked')).map(cb => cb.value);
+    // Varre a tela pegando o curso inteiro (Módulos e Avaliações)
+    blocosDisciplina.forEach(bloco => {
+        const diasAula = Array.from(bloco.querySelectorAll('.input-dias-aula:checked')).map(cb => cb.value);
 
-            // Captura todas as avaliações deste módulo específico
-            let avaliacoesDesteModulo = [];
-            const blocosAvaliacoes = bloco.querySelectorAll('.item-avaliacao');
+        let avaliacoesDesteModulo = [];
+        const blocosAvaliacoes = bloco.querySelectorAll('.item-avaliacao');
 
-            blocosAvaliacoes.forEach(aval => {
-                avaliacoesDesteModulo.push({
-                    tipo: aval.querySelector('.input-aval-tipo').value,
-                    data: aval.querySelector('.input-aval-data').value,
-                    hora_inicio: aval.querySelector('.input-aval-hora-inicio').value,
-                    hora_fim: aval.querySelector('.input-aval-hora-fim').value
-                });
-            });
-
-            arrayDisciplinas.push({
-                nome: bloco.querySelector('.input-nome').value,
-                data_inicio: bloco.querySelector('.input-data-inicio').value,
-                data_fim: bloco.querySelector('.input-data-fim').value,
-                hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
-                hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
-                ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
-                ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
-                ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
-                ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
-                descricao: bloco.querySelector('.input-desc').value,
-                dias_aula: diasAula,
-                avaliacoes: avaliacoesDesteModulo // As avaliações agora vão como um Array aninhado
+        blocosAvaliacoes.forEach(aval => {
+            avaliacoesDesteModulo.push({
+                tipo: aval.querySelector('.input-aval-tipo').value,
+                data: aval.querySelector('.input-aval-data').value,
+                hora_inicio: aval.querySelector('.input-aval-hora-inicio').value
             });
         });
 
-        // ... (o código que varre os módulos e cria o arrayDisciplinas fica igualzinho) ...
+        arrayDisciplinas.push({
+            nome: bloco.querySelector('.input-nome').value,
+            data_inicio: bloco.querySelector('.input-data-inicio').value,
+            data_fim: bloco.querySelector('.input-data-fim').value,
+            hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
+            hora_aula_fim: bloco.querySelector('.input-hora-aula-fim').value,
+            ch_teoria: parseInt(bloco.querySelector('.input-ch-teoria').value) || 0,
+            ch_pratica: parseInt(bloco.querySelector('.input-ch-pratica').value) || 0,
+            ch_estagio: parseInt(bloco.querySelector('.input-ch-estagio').value) || 0,
+            ch_total: parseInt(bloco.querySelector('.input-ch-total').value) || 0,
+            descricao: bloco.querySelector('.input-desc').value,
+            dias_aula: diasAula,
+            avaliacoes: avaliacoesDesteModulo // Salva as avaliações dentro da disciplina
+        });
+    });
+
+    // Guarda esse array no campo oculto em formato JSON
     document.getElementById('disciplinas_json').value = JSON.stringify(arrayDisciplinas);
 
     const btn = e.target.querySelector('button[type="submit"]');
@@ -1421,29 +1409,29 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
     btn.innerText = "Salvando...";
 
     const formData = new FormData(e.target);
-    const cursoIdEdit = document.getElementById('curso_id_edit').value; // Pega o ID oculto
+    const cursoIdEdit = document.getElementById('curso_id_edit').value; // Checa se tem ID
 
     let result;
     if (cursoIdEdit) {
-        // Se tem ID oculto, significa que estamos EDITANDO (Manda um PUT)
+        // Se tem ID oculto, manda atualizar o curso inteiro (PUT)
         result = await apiRequest(`/cursos/${cursoIdEdit}`, 'PUT', formData);
     } else {
-        // Se NÃO tem ID oculto, estamos CRIANDO UM NOVO (Manda um POST)
+        // Se NÃO tem ID, cria um curso novo do zero (POST)
         result = await apiRequest('/cursos', 'POST', formData);
     }
 
     if (result && result.sucesso) {
         alert(cursoIdEdit ? "Curso atualizado com sucesso!" : "Curso registrado com sucesso!");
 
-        // Dispara o click no botão "Cancelar" para resetar a cor do botão e limpar os campos
+        // Simula o clique no botão de reset para limpar o form e voltar para o modo "Criar"
         document.querySelector('#form-curso button[type="reset"]').click();
-        loadCursos();
+        loadCursos(); // Recarrega as tabelas e selects do sistema
     } else {
         alert(typeof result?.detail === 'object' ? JSON.stringify(result.detail) : result?.detail || "Erro ao salvar o curso.");
-        btn.innerText = textoOriginal;
     }
-});
 
+    btn.innerText = textoOriginal;
+});
     // ==========================================
 // SISTEMA DE LISTAGEM E AÇÕES DE CURSOS
 // ==========================================
