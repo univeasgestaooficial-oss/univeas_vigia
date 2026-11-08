@@ -51,7 +51,7 @@
 
     <!-- ENVOLVA O RESTO DO SISTEMA AQUI -->
     <div id="app-container" class="hidden h-full w-full flex-1 flex">
-        
+
     <!-- ==========================================
          MENU LATERAL CLARO E SUAVE
          ========================================== -->
@@ -218,6 +218,7 @@
                         <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
                             <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula de Aluno
                         </h4>
+                        <!-- ADICIONADO ID: form-matricula -->
                         <form id="form-matricula" class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -471,7 +472,7 @@
                             </div>
                         </div>
 
-                        <!-- NOVOS CAMPOS: DURAÇÃO, PROMOÇÃO E VALOR PROMOCIONAL -->
+                         <!-- NOVOS CAMPOS: DURAÇÃO, PROMOÇÃO E VALOR PROMOCIONAL -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Duração Estimada</label>
@@ -501,7 +502,6 @@
                                 <input type="url" name="foto_capa" placeholder="https://exemplo.com/foto.jpg" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 bg-white">
                             </div>
                         </div>
-                        
                         <!-- CONTAINER DA GRADE CURRICULAR (MÓDULOS) -->
                         <div class="border-t border-gray-100 pt-6 mt-6">
                             <div class="flex items-center justify-between mb-4">
@@ -1552,7 +1552,7 @@ async function renderizarListaCursos() {
                     <button onclick="verDetalhesCurso('${curso.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Ver Detalhes do Curso">
                         <i data-feather="eye" class="h-4 w-4"></i>
                     </button>
-                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Baixar PDF da Matriz">
+                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Imprimir Card do Curso">
                         <i data-feather="printer" class="h-4 w-4"></i>
                     </button>
                     <button onclick="alterarCurso('${curso.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Curso">
@@ -1851,17 +1851,19 @@ async function excluirCursoModal(id_firebase) {
 }
 
 // ------------------------------------------------------------------
-// FUNÇÃO CORRIGIDA DE DOWNLOAD DO PDF (SE COMUNICA COM O SEU PYTHON)
+// FUNÇÃO FINAL DE DOWNLOAD - PEGA O PDF DA API E BAIXA NO NAVEGADOR
 // ------------------------------------------------------------------
 async function imprimirCardCurso(id_firebase) {
-    // Feedback visual (Muda o ícone para um loader)
     const btn = document.querySelector(`button[onclick="imprimirCardCurso('${id_firebase}')"]`);
-    const conteudoOriginal = btn.innerHTML;
-    btn.innerHTML = '<svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-    btn.disabled = true;
+    let conteudoOriginal = '';
+
+    if (btn) {
+        conteudoOriginal = btn.innerHTML;
+        btn.innerHTML = '<svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+        btn.disabled = true;
+    }
 
     try {
-        // Faz a requisição para o seu FastAPI gerar o PDF do curso específico
         const response = await fetch(`${API_BASE_URL}/cursos/${id_firebase}/pdf`, {
             method: 'GET',
             headers: {
@@ -1871,11 +1873,10 @@ async function imprimirCardCurso(id_firebase) {
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
-            alert(err.detail || "Erro ao gerar o PDF no servidor.");
+            alert(err.detail || "Erro ao gerar o PDF da Matriz Curricular no servidor.");
             throw new Error("Falha na API");
         }
 
-        // Pega o binário (blob) gerado pela API e força o navegador a fazer o download
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1883,20 +1884,20 @@ async function imprimirCardCurso(id_firebase) {
         a.href = url;
         a.download = `Matriz_Curricular_${id_firebase}.pdf`;
         document.body.appendChild(a);
-        
-        a.click(); // Inicia o download
-        
-        // Limpeza de memória
+
+        a.click();
+
         window.URL.revokeObjectURL(url);
         a.remove();
 
     } catch (error) {
         console.error("Erro no download do PDF:", error);
     } finally {
-        // Restaura o ícone original do botão (ícone da impressora)
-        btn.innerHTML = conteudoOriginal;
-        btn.disabled = false;
-        feather.replace();
+        if (btn) {
+            btn.innerHTML = conteudoOriginal;
+            btn.disabled = false;
+            feather.replace();
+        }
     }
 }
 
