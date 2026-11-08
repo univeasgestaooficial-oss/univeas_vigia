@@ -1,3 +1,9 @@
+from fastapi import Response
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+import io
 import os
 import json
 import uuid
@@ -320,22 +326,78 @@ async def excluir_curso(curso_id: str):
 @app.get("/api/v1/cursos/{curso_id}/pdf")
 async def gerar_pdf_curso(curso_id: str):
     checar_db()
-    doc = db.collection("cursos").document(curso_id).get()
-    if not doc.exists:
+    doc_ref = db.collection("cursos").document(curso_id).get()
+    if not doc_ref.exists:
         raise HTTPException(status_code=404, detail="Curso não encontrado.")
 
-    curso = doc.to_dict()
+    curso = doc_ref.to_dict()
     nome_curso = curso.get('nome_curso', 'CURSO')
     grade = curso.get('grade_curricular', [])
 
-    modulos_html = ""
+    # Buffer em memória para gerar o PDF via ReportLab (100% compatível com Vercel)
+    buffer = io.BytesIO()
+    pdf = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40, leftMargin=40,
+        topMargin=40, bottomMargin=40
+    )
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Estilos customizados
+    title_style = ParagraphStyle(
+        'HeaderTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        textColor=colors.HexColor('#0f766e'),
+        alignment=1,  # Centralizado
+        spaceAfter=4
+    )
+
+    subtitle_style = ParagraphStyle(
+        'HeaderSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        textColor=colors.HexColor('#334155'),
+        alignment=1,
+        spaceAfter=15
+    )
+
+    module_style = ParagraphStyle(
+        'ModuleTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        textColor=colors.HexColor('#0f172a'),
+        spaceBefore=10,
+        spaceAfter=5
+    )
+
+    # Cabeçalho Institucional
+    elements.append(Paragraph("UNIVEAS", title_style))
+    elements.append(Paragraph(
+        "UNIÃO VIGIENSE DE ENSINO E ASSISTÊNCIA À SAÚDE<br/>CNPJ: 53.199.321/0001-23 | Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA",
+        subtitle_style))
+    elements.append(Paragraph(f"<b>MATRIZ CURRICULAR DO CURSO: {nome_curso}</b>",
+                              ParagraphStyle('DocTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                             fontSize=11, textColor=colors.HexColor('#0f172a'), alignment=1,
+                                             spaceAfter=15)))
+
+    # Montagem dos Módulos em Tabelas
     for i, m in enumerate(grade):
+        elements.append(Paragraph(f"MÓDULO {i + 1}: {m.get('nome', '').upper()}", module_style))
+
+        # Cabeçalho e linhas da tabela
+        table_data = [
+            ['DISCIPLINAS', 'TEORIA', 'PRÁTICA', 'ES', 'TOTAL']
+        ]
+
         disciplinas = m.get('disciplinas', [])
-        linhas_tabela = ""
-        ch_teoria_mod = 0
-        ch_pratica_mod = 0
-        ch_es_mod = 0
-        ch_total_mod = 0
+        t_mod, p_mod, es_mod, tot_mod = 0, 0, 0, 0
 
         if disciplinas:
             for disc in disciplinas:
@@ -344,274 +406,76 @@ async def gerar_pdf_curso(curso_id: str):
                 es = int(disc.get('ch_es', 0))
                 tot = t + p + es
 
-                ch_teoria_mod += t
-                ch_pratica_mod += p
-                ch_es_mod += es
-                ch_total_mod += tot
+                t_mod += t
+                p_mod += p
+                es_mod += es
+                tot_mod += tot
 
-                linhas_tabela += f"""
-                <tr>
-                    <td>{disc.get('nome', 'Disciplina')}</td>
-                    <td style="text-align: center;">{t if t > 0 else '-'}</td>
-                    <td style="text-align: center;">{p if p > 0 else '-'}</td>
-                    <td style="text-align: center;">{es if es > 0 else '-'}</td>
-                    <td style="text-align: center; font-weight: bold;">{tot}</td>
-                </tr>
-                """
+                table_data.append([
+                    disc.get('nome', 'Disciplina'),
+                    str(t) if t > 0 else '-',
+                    str(p) if p > 0 else '-',
+                    str(es) if es > 0 else '-',
+                    str(tot)
+                ])
         else:
             t = int(m.get('ch_teoria', m.get('ch_total', 0)))
-            ch_teoria_mod += t
-            ch_total_mod += t
-            linhas_tabela += f"""
-            <tr>
-                <td>{m.get('nome', 'Módulo / Disciplina')}</td>
-                <td style="text-align: center;">{t}</td>
-                <td style="text-align: center;">-</td>
-                <td style="text-align: center;">-</td>
-                <td style="text-align: center; font-weight: bold;">{t}</td>
-            </tr>
-            """
+            t_mod += t
+            tot_mod += t
+            table_data.append([
+                m.get('nome', 'Módulo / Disciplina'),
+                str(t), '-', '-', str(t)
+            ])
 
-        cert_html = ""
-        cert_texto = m.get('certificacao_intermediaria', '')
-        if cert_texto:
-            cert_html = f'<div class="cert-heading">{cert_texto}</div>'
+        # Linha de total do módulo
+        table_data.append([
+            'CH DO MÓDULO',
+            str(t_mod),
+            str(p_mod),
+            str(es_mod) if es_mod > 0 else '-',
+            str(tot_mod)
+        ])
 
-        modulos_html += f"""
-        <div class="module-wrapper">
-            <div class="module-heading">Módulo {i + 1}: {m.get('nome', '')}</div>
-            {cert_html}
-            <table>
-                <thead>
-                    <tr>
-                        <th rowspan="2" class="col-disciplina">Disciplinas</th>
-                        <th colspan="4">Carga Horária</th>
-                    </tr>
-                    <tr>
-                        <th class="col-ch">Teoria</th>
-                        <th class="col-ch">Prática</th>
-                        <th class="col-ch">ES</th>
-                        <th class="col-ch">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {linhas_tabela}
-                    <tr class="total-row">
-                        <td>CH DO MÓDULO</td>
-                        <td style="text-align: center;">{ch_teoria_mod}</td>
-                        <td style="text-align: center;">{ch_pratica_mod}</td>
-                        <td style="text-align: center;">{ch_es_mod if ch_es_mod > 0 else '-'}</td>
-                        <td style="text-align: center;">{ch_total_mod}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        """
+        t_obj = Table(table_data, colWidths=[240, 65, 65, 50, 63])
+        t_obj.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8.5),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#94a3b8')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f1f5f9')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ]))
 
-    html_completo = f"""<!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <title>Matriz Curricular - {nome_curso}</title>
-        <style>
-            @page {{
-                size: A4;
-                margin: 15mm;
-                @bottom-right {{
-                    content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
-                    color: #64748b;
-                    font-family: 'Helvetica', sans-serif;
-                }}
-                @bottom-left {{
-                    content: "UNIVEAS — Sistema Integrado de Gestão Acadêmica";
-                    font-size: 8.5pt;
-                    color: #64748b;
-                    font-family: 'Helvetica', sans-serif;
-                }}
-            }}
-            *, *::before, *::after {{ box-sizing: border-box; }}
-            body {{
-                font-family: 'Helvetica', 'Arial', sans-serif;
-                color: #1e293b;
-                line-height: 1.4;
-                margin: 0;
-                padding: 0;
-                background-color: #ffffff;
-                font-size: 10pt;
-            }}
-            .header-card {{
-                background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
-                color: white;
-                padding: 20px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                text-align: center;
-            }}
-            .institution-name {{
-                font-size: 18pt;
-                font-weight: 900;
-                letter-spacing: 2px;
-                margin: 0 0 4px 0;
-                text-transform: uppercase;
-            }}
-            .institution-subtitle {{
-                font-size: 10.5pt;
-                font-weight: 600;
-                color: #ccfbf1;
-                margin: 0 0 8px 0;
-                text-transform: uppercase;
-            }}
-            .institution-info {{
-                font-size: 8.5pt;
-                color: #f1f5f9;
-                margin: 0;
-            }}
-            .doc-title-box {{
-                background: #ffffff;
-                border: 1px solid #cbd5e1;
-                border-left: 5px solid #0f766e;
-                padding: 10px 15px;
-                border-radius: 6px;
-                margin-bottom: 15px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }}
-            .doc-title {{
-                font-size: 11pt;
-                font-weight: bold;
-                color: #0f172a;
-                margin: 0;
-                text-transform: uppercase;
-            }}
-            .doc-meta {{
-                font-size: 9pt;
-                font-weight: bold;
-                color: #0f766e;
-                background: #f0fdf4;
-                padding: 4px 8px;
-                border-radius: 4px;
-                border: 1px solid #bbf7d0;
-            }}
-            .module-wrapper {{
-                margin-bottom: 15px;
-                page-break-inside: avoid;
-                background: white;
-                border-radius: 6px;
-                border: 1px solid #cbd5e1;
-                overflow: hidden;
-            }}
-            .module-heading {{
-                font-size: 9.5pt;
-                font-weight: bold;
-                color: #0f172a;
-                background-color: #f1f5f9;
-                border-bottom: 1px solid #cbd5e1;
-                padding: 6px 10px;
-                text-transform: uppercase;
-            }}
-            .cert-heading {{
-                font-size: 8.5pt;
-                font-weight: bold;
-                color: #1e293b;
-                background-color: #f8fafc;
-                border-bottom: 1px solid #e2e8f0;
-                padding: 5px 10px;
-                text-transform: uppercase;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 0;
-                font-size: 9pt;
-            }}
-            th, td {{
-                border: 1px solid #cbd5e1;
-                padding: 5px 8px;
-                vertical-align: middle;
-            }}
-            th {{
-                background-color: #f8fafc;
-                color: #334155;
-                font-weight: bold;
-                text-align: center;
-                text-transform: uppercase;
-                font-size: 8pt;
-            }}
-            .col-disciplina {{ text-align: left; width: 60%; color: #0f172a; }}
-            .col-ch {{ text-align: center; width: 10%; }}
-            .total-row td {{ font-weight: bold; background-color: #f8fafc; color: #0f766e; }}
-            .signature-section {{
-                margin-top: 35px;
-                page-break-inside: avoid;
-            }}
-            .signature-grid {{
-                width: 100%;
-                border-collapse: collapse;
-            }}
-            .signature-grid td {{
-                border: none;
-                text-align: center;
-                padding-top: 30px;
-                width: 50%;
-            }}
-            .signature-line {{
-                width: 75%;
-                margin: 0 auto 5px auto;
-                border-top: 1.5px solid #475569;
-            }}
-            .signature-text {{
-                font-size: 8.5pt;
-                color: #334155;
-                font-weight: bold;
-            }}
-        </style>
-    </head>
-    <body>
+        elements.append(t_obj)
+        elements.append(Spacer(1, 10))
 
-        <div class="header-card">
-            <h1 class="institution-name">UNIVEAS</h1>
-            <div class="institution-subtitle">União Vigiense de Ensino e Assistência à Saúde</div>
-            <p class="institution-info">
-                CNPJ: 53.199.321/0001-23 &nbsp;|&nbsp; Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA
-            </p>
-        </div>
+    # Assinaturas
+    elements.append(Spacer(1, 20))
+    sig_data = [
+        ['________________________________________', '________________________________________'],
+        ['Coordenação Pedagógica', 'Direção Geral']
+    ]
+    sig_table = Table(sig_data, colWidths=[241, 241])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8.5),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#334155')),
+        ('TOPPADDING', (0, 1), (-1, 1), 4),
+    ]))
+    elements.append(sig_table)
 
-        <div class="doc-title-box">
-            <div class="doc-title">Matriz Curricular do Curso {nome_curso}</div>
-            <div class="doc-meta">MÓDULO-AULA: 45 min</div>
-        </div>
-
-        {modulos_html}
-
-        <div class="signature-section">
-            <table class="signature-grid">
-                <tr>
-                    <td>
-                        <div class="signature-line"></div>
-                        <div class="signature-text">Coordenação Pedagógica</div>
-                    </td>
-                    <td>
-                        <div class="signature-line"></div>
-                        <div class="signature-text">Direção Geral</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-    </body>
-    </html>
-    """
-
-    pdf_bytes = HTML(string=html_content).write_pdf()
+    pdf.build(elements)
+    buffer.seek(0)
 
     return Response(
-        content=pdf_bytes,
+        content=buffer.getvalue(),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=Matriz_Curricular_{curso_id}.pdf"}
     )
-
 
 # ==========================================
 # 5. MÓDULO FINANCEIRO
