@@ -1878,7 +1878,7 @@ function alterarCurso(id_firebase) {
             if(selectSemestre) selectSemestre.value = modulo.semestre || '1º Semestre';
 
             bloco.querySelector('.input-nome').value = modulo.nome || '';
-            
+
             const inputFotoMod = bloco.querySelector('.input-foto-modulo');
             if(inputFotoMod) {
                 inputFotoMod.value = modulo.foto_modulo || modulo.foto || modulo.imagem || modulo.capa_modulo || '';
@@ -1942,7 +1942,35 @@ async function excluirCursoModal(id_firebase) {
 }
 
 function imprimirCardCurso(id_firebase) {
-    alert("Gerando PDF do Card do Curso " + id_firebase + " (Com Ementa e Grade).");
+    // Abre a rota de PDF diretamente no navegador passando o ID do curso
+    const token = localStorage.getItem('token_siga');
+    
+    // Como o fetch com blob é mais seguro para passar o token Bearer e baixar o arquivo:
+    fetch(`${API_BASE_URL}/cursos/${id_firebase}/pdf`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Erro ao gerar o PDF no servidor.");
+        return response.blob();
+    })
+    .then(blob => {
+        // Cria um link temporário para forçar o download automático do PDF
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Matriz_Curricular_${id_firebase}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Erro ao baixar o PDF. Verifique se o backend está online.");
+    });
 }
 
 </script>
