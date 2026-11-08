@@ -7,8 +7,10 @@ import firebase_admin
 from fastapi import FastAPI, Form, HTTPException, File, UploadFile
 from fastapi.responses import Response
 from firebase_admin import credentials, firestore, storage
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-
+from fastapi import Response
+from weasyprint import HTML
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
@@ -231,69 +233,94 @@ async def obter_curso(curso_id: str):
     return {"id": doc.id, **doc.to_dict()}
 
 
-# ==========================================
-# 4.1 ROTA DE PDF DO CURSO (FALTAVA E CAUSAVA O ERRO)
-# ==========================================
-@app.get("/api/v1/cursos/{curso_id}/pdf", response_class=HTMLResponse)
+@app.get("/api/v1/cursos/{curso_id}/pdf")
 async def gerar_pdf_curso(curso_id: str):
     checar_db()
     doc = db.collection("cursos").document(curso_id).get()
     if not doc.exists:
-        raise HTTPException(status_code=404, detail="Curso não encontrado para gerar PDF.")
+        raise HTTPException(status_code=404, detail="Curso não encontrado.")
 
     curso = doc.to_dict()
     nome_curso = curso.get('nome_curso', 'CURSO')
-    codigo = curso.get('codigo', 'N/A')
-    categoria = curso.get('categoria', 'Técnico').upper()
-    modalidade = curso.get('modalidade', 'Presencial').upper()
-    duracao = curso.get('duracao', 'Não informada')
-    valor_mat = curso.get('valor_matricula', '0.00')
-    valor_mens = curso.get('valor_mensalidade', '0.00')
-    descricao = curso.get('descricao', 'Nenhuma descrição informada.')
-
     grade = curso.get('grade_curricular', [])
 
-    # Calcula carga horária total
-    ch_total_geral = sum([int(m.get('ch_total', 0)) for m in grade])
-
-    # Monta o HTML institucional estilizado para impressão/PDF
     modulos_html = ""
     for i, m in enumerate(grade):
-        dias = ", ".join(m.get('dias_aula', [])) or "A definir"
+        disciplinas = m.get('disciplinas', [])
+        linhas_tabela = ""
+        ch_teoria_mod = 0
+        ch_pratica_mod = 0
+        ch_es_mod = 0
+        ch_total_mod = 0
 
-        avaliacoes_html = ""
-        for aval in m.get('avaliacoes', []):
-            avaliacoes_html += f"""
-                <div style="background: #fff7ed; border-left: 3px solid #f97316; padding: 6px 10px; margin-top: 4px; font-size: 11px;">
-                    <b>{aval.get('tipo', 'Avaliação').upper()}</b> — Data: {aval.get('data', 'A definir')} ({aval.get('hora_inicio', '--:--')} às {aval.get('hora_fim', '--:--')})
-                </div>
+        if disciplinas:
+            for disc in disciplinas:
+                t = int(disc.get('ch_teoria', 0))
+                p = int(disc.get('ch_pratica', 0))
+                es = int(disc.get('ch_es', 0))
+                tot = t + p + es
+
+                ch_teoria_mod += t
+                ch_pratica_mod += p
+                ch_es_mod += es
+                ch_total_mod += tot
+
+                linhas_tabela += f"""
+                <tr>
+                    <td>{disc.get('nome', 'Disciplina')}</td>
+                    <td style="text-align: center;">{t if t > 0 else '-'}</td>
+                    <td style="text-align: center;">{p if p > 0 else '-'}</td>
+                    <td style="text-align: center;">{es if es > 0 else '-'}</td>
+                    <td style="text-align: center; font-weight: bold;">{tot}</td>
+                </tr>
+                """
+        else:
+            t = int(m.get('ch_teoria', m.get('ch_total', 0)))
+            ch_teoria_mod += t
+            ch_total_mod += t
+            linhas_tabela += f"""
+            <tr>
+                <td>{m.get('nome', 'Módulo / Disciplina')}</td>
+                <td style="text-align: center;">{t}</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center; font-weight: bold;">{t}</td>
+            </tr>
             """
 
-        modulos_html += f"""
-        <div style="margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; page-break-inside: avoid; background: #ffffff;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #14b8a6; padding-bottom: 8px; margin-bottom: 10px;">
-                <h3 style="margin: 0; color: #111827; font-size: 14px; text-transform: uppercase;">
-                    Módulo {i + 1}: {m.get('nome', 'Disciplina')}
-                </h3>
-                <span style="background: #14b8a6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">
-                    {m.get('ch_total', 0)}h Total
-                </span>
-            </div>
-            <p style="margin: 5px 0 10px 0; color: #4b5563; font-size: 12px;"><b>Semestre/Bloco:</b> {m.get('semestre', '1º Semestre')} | <b>Ementa:</b> {m.get('descricao', 'Sem descrição.')}</p>
+        cert_html = ""
+        cert_texto = m.get('certificacao_intermediaria', '')
+        if cert_texto:
+            cert_html = f'<div class="cert-heading">{cert_texto}</div>'
 
-            <table style="width: 100%; font-size: 11px; color: #374151; margin-bottom: 8px; border-collapse: collapse;">
-                <tr>
-                    <td style="padding: 4px 0;"><b>Período:</b> {m.get('data_inicio', '--')} a {m.get('data_fim', '--')}</td>
-                    <td style="padding: 4px 0;"><b>Dias de Aula:</b> {dias}</td>
-                    <td style="padding: 4px 0;"><b>Horário:</b> {m.get('hora_aula_inicio', '--')} às {m.get('hora_aula_fim', '--')}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 4px 0;"><b>Teoria:</b> {m.get('ch_teoria', 0)}h</td>
-                    <td style="padding: 4px 0;"><b>Prática:</b> {m.get('ch_pratica', 0)}h</td>
-                    <td style="padding: 4px 0;"><b>Estágio:</b> {m.get('ch_estagio', 0)}h</td>
-                </tr>
+        modulos_html += f"""
+        <div class="module-wrapper">
+            <div class="module-heading">Módulo {i + 1}: {m.get('nome', '')}</div>
+            {cert_html}
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="col-disciplina">Disciplinas</th>
+                        <th colspan="4">Carga Horária</th>
+                    </tr>
+                    <tr>
+                        <th class="col-ch">Teoria</th>
+                        <th class="col-ch">Prática</th>
+                        <th class="col-ch">ES</th>
+                        <th class="col-ch">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {linhas_tabela}
+                    <tr class="total-row">
+                        <td>CH DO MÓDULO</td>
+                        <td style="text-align: center;">{ch_teoria_mod}</td>
+                        <td style="text-align: center;">{ch_pratica_mod}</td>
+                        <td style="text-align: center;">{ch_es_mod if ch_es_mod > 0 else '-'}</td>
+                        <td style="text-align: center;">{ch_total_mod}</td>
+                    </tr>
+                </tbody>
             </table>
-            {avaliacoes_html}
         </div>
         """
 
@@ -303,54 +330,209 @@ async def gerar_pdf_curso(curso_id: str):
         <meta charset="UTF-8">
         <title>Matriz Curricular - {nome_curso}</title>
         <style>
-            @page {{ size: A4; margin: 20mm; }}
-            body {{ font-family: 'Helvetica', 'Arial', sans-serif; color: #1f2937; line-height: 1.5; margin: 0; padding: 0; }}
-            .header {{ text-align: center; border-bottom: 3px solid #14b8a6; padding-bottom: 15px; margin-bottom: 25px; }}
-            .header h1 {{ font-size: 20px; color: #111827; margin: 5px 0; text-transform: uppercase; }}
-            .header h2 {{ font-size: 14px; color: #14b8a6; margin: 0; text-transform: uppercase; letter-spacing: 1px; }}
-            .info-box {{ background: #f3f4f6; border-radius: 8px; padding: 15px; margin-bottom: 25px; font-size: 12px; }}
-            .info-grid {{ width: 100%; border-collapse: collapse; }}
-            .info-grid td {{ padding: 6px 10px; }}
-            .footer {{ margin-top: 40px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; pt: 10px; }}
+            @page {{
+                size: A4;
+                margin: 15mm;
+                @bottom-right {{
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    color: #64748b;
+                    font-family: 'Helvetica', sans-serif;
+                }}
+                @bottom-left {{
+                    content: "UNIVEAS — Sistema Integrado de Gestão Acadêmica";
+                    font-size: 8.5pt;
+                    color: #64748b;
+                    font-family: 'Helvetica', sans-serif;
+                }}
+            }}
+            *, *::before, *::after {{ box-sizing: border-box; }}
+            body {{
+                font-family: 'Helvetica', 'Arial', sans-serif;
+                color: #1e293b;
+                line-height: 1.4;
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+                font-size: 10pt;
+            }}
+            .header-card {{
+                background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+            }}
+            .institution-name {{
+                font-size: 18pt;
+                font-weight: 900;
+                letter-spacing: 2px;
+                margin: 0 0 4px 0;
+                text-transform: uppercase;
+            }}
+            .institution-subtitle {{
+                font-size: 10.5pt;
+                font-weight: 600;
+                color: #ccfbf1;
+                margin: 0 0 8px 0;
+                text-transform: uppercase;
+            }}
+            .institution-info {{
+                font-size: 8.5pt;
+                color: #f1f5f9;
+                margin: 0;
+            }}
+            .doc-title-box {{
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-left: 5px solid #0f766e;
+                padding: 10px 15px;
+                border-radius: 6px;
+                margin-bottom: 15px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .doc-title {{
+                font-size: 11pt;
+                font-weight: bold;
+                color: #0f172a;
+                margin: 0;
+                text-transform: uppercase;
+            }}
+            .doc-meta {{
+                font-size: 9pt;
+                font-weight: bold;
+                color: #0f766e;
+                background: #f0fdf4;
+                padding: 4px 8px;
+                border-radius: 4px;
+                border: 1px solid #bbf7d0;
+            }}
+            .module-wrapper {{
+                margin-bottom: 15px;
+                page-break-inside: avoid;
+                background: white;
+                border-radius: 6px;
+                border: 1px solid #cbd5e1;
+                overflow: hidden;
+            }}
+            .module-heading {{
+                font-size: 9.5pt;
+                font-weight: bold;
+                color: #0f172a;
+                background-color: #f1f5f9;
+                border-bottom: 1px solid #cbd5e1;
+                padding: 6px 10px;
+                text-transform: uppercase;
+            }}
+            .cert-heading {{
+                font-size: 8.5pt;
+                font-weight: bold;
+                color: #1e293b;
+                background-color: #f8fafc;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 5px 10px;
+                text-transform: uppercase;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0;
+                font-size: 9pt;
+            }}
+            th, td {{
+                border: 1px solid #cbd5e1;
+                padding: 5px 8px;
+                vertical-align: middle;
+            }}
+            th {{
+                background-color: #f8fafc;
+                color: #334155;
+                font-weight: bold;
+                text-align: center;
+                text-transform: uppercase;
+                font-size: 8pt;
+            }}
+            .col-disciplina {{ text-align: left; width: 60%; color: #0f172a; }}
+            .col-ch {{ text-align: center; width: 10%; }}
+            .total-row td {{ font-weight: bold; background-color: #f8fafc; color: #0f766e; }}
+            .signature-section {{
+                margin-top: 35px;
+                page-break-inside: avoid;
+            }}
+            .signature-grid {{
+                width: 100%;
+                border-collapse: collapse;
+            }}
+            .signature-grid td {{
+                border: none;
+                text-align: center;
+                padding-top: 30px;
+                width: 50%;
+            }}
+            .signature-line {{
+                width: 75%;
+                margin: 0 auto 5px auto;
+                border-top: 1.5px solid #475569;
+            }}
+            .signature-text {{
+                font-size: 8.5pt;
+                color: #334155;
+                font-weight: bold;
+            }}
         </style>
     </head>
     <body>
-        <div class="header">
-            <h2>ESCOLA UNIVEAS — Sistema Integrado de Gestão Acadêmica</h2>
-            <h1>Matriz Curricular Oficial</h1>
+
+        <div class="header-card">
+            <h1 class="institution-name">UNIVEAS</h1>
+            <div class="institution-subtitle">União Vigiense de Ensino e Assistência à Saúde</div>
+            <p class="institution-info">
+                CNPJ: 53.199.321/0001-23 &nbsp;|&nbsp; Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA
+            </p>
         </div>
 
-        <div class="info-box">
-            <table class="info-grid">
+        <div class="doc-title-box">
+            <div class="doc-title">Matriz Curricular do Curso {nome_curso}</div>
+            <div class="doc-meta">MÓDULO-AULA: 45 min</div>
+        </div>
+
+        {modulos_html}
+
+        <div class="signature-section">
+            <table class="signature-grid">
                 <tr>
-                    <td><b>Curso:</b> {nome_curso}</td>
-                    <td><b>Código:</b> {codigo}</td>
-                </tr>
-                <tr>
-                    <td><b>Categoria:</b> {categoria}</td>
-                    <td><b>Modalidade:</b> {modalidade}</td>
-                </tr>
-                <tr>
-                    <td><b>Duração Estimada:</b> {duracao}</td>
-                    <td><b>Carga Horária Total:</b> <span style="color: #0d9488; font-weight: bold;">{ch_total_geral} Horas</span></td>
+                    <td>
+                        <div class="signature-line"></div>
+                        <div class="signature-text">Coordenação Pedagógica</div>
+                    </td>
+                    <td>
+                        <div class="signature-line"></div>
+                        <div class="signature-text">Direção Geral</div>
+                    </td>
                 </tr>
             </table>
         </div>
 
-        <h3 style="font-size: 14px; text-transform: uppercase; border-left: 4px solid #14b8a6; padding-left: 8px; margin-bottom: 15px; color: #111827;">
-            Estrutura Curricular e Cronograma de Módulos
-        </h3>
-
-        {modulos_html}
-
-        <div class="footer">
-            Documento gerado eletronicamente via SIGA UNIVEAS em {datetime.now().strftime('%d/%m/%Y às %H:%M')}.<br>
-            Travessa Lauro Sodré, Centro - Vigia de Nazaré / PA.
-        </div>
     </body>
     </html>
     """
-    return html_completo
+
+    # Compila o HTML em um PDF real em bytes usando WeasyPrint
+    pdf_bytes = HTML(string=html_content).write_pdf()
+
+    # Retorna o arquivo binário PDF que o seu frontend já sabe capturar e baixar
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=Matriz_Curricular_{curso_id}.pdf"}
+    )
+
+
+
+
 
 @app.put("/api/v1/cursos/{curso_id}")
 async def atualizar_curso(
