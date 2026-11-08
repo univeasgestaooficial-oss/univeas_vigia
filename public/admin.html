@@ -1626,7 +1626,7 @@ function verDetalhesCurso(id_firebase) {
             modulosHTML += `
                 <div class="bg-white p-5 rounded-xl border-2 border-gray-100 mb-4 shadow-sm relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
-                    
+
                     <div class="flex flex-col sm:flex-row gap-4 mb-4 pl-2">
                         ${imgModulo}
                         <div class="flex-1">
@@ -1878,7 +1878,7 @@ function alterarCurso(id_firebase) {
             if(bloco.querySelector('.input-foto-modulo')) {
                 bloco.querySelector('.input-foto-modulo').value = modulo.foto_modulo || '';
             }
-            
+
             bloco.querySelector('.input-data-inicio').value = modulo.data_inicio || '';
             bloco.querySelector('.input-data-fim').value = modulo.data_fim || '';
             bloco.querySelector('.input-hora-aula-inicio').value = modulo.hora_aula_inicio || '';
