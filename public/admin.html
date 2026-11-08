@@ -51,8 +51,7 @@
 
     <!-- ENVOLVA O RESTO DO SISTEMA AQUI -->
     <div id="app-container" class="hidden h-full w-full flex-1 flex">
-        <!-- Seu <aside> e <main> existentes entram aqui -->
-
+        
     <!-- ==========================================
          MENU LATERAL CLARO E SUAVE
          ========================================== -->
@@ -219,7 +218,6 @@
                         <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
                             <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula de Aluno
                         </h4>
-                        <!-- ADICIONADO ID: form-matricula -->
                         <form id="form-matricula" class="space-y-4">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -450,7 +448,6 @@
                             </div>
                         </div>
 
-                       <!-- SUBSTITUA ESTE BLOCO INTEIRO DENTRO DO form-curso -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Modalidade</label>
@@ -474,7 +471,7 @@
                             </div>
                         </div>
 
-                         <!-- NOVOS CAMPOS: DURAÇÃO, PROMOÇÃO E VALOR PROMOCIONAL -->
+                        <!-- NOVOS CAMPOS: DURAÇÃO, PROMOÇÃO E VALOR PROMOCIONAL -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Duração Estimada</label>
@@ -504,6 +501,7 @@
                                 <input type="url" name="foto_capa" placeholder="https://exemplo.com/foto.jpg" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 bg-white">
                             </div>
                         </div>
+                        
                         <!-- CONTAINER DA GRADE CURRICULAR (MÓDULOS) -->
                         <div class="border-t border-gray-100 pt-6 mt-6">
                             <div class="flex items-center justify-between mb-4">
@@ -893,6 +891,7 @@
 // UNIFIED SCRIPT - UI & API INTEGRATION
 // ==========================================
 const API_BASE_URL = "https://univeasvigia.vercel.app/api/v1";
+
 // 1. INICIALIZAÇÃO
 document.addEventListener("DOMContentLoaded", () => {
     feather.replace();
@@ -1010,7 +1009,6 @@ function fecharModalSistema() {
 }
 
 // 4. UTILITÁRIOS DA API
-
 async function apiRequest(endpoint, method = 'GET', data = null) {
     const headers = {
         'Authorization': `Bearer ${localStorage.getItem('token_siga')}`
@@ -1035,12 +1033,11 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
             return null;
         }
 
-        // NOVO: Captura o erro real devolvido pelo Python
         if (!response.ok) {
             const errText = await response.text();
             console.error(`Erro do Servidor (${response.status}):`, errText);
             try {
-                return JSON.parse(errText); // Tenta ler o detalhe do erro do FastAPI
+                return JSON.parse(errText);
             } catch(e) {
                 return { detail: `Erro no Servidor: ${response.status}. Olhe o F12.` };
             }
@@ -1108,7 +1105,6 @@ async function loadAlunos() {
     feather.replace();
 }
 
-// EXCLUIR ALUNO
 async function excluirAluno(id_firebase) {
     if(!confirm("Tem certeza que deseja remover este aluno?")) return;
 
@@ -1116,13 +1112,12 @@ async function excluirAluno(id_firebase) {
 
     if(result && result.sucesso) {
         alert("Aluno removido com sucesso.");
-        loadAlunos(); // Atualiza a tabela na hora
+        loadAlunos();
     } else {
         alert(result?.detail || "Erro ao remover aluno.");
     }
 }
 
-// EXCLUIR DOCENTE
 async function excluirDocente(id_firebase) {
     if(!confirm("Deseja realmente desligar este docente?")) return;
     const response = await fetch(`/api/v1/docentes/${id_firebase}`, {
@@ -1181,11 +1176,11 @@ async function loadFinanceiro() {
     });
 }
 
-// 6. EVENTOS DE FORMULÁRIO (ENVIO VIA FORMDATA PARA SUPORTAR FOTOS)
+// 6. EVENTOS DE FORMULÁRIO
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.innerText = "Salvando..."; // Feedback visual (B)
+    btn.innerText = "Salvando...";
 
     const formData = new FormData(e.target);
     const result = await apiRequest('/alunos/matricular', 'POST', formData);
@@ -1195,9 +1190,9 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
         e.target.reset();
         loadAlunos();
     } else {
-        alert(result?.detail || "Erro ao salvar. Tente novamente."); // Tratamento (A)
+        alert(result?.detail || "Erro ao salvar. Tente novamente.");
     }
-    btn.innerText = "Salvar / Sair"; // Restaura o botão
+    btn.innerText = "Salvar / Sair";
 });
 
 document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
@@ -1221,7 +1216,7 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
     }
 });
 
-// --- SISTEMA DE GRADE CURRICULAR DINÂMICA (ATUALIZADO COM SEMESTRE/BLOCO) ---
+// --- SISTEMA DE GRADE CURRICULAR DINÂMICA ---
     let contadorDisciplina = 0;
 
     function adicionarDisciplina() {
@@ -1557,7 +1552,7 @@ async function renderizarListaCursos() {
                     <button onclick="verDetalhesCurso('${curso.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Ver Detalhes do Curso">
                         <i data-feather="eye" class="h-4 w-4"></i>
                     </button>
-                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Imprimir Card do Curso">
+                    <button onclick="imprimirCardCurso('${curso.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Baixar PDF da Matriz">
                         <i data-feather="printer" class="h-4 w-4"></i>
                     </button>
                     <button onclick="alterarCurso('${curso.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Curso">
@@ -1574,7 +1569,7 @@ async function renderizarListaCursos() {
 }
 
 // ==========================================
-// VISUALIZAÇÃO DE DETALHES (COM FOTO E SEMESTRE AGRUPADO)
+// VISUALIZAÇÃO DE DETALHES
 // ==========================================
 function verDetalhesCurso(id_firebase) {
     const curso = cursosGlobais.find(c => c.id === id_firebase);
@@ -1601,7 +1596,6 @@ function verDetalhesCurso(id_firebase) {
         grade.forEach((mod, index) => {
             cargaTotal += parseInt(mod.ch_total) || 0;
 
-            // MONTAGEM DAS AVALIAÇÕES
             let htmlAvaliacoes = '';
             const avaliacoes = mod.avaliacoes || [];
             if (avaliacoes.length > 0) {
@@ -1619,11 +1613,7 @@ function verDetalhesCurso(id_firebase) {
                 htmlAvaliacoes = '<div class="mt-3 border-t border-gray-200 pt-3"><p class="text-[10px] text-gray-400 font-medium italic">Nenhuma avaliação agendada.</p></div>';
             }
 
-            let diasAula = Array.isArray(mod.dias_aula) && mod.dias_aula.length > 0
-                ? mod.dias_aula.join(', ')
-                : 'Não definidos';
-
-            // CAPTURA DA FOTO CORRIGIDA (Lendo todas as variações possíveis)
+            let diasAula = Array.isArray(mod.dias_aula) && mod.dias_aula.length > 0 ? mod.dias_aula.join(', ') : 'Não definidos';
             let fotoModuloUrl = mod.foto_modulo || mod.foto || mod.imagem || mod.capa_modulo || '';
             let imgModulo = (fotoModuloUrl && fotoModuloUrl.startsWith('http'))
                 ? `<img src="${fotoModuloUrl}" alt="Capa do Módulo" class="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-teal-200 shadow-sm shrink-0">`
@@ -1634,7 +1624,6 @@ function verDetalhesCurso(id_firebase) {
             modulosHTML += `
                 <div class="bg-white p-5 rounded-2xl border-2 border-gray-100 mb-4 shadow-sm relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1.5 h-full bg-teal-500"></div>
-
                     <div class="flex flex-col sm:flex-row gap-4 mb-4 pl-2">
                         ${imgModulo}
                         <div class="flex-1">
@@ -1648,25 +1637,12 @@ function verDetalhesCurso(id_firebase) {
                             <p class="text-xs text-gray-600 leading-relaxed">${mod.descricao || 'Sem descrição cadastrada.'}</p>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-bold text-gray-600 pl-2 border-t border-gray-100 pt-3">
-                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
-                            <span class="text-gray-400 block mb-1 uppercase text-[9px]">Período do Módulo</span>
-                            ${mod.data_inicio || '--'} a ${mod.data_fim || '--'}
-                        </div>
-                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
-                            <span class="text-gray-400 block mb-1 uppercase text-[9px]">Dias de Aula</span>
-                            ${diasAula}
-                        </div>
-                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
-                            <span class="text-gray-400 block mb-1 uppercase text-[9px]">Horário das Aulas</span>
-                            ${mod.hora_aula_inicio || '--:--'} às ${mod.hora_aula_fim || '--:--'}
-                        </div>
+                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg"><span class="text-gray-400 block mb-1 uppercase text-[9px]">Período do Módulo</span>${mod.data_inicio || '--'} a ${mod.data_fim || '--'}</div>
+                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg"><span class="text-gray-400 block mb-1 uppercase text-[9px]">Dias de Aula</span>${diasAula}</div>
+                        <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg"><span class="text-gray-400 block mb-1 uppercase text-[9px]">Horário das Aulas</span>${mod.hora_aula_inicio || '--:--'} às ${mod.hora_aula_fim || '--:--'}</div>
                     </div>
-
-                    <div class="pl-2 mt-3">
-                        ${htmlAvaliacoes}
-                    </div>
+                    <div class="pl-2 mt-3">${htmlAvaliacoes}</div>
                 </div>
             `;
         });
@@ -1674,60 +1650,34 @@ function verDetalhesCurso(id_firebase) {
 
     let profRaw = curso.professores || curso.professores_vinculados || '[]';
     let professores = [];
-    try {
-        if (typeof profRaw === 'string') professores = JSON.parse(profRaw);
-        else if (Array.isArray(profRaw)) professores = profRaw;
-    } catch(e) {}
+    try { if (typeof profRaw === 'string') professores = JSON.parse(profRaw); else if (Array.isArray(profRaw)) professores = profRaw; } catch(e) {}
 
-    let professoresHTML = '';
-    if (professores.length === 0) {
-        professoresHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhum docente vinculado.</p>';
-    } else {
-        professoresHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+    let professoresHTML = professores.length === 0 ? '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhum docente vinculado.</p>' : '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+    if(professores.length > 0) {
         professores.forEach(prof => {
             let nomeProf = typeof prof === 'string' ? prof : (prof.nome || 'Professor');
-            professoresHTML += `
-                <div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center shadow-sm">
-                    <div class="bg-teal-50 p-2 rounded-lg text-teal-600 mr-3"><i data-feather="user" class="w-4 h-4"></i></div>
-                    <p class="text-xs font-bold text-gray-800">${nomeProf}</p>
-                </div>`;
+            professoresHTML += `<div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center shadow-sm"><div class="bg-teal-50 p-2 rounded-lg text-teal-600 mr-3"><i data-feather="user" class="w-4 h-4"></i></div><p class="text-xs font-bold text-gray-800">${nomeProf}</p></div>`;
         });
         professoresHTML += '</div>';
     }
 
     let turmasRaw = curso.turmas || curso.turmas_vinculadas || '[]';
     let turmas = [];
-    try {
-        if (typeof turmasRaw === 'string') turmas = JSON.parse(turmasRaw);
-        else if (Array.isArray(turmasRaw)) turmas = turmasRaw;
-    } catch(e) {}
+    try { if (typeof turmasRaw === 'string') turmas = JSON.parse(turmasRaw); else if (Array.isArray(turmasRaw)) turmas = turmasRaw; } catch(e) {}
 
-    let turmasHTML = '';
-    if (turmas.length === 0) {
-        turmasHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhuma turma aberta.</p>';
-    } else {
-        turmasHTML = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+    let turmasHTML = turmas.length === 0 ? '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhuma turma aberta.</p>' : '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+    if(turmas.length > 0) {
         turmas.forEach(turma => {
             let nomeTurma = typeof turma === 'string' ? turma : (turma.nome || 'Turma');
-            turmasHTML += `
-                <div class="bg-blue-50/30 p-3 rounded-lg border border-blue-100 flex items-center shadow-sm">
-                    <div class="bg-blue-100 p-2 rounded-lg text-blue-600 mr-3"><i data-feather="users" class="w-4 h-4"></i></div>
-                    <span class="text-xs font-bold text-gray-800">${nomeTurma}</span>
-                </div>`;
+            turmasHTML += `<div class="bg-blue-50/30 p-3 rounded-lg border border-blue-100 flex items-center shadow-sm"><div class="bg-blue-100 p-2 rounded-lg text-blue-600 mr-3"><i data-feather="users" class="w-4 h-4"></i></div><span class="text-xs font-bold text-gray-800">${nomeTurma}</span></div>`;
         });
         turmasHTML += '</div>';
     }
 
-    let bannerCapa = '';
-    if (curso.foto_capa && curso.foto_capa.startsWith('http')) {
-        bannerCapa = `<div class="w-full h-48 mb-6 rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative">
-            <img src="${curso.foto_capa}" alt="Capa do Curso" class="w-full h-full object-cover">
-        </div>`;
-    }
+    let bannerCapa = (curso.foto_capa && curso.foto_capa.startsWith('http')) ? `<div class="w-full h-48 mb-6 rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative"><img src="${curso.foto_capa}" alt="Capa do Curso" class="w-full h-full object-cover"></div>` : '';
 
     const htmlDetalhes = `
         ${bannerCapa}
-
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 pb-5 mb-6 gap-4">
             <div class="flex-1">
                 <h2 class="text-3xl font-black text-gray-900 mb-2 uppercase tracking-tight">${curso.nome_curso || 'Curso Sem Nome'}</h2>
@@ -1740,7 +1690,6 @@ function verDetalhesCurso(id_firebase) {
                     <i data-feather="edit-2" class="w-4 h-4 mr-2"></i> Editar Dados do Curso
                 </button>
             </div>
-
             <div class="text-right bg-teal-500 p-5 rounded-2xl shadow-sm shrink-0 w-full sm:w-auto flex flex-col items-center sm:items-end justify-center">
                 <p class="text-[10px] font-bold text-teal-100 uppercase mb-1">Carga Horária Total</p>
                 <p class="text-3xl font-black text-white">${cargaTotal}h</p>
@@ -1776,14 +1725,8 @@ function verDetalhesCurso(id_firebase) {
                 <p class="text-sm text-gray-600 bg-gray-50 p-5 rounded-xl border border-gray-200 leading-relaxed">${curso.descricao || 'Nenhuma descrição fornecida.'}</p>
             </div>
             <div class="space-y-6">
-                <div>
-                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-blue-500 pl-2">Turmas Abertas</h4>
-                    ${turmasHTML}
-                </div>
-                <div>
-                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-teal-500 pl-2">Docentes Vinculados</h4>
-                    ${professoresHTML}
-                </div>
+                <div><h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-blue-500 pl-2">Turmas Abertas</h4>${turmasHTML}</div>
+                <div><h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-teal-500 pl-2">Docentes Vinculados</h4>${professoresHTML}</div>
             </div>
         </div>
 
@@ -1811,16 +1754,6 @@ function voltarListaCursos() {
     document.getElementById('container-tabela-cursos').classList.replace('hidden', 'block');
     document.getElementById('titulo-modal-cursos').innerHTML = '<i data-feather="book-open" class="text-teal-500 mr-3"></i> Cursos Cadastrados';
     feather.replace();
-}
-
-function fecharModalCursos() {
-    const modal = document.getElementById('modal-lista-cursos');
-    modal.classList.add('opacity-0');
-    setTimeout(() => {
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-        voltarListaCursos();
-    }, 300);
 }
 
 function alterarCurso(id_firebase) {
@@ -1855,15 +1788,7 @@ function alterarCurso(id_firebase) {
 
     let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
     let grade = [];
-    try {
-        if (typeof gradeRaw === 'string') {
-            grade = JSON.parse(gradeRaw);
-        } else if (Array.isArray(gradeRaw)) {
-            grade = gradeRaw;
-        }
-    } catch (e) {
-        console.error("Erro JSON Módulos Edição:", e);
-    }
+    try { if (typeof gradeRaw === 'string') grade = JSON.parse(gradeRaw); else if (Array.isArray(gradeRaw)) grade = gradeRaw; } catch (e) { console.error("Erro JSON", e); }
 
     if (grade.length === 0) {
         adicionarDisciplina();
@@ -1873,17 +1798,12 @@ function alterarCurso(id_firebase) {
             const blocoId = contadorDisciplina;
             const bloco = document.getElementById(`disciplina-box-${blocoId}`);
 
-            // PREENCHENDO O SEMESTRE E A FOTO AO EDITAR
             const selectSemestre = bloco.querySelector('.input-semestre');
             if(selectSemestre) selectSemestre.value = modulo.semestre || '1º Semestre';
 
             bloco.querySelector('.input-nome').value = modulo.nome || '';
-
             const inputFotoMod = bloco.querySelector('.input-foto-modulo');
-            if(inputFotoMod) {
-                inputFotoMod.value = modulo.foto_modulo || modulo.foto || modulo.imagem || modulo.capa_modulo || '';
-            }
-
+            if(inputFotoMod) inputFotoMod.value = modulo.foto_modulo || modulo.foto || modulo.imagem || modulo.capa_modulo || '';
             bloco.querySelector('.input-data-inicio').value = modulo.data_inicio || '';
             bloco.querySelector('.input-data-fim').value = modulo.data_fim || '';
             bloco.querySelector('.input-hora-aula-inicio').value = modulo.hora_aula_inicio || '';
@@ -1895,24 +1815,16 @@ function alterarCurso(id_firebase) {
             bloco.querySelector('.input-desc').value = modulo.descricao || '';
 
             const diasSalvos = modulo.dias_aula || [];
-            bloco.querySelectorAll('.input-dias-aula').forEach(cb => {
-                if (diasSalvos.includes(cb.value)) cb.checked = true;
-            });
+            bloco.querySelectorAll('.input-dias-aula').forEach(cb => { if (diasSalvos.includes(cb.value)) cb.checked = true; });
 
             const containerAval = document.getElementById(`container-avaliacoes-${blocoId}`);
             if (containerAval) containerAval.innerHTML = '';
 
             const avaliacoesSalvas = modulo.avaliacoes || [];
-            if (avaliacoesSalvas.length === 0) {
-                adicionarAvaliacao(blocoId);
-            } else {
-                avaliacoesSalvas.forEach(aval => {
-                    adicionarAvaliacao(blocoId, aval);
-                });
-            }
+            if (avaliacoesSalvas.length === 0) adicionarAvaliacao(blocoId);
+            else avaliacoesSalvas.forEach(aval => adicionarAvaliacao(blocoId, aval));
         });
     }
-
     calcularCargaHorariaGeral();
 }
 
@@ -1922,16 +1834,13 @@ document.querySelector('#form-curso button[type="reset"]').addEventListener('cli
     btnSubmit.innerText = 'Registrar Curso';
     btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
     btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
-
     document.getElementById('container-disciplinas').innerHTML = '';
     setTimeout(() => adicionarDisciplina(), 10);
 });
 
 async function excluirCursoModal(id_firebase) {
     if(!confirm("CUIDADO: Tem certeza que deseja excluir este curso e sua grade curricular permanentemente?")) return;
-
     const result = await apiRequest(`/cursos/${id_firebase}`, 'DELETE');
-
     if(result && result.sucesso) {
         alert("Curso excluído com sucesso.");
         renderizarListaCursos();
@@ -1941,15 +1850,18 @@ async function excluirCursoModal(id_firebase) {
     }
 }
 
+// ------------------------------------------------------------------
+// FUNÇÃO CORRIGIDA DE DOWNLOAD DO PDF (SE COMUNICA COM O SEU PYTHON)
+// ------------------------------------------------------------------
 async function imprimirCardCurso(id_firebase) {
-    // 1. Feedback visual (muda o ícone para um loading)
+    // Feedback visual (Muda o ícone para um loader)
     const btn = document.querySelector(`button[onclick="imprimirCardCurso('${id_firebase}')"]`);
     const conteudoOriginal = btn.innerHTML;
     btn.innerHTML = '<svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
     btn.disabled = true;
 
     try {
-        // 2. Faz a requisição para o seu backend em Python (ajuste a rota se o seu Python usar outro nome)
+        // Faz a requisição para o seu FastAPI gerar o PDF do curso específico
         const response = await fetch(`${API_BASE_URL}/cursos/${id_firebase}/pdf`, {
             method: 'GET',
             headers: {
@@ -1963,7 +1875,7 @@ async function imprimirCardCurso(id_firebase) {
             throw new Error("Falha na API");
         }
 
-        // 3. Pega o arquivo binário gerado pelo Python e força o download no navegador
+        // Pega o binário (blob) gerado pela API e força o navegador a fazer o download
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1971,16 +1883,17 @@ async function imprimirCardCurso(id_firebase) {
         a.href = url;
         a.download = `Matriz_Curricular_${id_firebase}.pdf`;
         document.body.appendChild(a);
-        a.click();
-
-        // 4. Limpa a memória
+        
+        a.click(); // Inicia o download
+        
+        // Limpeza de memória
         window.URL.revokeObjectURL(url);
         a.remove();
 
     } catch (error) {
         console.error("Erro no download do PDF:", error);
     } finally {
-        // 5. Restaura o botão original
+        // Restaura o ícone original do botão (ícone da impressora)
         btn.innerHTML = conteudoOriginal;
         btn.disabled = false;
         feather.replace();
