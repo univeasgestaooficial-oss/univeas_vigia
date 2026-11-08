@@ -1237,18 +1237,22 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
                 <i data-feather="trash-2" class="w-5 h-5"></i>
             </button>
 
-            <!-- NOME E PERÍODO DO MÓDULO -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pr-8">
+            <!-- NOME, PERÍODO E FOTO DO MÓDULO (GRID ATUALIZADO) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pr-8">
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Módulo / Disciplina</label>
                     <input type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-nome" placeholder="Ex: Módulo I - Anatomia" required>
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período de Duração (Início - Fim)</label>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Período (Início - Fim)</label>
                     <div class="flex space-x-2">
                         <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-inicio" required title="Início do Módulo">
                         <input type="date" class="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-teal-500 input-data-fim" required title="Fim do Módulo">
                     </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-teal-600 uppercase mb-1">Link da Foto (Card)</label>
+                    <input type="url" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 input-foto-modulo bg-white" placeholder="https://exemplo.com/foto.jpg">
                 </div>
             </div>
 
@@ -1419,6 +1423,7 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
 
         arrayDisciplinas.push({
             nome: bloco.querySelector('.input-nome').value,
+            foto_modulo: bloco.querySelector('.input-foto-modulo') ? bloco.querySelector('.input-foto-modulo').value : '', // <--- CAMPO NOVO SALVO AQUI
             data_inicio: bloco.querySelector('.input-data-inicio').value,
             data_fim: bloco.querySelector('.input-data-fim').value,
             hora_aula_inicio: bloco.querySelector('.input-hora-aula-inicio').value,
@@ -1567,14 +1572,17 @@ function verDetalhesCurso(id_firebase) {
     const curso = cursosGlobais.find(c => c.id === id_firebase);
     if (!curso) return;
 
-    // A MÁGICA QUE RESOLVE: Procura em todos os possíveis nomes que a API pode devolver
+    // 1. CORREÇÃO CRÍTICA: Garantir que a grade seja um Array buscando os nomes provaveis
     let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
     let grade = [];
     try {
-        if (typeof gradeRaw === 'string') grade = JSON.parse(gradeRaw);
-        else if (Array.isArray(gradeRaw)) grade = gradeRaw;
+        if (typeof gradeRaw === 'string') {
+            grade = JSON.parse(gradeRaw);
+        } else if (Array.isArray(gradeRaw)) {
+            grade = gradeRaw;
+        }
     } catch (e) {
-        console.error("Erro JSON Módulos:", e);
+        console.error("Erro ao ler a grade curricular:", e);
     }
 
     let cargaTotal = 0;
@@ -1609,17 +1617,28 @@ function verDetalhesCurso(id_firebase) {
                 ? mod.dias_aula.join(', ')
                 : 'Não definidos';
 
-            // HTML DE CADA MÓDULO
+            // <--- IMAGEM DO MÓDULO AQUI NA VISUALIZAÇÃO --->
+            let imgModulo = (mod.foto_modulo && mod.foto_modulo.startsWith('http'))
+                ? `<img src="${mod.foto_modulo}" alt="Capa do Módulo" class="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-200 shadow-sm shrink-0">`
+                : `<div class="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 shrink-0"><i data-feather="image" class="text-gray-400 w-6 h-6"></i></div>`;
+
+            // HTML DE CADA MÓDULO (Com a foto alinhada ao lado)
             modulosHTML += `
                 <div class="bg-white p-5 rounded-xl border-2 border-gray-100 mb-4 shadow-sm relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
-                    <div class="flex justify-between items-start mb-2 pl-2">
-                        <h5 class="font-black text-gray-900 text-sm uppercase">${index + 1}. ${mod.nome || 'Módulo sem nome'}</h5>
-                        <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-md font-bold">${mod.ch_total || 0}h Total</span>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4 pl-2">
+                        ${imgModulo}
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start mb-1">
+                                <h5 class="font-black text-gray-900 text-sm uppercase">${index + 1}. ${mod.nome || 'Módulo sem nome'}</h5>
+                                <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-md font-bold shrink-0">${mod.ch_total || 0}h Total</span>
+                            </div>
+                            <p class="text-xs text-gray-600 leading-relaxed">${mod.descricao || 'Sem descrição cadastrada.'}</p>
+                        </div>
                     </div>
-                    <p class="text-xs text-gray-600 mb-4 pl-2">${mod.descricao || 'Sem descrição cadastrada.'}</p>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-bold text-gray-600 pl-2">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-bold text-gray-600 pl-2 border-t border-gray-100 pt-3">
                         <div class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
                             <span class="text-gray-400 block mb-1 uppercase text-[9px]">Período do Módulo</span>
                             ${mod.data_inicio || '--'} a ${mod.data_fim || '--'}
@@ -1643,13 +1662,14 @@ function verDetalhesCurso(id_firebase) {
     }
 
     // 2. PROFESSORES VINCULADOS (Tratamento seguro)
-    let professoresHTML = '';
+    let profRaw = curso.professores || curso.professores_vinculados || '[]';
     let professores = [];
     try {
-        if (typeof curso.professores === 'string') professores = JSON.parse(curso.professores);
-        else if (Array.isArray(curso.professores)) professores = curso.professores;
+        if (typeof profRaw === 'string') professores = JSON.parse(profRaw);
+        else if (Array.isArray(profRaw)) professores = profRaw;
     } catch(e) {}
 
+    let professoresHTML = '';
     if (professores.length === 0) {
         professoresHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhum docente vinculado.</p>';
     } else {
@@ -1666,13 +1686,14 @@ function verDetalhesCurso(id_firebase) {
     }
 
     // 3. TURMAS CADASTRADAS (Tratamento seguro)
-    let turmasHTML = '';
+    let turmasRaw = curso.turmas || curso.turmas_vinculadas || '[]';
     let turmas = [];
     try {
-        if (typeof curso.turmas === 'string') turmas = JSON.parse(curso.turmas);
-        else if (Array.isArray(curso.turmas)) turmas = curso.turmas;
+        if (typeof turmasRaw === 'string') turmas = JSON.parse(turmasRaw);
+        else if (Array.isArray(turmasRaw)) turmas = turmasRaw;
     } catch(e) {}
 
+    let turmasHTML = '';
     if (turmas.length === 0) {
         turmasHTML = '<p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">Nenhuma turma aberta.</p>';
     } else {
@@ -1835,8 +1856,11 @@ function alterarCurso(id_firebase) {
     let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
     let grade = [];
     try {
-        if (typeof gradeRaw === 'string') grade = JSON.parse(gradeRaw);
-        else if (Array.isArray(gradeRaw)) grade = gradeRaw;
+        if (typeof gradeRaw === 'string') {
+            grade = JSON.parse(gradeRaw);
+        } else if (Array.isArray(gradeRaw)) {
+            grade = gradeRaw;
+        }
     } catch (e) {
         console.error("Erro JSON Módulos Edição:", e);
     }
@@ -1850,6 +1874,11 @@ function alterarCurso(id_firebase) {
             const bloco = document.getElementById(`disciplina-box-${blocoId}`);
 
             bloco.querySelector('.input-nome').value = modulo.nome || '';
+            // <--- PREENCHENDO O CAMPO DA FOTO NA EDIÇÃO --->
+            if(bloco.querySelector('.input-foto-modulo')) {
+                bloco.querySelector('.input-foto-modulo').value = modulo.foto_modulo || '';
+            }
+            
             bloco.querySelector('.input-data-inicio').value = modulo.data_inicio || '';
             bloco.querySelector('.input-data-fim').value = modulo.data_fim || '';
             bloco.querySelector('.input-hora-aula-inicio').value = modulo.hora_aula_inicio || '';
