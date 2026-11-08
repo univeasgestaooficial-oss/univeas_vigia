@@ -1,4 +1,3 @@
-
 import os
 import json
 import uuid
@@ -334,8 +333,10 @@ async def gerar_pdf_curso(curso_id: str):
             raise HTTPException(status_code=404, detail="Curso não encontrado no banco.")
 
         curso = doc_ref.to_dict() or {}
-        nome_curso = curso.get('nome_curso', 'CURSO')
+        nome_curso = str(curso.get('nome_curso') or 'CURSO')
         grade = curso.get('grade_curricular', [])
+        if not isinstance(grade, list):
+            grade = []
 
         buffer = io.BytesIO()
         pdf = SimpleDocTemplate(
@@ -349,33 +350,21 @@ async def gerar_pdf_curso(curso_id: str):
         styles = getSampleStyleSheet()
 
         title_style = ParagraphStyle(
-            'HeaderTitle',
-            parent=styles['Normal'],
-            fontName='Helvetica-Bold',
-            fontSize=14,
-            textColor=colors.HexColor('#0f766e'),
-            alignment=1,
-            spaceAfter=4
+            'HeaderTitle', parent=styles['Normal'],
+            fontName='Helvetica-Bold', fontSize=14,
+            textColor=colors.HexColor('#0f766e'), alignment=1, spaceAfter=4
         )
 
         subtitle_style = ParagraphStyle(
-            'HeaderSubtitle',
-            parent=styles['Normal'],
-            fontName='Helvetica-Bold',
-            fontSize=8.5,
-            textColor=colors.HexColor('#334155'),
-            alignment=1,
-            spaceAfter=15
+            'HeaderSubtitle', parent=styles['Normal'],
+            fontName='Helvetica-Bold', fontSize=8.5,
+            textColor=colors.HexColor('#334155'), alignment=1, spaceAfter=15
         )
 
         module_style = ParagraphStyle(
-            'ModuleTitle',
-            parent=styles['Normal'],
-            fontName='Helvetica-Bold',
-            fontSize=10,
-            textColor=colors.HexColor('#0f172a'),
-            spaceBefore=10,
-            spaceAfter=5
+            'ModuleTitle', parent=styles['Normal'],
+            fontName='Helvetica-Bold', fontSize=10,
+            textColor=colors.HexColor('#0f172a'), spaceBefore=10, spaceAfter=5
         )
 
         elements.append(Paragraph("UNIVEAS", title_style))
@@ -388,22 +377,27 @@ async def gerar_pdf_curso(curso_id: str):
                                                  spaceAfter=15)))
 
         if not grade:
-            elements.append(Paragraph("<i>Nenhum módulo ou disciplina cadastrada na grade curricular deste curso.</i>",
-                                      styles['Normal']))
+            elements.append(
+                Paragraph("<i>Nenhum módulo cadastrado na grade curricular deste curso.</i>", styles['Normal']))
 
         for i, m in enumerate(grade):
-            mod_nome = m.get('nome', f'Módulo {i + 1}')
-            elements.append(Paragraph(f"MÓDULO {i + 1}: {str(mod_nome).upper()}", module_style))
+            if not isinstance(m, dict):
+                continue
+            mod_nome = str(m.get('nome') or f'Módulo {i + 1}')
+            elements.append(Paragraph(f"MÓDULO {i + 1}: {mod_nome.upper()}", module_style))
 
-            table_data = [
-                ['DISCIPLINAS', 'TEORIA', 'PRÁTICA', 'ES', 'TOTAL']
-            ]
+            table_data = [['DISCIPLINAS', 'TEORIA', 'PRÁTICA', 'ES', 'TOTAL']]
 
             disciplinas = m.get('disciplinas', [])
+            if not isinstance(disciplinas, list):
+                disciplinas = []
+
             t_mod, p_mod, es_mod, tot_mod = 0, 0, 0, 0
 
-            if disciplinas and isinstance(disciplinas, list):
+            if disciplinas:
                 for disc in disciplinas:
+                    if not isinstance(disc, dict):
+                        continue
                     t = int(disc.get('ch_teoria', 0) or 0)
                     p = int(disc.get('ch_pratica', 0) or 0)
                     es = int(disc.get('ch_es', 0) or 0)
@@ -426,7 +420,7 @@ async def gerar_pdf_curso(curso_id: str):
                 t_mod += t
                 tot_mod += t
                 table_data.append([
-                    str(m.get('nome', 'Módulo / Disciplina')),
+                    mod_nome,
                     str(t), '-', '-', str(t)
                 ])
 
