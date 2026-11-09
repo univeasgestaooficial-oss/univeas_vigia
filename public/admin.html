@@ -532,19 +532,23 @@
             </div>
 
 
-            <!-- ============================================== -->
+          <!-- ============================================== -->
             <!-- 5. CORPO DOCENTE -->
             <!-- ============================================== -->
             <div id="tela-prestadores" class="tela hidden">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                    <!-- CADASTRAR PRESTADOR -->
-                    <div class="xl:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
-                        <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Cadastrar Prestador
-                        </h4>
-                        <!-- ADICIONADO ID: form-docente -->
-                        <form id="form-docente" class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col space-y-8 max-w-6xl mx-auto pb-8">
+
+                    <!-- PARTE SUPERIOR: CADASTRAR PRESTADOR -->
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+                            <h4 class="text-lg font-bold text-gray-800 flex items-center">
+                                <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Cadastrar Prestador
+                            </h4>
+                        </div>
+
+                        <form id="form-docente" class="space-y-6">
+                            <!-- Bloco 1: Dados Pessoais -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Registro (Auto)</label>
                                     <input type="text" name="registro" value="#PR014" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400 font-mono">
@@ -553,12 +557,14 @@
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF do Prestador</label>
                                     <input type="text" name="cpf_prestador" placeholder="000.000.000-00" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
                                 </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome do Prestador</label>
+                                    <input type="text" name="nome_prestador" placeholder="Nome Completo" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome do Prestador</label>
-                                <input type="text" name="nome_prestador" placeholder="Nome Completo" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
+
+                            <!-- Bloco 2: Contato -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Nascimento</label>
                                     <input type="date" name="data_nascimento_prestador" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
@@ -567,76 +573,88 @@
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Telefone</label>
                                     <input type="text" name="telefone_prestador" placeholder="(DD) 90000-0000" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
                                 </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail do Prestador</label>
+                                    <input type="email" name="email_prestador" placeholder="email@dominio.com" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail do Prestador</label>
-                                <input type="email" name="email_prestador" placeholder="email@dominio.com" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Profissional</label>
-                                    <select name="tipo_profissional" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+
+                            <!-- Bloco 3: Atuação Acadêmica (Destacado) -->
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 bg-teal-50/40 p-5 rounded-xl border border-teal-100">
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Profissional</label>
+                                    <select name="tipo_profissional" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
                                         <option value="professor">Professor</option>
                                         <option value="instrutor">Instrutor Técnico</option>
                                         <option value="coordenador">Coordenador</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Especialidade</label>
-                                    <input type="text" name="especialidade" placeholder="Ex: Programação" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Turno de Atuação</label>
-                                    <select name="turno_atuacao" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Turno</label>
+                                    <select name="turno_atuacao" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
                                         <option value="manha">Manhã</option>
                                         <option value="tarde">Tarde</option>
                                         <option value="noite">Noite</option>
                                         <option value="integral">Integral</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Curso Vinculado</label>
-                                    <select name="curso_id" id="select-curso-docente" onchange="carregarModulosDocente(this.value)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                        <option value="">Selecione um curso...</option>
+                                <div class="md:col-span-3">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Especialidade</label>
+                                    <input type="text" name="especialidade" placeholder="Ex: Programação" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Curso Vinculado</label>
+                                    <select name="curso_id" id="select-curso-docente" onchange="carregarModulosDocente(this.value)" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                        <option value="">Selecione...</option>
                                         <!-- Será preenchido via JavaScript -->
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Módulo / Disciplina</label>
-                                    <select name="modulo_vinculado" id="select-modulo-docente" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-teal-500">
+                                <div class="md:col-span-3">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Módulo / Disciplina</label>
+                                    <select name="modulo_vinculado" id="select-modulo-docente" disabled class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-teal-50/50 focus:outline-teal-500 font-bold text-teal-900">
                                         <option value="">Aguardando curso...</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
-                                <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center"><i data-feather="credit-card" class="h-3 w-3 mr-1.5"></i> Dados Bancários</p>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <input type="text" name="banco" placeholder="Banco" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
-                                    <input type="text" name="agencia" placeholder="Agência" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
-                                    <input type="text" name="conta" placeholder="Conta" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
-                                </div>
-                                <div>
-                                    <input type="text" name="chave_pix" placeholder="Chave PIX" class="w-full border border-gray-200 rounded-md px-2 py-1.5 text-xs bg-white focus:outline-teal-500">
+                            <!-- Bloco 4: Dados Bancários -->
+                            <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                                <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center mb-3">
+                                    <i data-feather="credit-card" class="h-3.5 w-3.5 mr-1.5 text-gray-400"></i> Dados Bancários para Repasse
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <input type="text" name="banco" placeholder="Nome do Banco" class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    </div>
+                                    <div>
+                                        <input type="text" name="agencia" placeholder="Agência" class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    </div>
+                                    <div>
+                                        <input type="text" name="conta" placeholder="Conta" class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    </div>
+                                    <div>
+                                        <input type="text" name="chave_pix" placeholder="Chave PIX" class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex space-x-3 pt-4 border-t border-gray-100">
-                                <button type="submit" class="flex-1 bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase shadow-sm hover:bg-teal-600 transition tracking-wider">Salvar</button>
-                                <button type="reset" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-xs uppercase hover:bg-gray-200 transition tracking-wider">Limpar</button>
+
+                            <!-- Botões de Ação -->
+                            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                                <button type="reset" class="bg-gray-100 text-gray-600 font-bold py-2.5 px-6 rounded-xl text-xs uppercase hover:bg-gray-200 transition tracking-wider">Limpar Campos</button>
+                                <button type="submit" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase shadow-sm hover:bg-teal-600 transition tracking-wider">Salvar Prestador</button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- LISTA DE PRESTADORES -->
-                    <div class="xl:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
+                    <!-- PARTE INFERIOR: LISTA DE PRESTADORES -->
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
-                            <h4 class="text-lg font-bold text-gray-900">Lista de Prestadores</h4>
+                            <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                                <i data-feather="list" class="text-teal-500 mr-2 h-5 w-5"></i> Lista de Prestadores Ativos
+                            </h4>
                             <div class="flex space-x-2 w-full sm:w-auto">
-                                <div class="relative flex-1 sm:w-64">
-                                    <input type="text" placeholder="Registro, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                <div class="relative flex-1 sm:w-72">
+                                    <input type="text" placeholder="Buscar por Registro, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
                                     <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                                 </div>
                                 <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
@@ -644,14 +662,15 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="overflow-x-auto flex-1">
+
+                        <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                                 <thead class="bg-gray-50">
                                     <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                         <th class="py-3 px-4">Registro</th>
                                         <th class="py-3 px-4">Nome do Prestador</th>
                                         <th class="py-3 px-4">Telefone</th>
-                                        <th class="py-3 px-4">Tipo Profissional</th>
+                                        <th class="py-3 px-4">Área / Módulo</th>
                                         <th class="py-3 px-4 text-right">Ação</th>
                                     </tr>
                                 </thead>
@@ -661,6 +680,7 @@
                             </table>
                         </div>
                     </div>
+
                 </div>
             </div>
 
