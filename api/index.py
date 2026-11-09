@@ -16,7 +16,7 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.platypus import Spacer, Paragraph, Image
 import locale
-
+import urllib.request
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
@@ -789,22 +789,28 @@ async def gerar_pdf_documento(documento_id: str):
         elements = []
 
         # Cabeçalho
-
-        # Cabeçalho
-        logo_url = "https://i.imgur.com/ki7mdS2.png" 
+        logo_url = "https://i.imgur.com/ki7mdS2.png"
 
         if logo_url:
             try:
-                # O ReportLab faz o download da URL nativamente.
-                # Ajuste width (largura) e height (altura) conforme a proporção do seu logo
-                img = Image(logo_url, width=70, height=70)
-                img.hAlign = 'CENTER'
-                elements.append(img)
-                elements.append(Spacer(1, 10))  # Espaço entre o logo e o nome
+                # Disfarça a requisição do Python como se fosse um navegador para burlar o bloqueio do Imgur
+                req = urllib.request.Request(logo_url,
+                                             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                with urllib.request.urlopen(req) as response:
+                    img_data = io.BytesIO(response.read())
+
+                    img = Image(img_data, width=80, height=80)
+                    img.hAlign = 'CENTER'
+                    elements.append(img)
+                    elements.append(Spacer(1, 10))
             except Exception as e:
                 print(f"Aviso: Não foi possível carregar o logo no PDF - {e}")
 
-        
+        # Título da Instituição (Apenas uma vez)
+        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
+        elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
+
+
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
         elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
 
