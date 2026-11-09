@@ -973,3 +973,142 @@ async def gerar_pdf_documento(documento_id: str):
         print("--- ERRO CRITICO NA GERACAO DO PDF DO DOCUMENTO ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+# ==========================================
+# GERAÇÃO DO PDF DE RELATÓRIO DO CORPO DOCENTE
+# ==========================================
+@app.get("/api/v1/docentes/pdf")
+async def gerar_relatorio_docentes_pdf(q: str = None):
+    try:
+        checar_db()
+
+        # Puxa os dados da instituição para o cabeçalho
+        sys_ref = db.collection("sistema").document("configuracoes").get()
+        sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+            "nome_instituicao": "UNIVEAS",
+            "cnpj": "53.199.321/0001-23",
+            "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+        }
+
+        # Busca todos os docentes
+        docs = db.collection("docentes").stream()
+        docentes = [{"id": d.id, **d.to_dict()} for d in docs]
+
+        # Aplica o filtro de pesquisa (se o usuário digitou algo na tela)
+        if q:
+            q_lower = q.lower()
+            docentes = [
+                d for d in docentes
+                if q_lower in str(d.get("nome", "")).lower() or
+                   q_lower in str(d.get("registro", "")).lower() or
+                   q_lower in str(d.get("cpf", "")).lower()
+            ]
+
+        # Preparação do PDF com ReportLab
+        buffer = io.BytesIO()
+        pdf = SimpleDocTemplate(
+            buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40
+        )
+
+        elements = []
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            'TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=14, alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e')
+        )
+        subtitle_style = ParagraphStyle(
+            'SubtitleStyle', parent=styles['Normal'], fontName='Helvetica',
+            fontSize=9, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155')
+        )
+
+        # Inserção do Cabeçalho
+        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
+        elements.append(
+            Paragraph(f"CNPJ: {sys_dados.get('cnpj', '')} | {sys_dados.get('endereco', '')}", subtitle_style))
+
+        elements.append(Paragraph("<b>RELATÓRIO GERAL DO CORPO DOCENTE</b>", ParagraphStyle(
+            'ReportTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=12, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#0f172a')
+        )))
+
+        if q:
+            elements.append(Paragraph(f"<i>Filtro aplicado: '{q}'</i>", ParagraphStyle(
+                'FilterText', parent=styles['Normal'], fontName='Helvetica-Oblique',
+                fontSize=9, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#64748b')
+            )))
+
+        # Estruturação dos Dados na Tabela
+        table_data = [['REGISTRO', 'NOME DO PRESTADOR', 'TELEFONE', 'TIPO / TURNO', 'MÓDULO VINCULADO']]
+
+        for d in docentes:
+            nome = str(d.get('nome') or d.get('nome_prestador') or '-').upper()
+            registro = str(d.get('registro') or '-')
+            telefone = str(d.get('telefone') or d.get('telefone_prestador') or '-')
+
+            tipo = str(d.get('tipo_profissional', '')).title()
+            turno = str(d.get('turno_atuacao', '')).title()
+            tipo_turno = f"{tipo}\n({turno})" if tipo else '-'
+
+            vinculo = str(d.get('modulo_vinculado') or 'Múltiplos / Geral').upper()
+
+            table_data.append([registro, nome, telefone, tipo_turno, vinculo])
+
+        if len(docentes) == 0:
+            table_data.append(['Nenhum docente encontrado para os critérios de busca.', '', '', '', ''])
+
+        # Estilização da Tabela Padrão UNIVEAS
+        t_obj = Table(table_data, colWidths=[60, 160, 80, 90, 145])
+        t_obj.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Registro
+            ('ALIGN', (2, 1), (3, -1), 'CENTER'),  # Telefone e Tipo
+            ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # Vinculo
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
+        ]))
+
+        # Ajuste de layout caso a tabela venha vazia
+        if len(docentes) == 0:
+            t_obj.setStyle(TableStyle([('SPAN', (0, 1), (-1, 1)), ('ALIGN', (0, 1), (-1, 1), 'CENTER')]))
+
+        elements.append(t_obj)
+
+        # Rodapé Institucional
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(f"Total de registros encontrados: {len(docentes)}", ParagraphStyle(
+            'TotalText', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=9, textColor=colors.HexColor('#334155')
+        )))
+
+        data_atual = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(f"Documento gerado em {data_atual} via Sistema SIGA UNIVEAS", ParagraphStyle(
+            'FooterText', parent=styles['Normal'], fontName='Helvetica-Oblique',
+            fontSize=8, textColor=colors.gray, alignment=TA_CENTER
+        )))
+
+        # Finaliza e expede o Arquivo
+        pdf.build(elements)
+        buffer.seek(0)
+
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=Relatorio_Docentes_UNIVEAS.pdf"}
+        )
+    except Exception as e:
+        print("--- ERRO AO GERAR PDF DOCENTES ---")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
