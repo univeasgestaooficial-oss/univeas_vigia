@@ -1174,15 +1174,21 @@ async function loadDocentes() {
     docentes.forEach(doc => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
-                <td class="py-3 px-4 text-gray-500 font-mono">${doc.registro}</td>
-                <td class="py-3 px-4 text-gray-800 font-bold">${doc.nome}</td>
-                <td class="py-3 px-4 text-gray-500">${doc.telefone}</td>
-                <td class="py-3 px-4 text-gray-500">
+                <td class="py-3 px-4 text-gray-500 font-mono text-xs">${doc.registro}</td>
+                <td class="py-3 px-4 text-gray-800 font-bold text-xs">${doc.nome}</td>
+                <td class="py-3 px-4 text-gray-500 text-xs">${doc.telefone}</td>
+                <td class="py-3 px-4 text-gray-500 text-xs uppercase tracking-wider">
                     ${doc.tipo_profissional}
                     <br><span class="text-[10px] text-teal-600 font-bold">${doc.modulo_vinculado || ''}</span>
                 </td>
-                <td class="py-3 px-4 text-right">
-                    <button onclick="excluirDocente('${doc.id}')" class="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded transition">
+                <td class="py-3 px-4 text-right space-x-1 flex justify-end">
+                    <button onclick="verPerfilDocente('${doc.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Perfil Completo">
+                        <i data-feather="eye" class="h-4 w-4"></i>
+                    </button>
+                    <button onclick="editarDocente('${doc.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Docente">
+                        <i data-feather="edit" class="h-4 w-4"></i>
+                    </button>
+                    <button onclick="excluirDocente('${doc.id}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Excluir Docente">
                         <i data-feather="trash-2" class="h-4 w-4"></i>
                     </button>
                 </td>
@@ -1190,6 +1196,22 @@ async function loadDocentes() {
         `;
     });
     feather.replace();
+}
+
+// ==========================================
+// NOVAS FUNÇÕES DE AÇÃO DO DOCENTE
+// ==========================================
+
+function verPerfilDocente(id_firebase) {
+    // Aqui você pode criar a lógica de abrir um Modal (parecido com o do Curso)
+    // para exibir todos os dados do docente e informações bancárias.
+    alert("Função para visualizar o perfil do docente com ID: " + id_firebase);
+}
+
+function editarDocente(id_firebase) {
+    // Aqui você fará a lógica para puxar os dados do docente
+    // e preencher o form superior de "Cadastrar Prestador" para edição.
+    alert("Função para editar o docente com ID: " + id_firebase);
 }
 
 async function loadFinanceiro() {
