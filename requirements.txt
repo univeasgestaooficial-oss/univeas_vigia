@@ -4,3 +4,4 @@ pydantic==2.5.2
 psycopg2-binary==2.9.9
 firebase-admin==6.2.0
 reportlab==4.0.8
+python-multipart==0.0.6
