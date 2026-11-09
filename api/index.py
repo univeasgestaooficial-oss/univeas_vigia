@@ -14,7 +14,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.platypus import Spacer, Paragraph, Image
+import locale
 
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
@@ -597,3 +599,270 @@ async def salvar_diario_eletronico(
 
     db.collection("diarios").add(registro_diario)
     return {"sucesso": True, "mensagem": "Diário registrado com sucesso!"}
+
+
+# ==========================================
+# 7. MÓDULO DASHBOARD & ESTATÍSTICAS
+# ==========================================
+@app.get("/api/v1/dashboard/indicadores")
+async def obter_indicadores_dashboard():
+    checar_db()
+
+    # Contagens diretas do banco (Usando list() por segurança na iteração simples do Firestore)
+    alunos_docs = list(db.collection("alunos").stream())
+    docentes_docs = list(db.collection("docentes").stream())
+    cursos_docs = list(db.collection("cursos").stream())
+    mensalidades_docs = list(db.collection("mensalidades").stream())
+
+    # Cálculos específicos
+    total_alunos = len(alunos_docs)
+    total_docentes = len(docentes_docs)
+    total_cursos = len(cursos_docs)
+
+    # Exemplo: Filtrar alunos pendentes para o card de "Novas Matrículas/Pendentes"
+    alunos_pendentes = len([a for a in alunos_docs if a.to_dict().get("status") == "Pendente"])
+
+    # Cálculo rápido de inadimplência (Exemplo: Mensalidades Atrasadas)
+    mensalidades_atrasadas = len([m for m in mensalidades_docs if m.to_dict().get("status") == "Atrasado"])
+    total_mensalidades = len(mensalidades_docs) if mensalidades_docs else 1  # evita divisão por zero
+    inadimplencia = round((mensalidades_atrasadas / total_mensalidades) * 100, 1) if mensalidades_docs else 0
+
+    return {
+        "total_alunos": total_alunos,
+        "total_docentes": total_docentes,
+        "total_cursos": total_cursos,
+        "alunos_pendentes": alunos_pendentes,
+        "inadimplencia_percent": f"{inadimplencia}%"
+    }
+
+
+# ==========================================
+# 8. MÓDULO CONFIGURAÇÕES DO SISTEMA
+# ==========================================
+@app.get("/api/v1/configuracoes")
+async def obter_configuracoes():
+    checar_db()
+    doc = db.collection("sistema").document("configuracoes").get()
+
+    if doc.exists:
+        return doc.to_dict()
+
+    # Retorna o padrão (Fallback) caso ainda não tenha sido configurado
+    return {
+        "nome_instituicao": "UNIVEAS",
+        "cnpj": "53.199.321/0001-23",
+        "email": "contato@univeas.com.br",
+        "telefone": "(91) 90000-0000",
+        "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA",
+        "cor_tema": "#0f766e"
+    }
+
+
+@app.put("/api/v1/configuracoes")
+async def atualizar_configuracoes(
+        nome_instituicao: str = Form(None),
+        cnpj: str = Form(None),
+        telefone: str = Form(None),
+        email: str = Form(None),
+        endereco: str = Form(None),
+        cor_tema: str = Form(None)
+):
+    checar_db()
+
+    # Prepara apenas os dados que vieram preenchidos
+    dados_atualizados = {
+        "nome_instituicao": nome_instituicao,
+        "cnpj": cnpj,
+        "telefone": telefone,
+        "email": email,
+        "endereco": endereco,
+        "cor_tema": cor_tema,
+        "data_atualizacao": datetime.now().isoformat()
+    }
+
+    # Remove valores Nulos para não sobrescrever com vazio
+    dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
+
+    # O merge=True garante que só atualiza os campos enviados, preservando o resto
+    db.collection("sistema").document("configuracoes").set(dados_limpos, merge=True)
+
+    return {"sucesso": True, "mensagem": "Configurações institucionais atualizadas com sucesso."}
+
+
+# ==========================================
+# 9. MÓDULO DE DOCUMENTOS ACADÊMICOS
+# ==========================================
+@app.get("/api/v1/documentos")
+async def listar_documentos():
+    checar_db()
+    docs = db.collection("documentos").stream()
+    return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+
+@app.post("/api/v1/documentos/emitir")
+async def registrar_emissao_documento(
+        aluno_id: str = Form(...),
+        tipo_documento: str = Form(...),  # ex: "Declaracao de Matricula", "Historico"
+        observacao: str = Form("")
+):
+    checar_db()
+
+    # Busca os dados do aluno para o registro
+    aluno_ref = db.collection("alunos").document(aluno_id).get()
+    if not aluno_ref.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    aluno_dados = aluno_ref.to_dict()
+    codigo_validacao = f"DOC-{str(uuid.uuid4()).split('-')[0].upper()}"
+
+    novo_doc = {
+        "aluno_id": aluno_id,
+        "nome_aluno": aluno_dados.get("nome"),
+        "matricula": aluno_dados.get("matricula"),
+        "tipo_documento": tipo_documento,
+        "codigo_validacao": codigo_validacao,
+        "observacao": observacao,
+        "data_emissao": datetime.now().isoformat(),
+        "emitido_por": "Administrador"
+    }
+
+    _, doc_ref = db.collection("documentos").add(novo_doc)
+    return {
+        "sucesso": True,
+        "mensagem": f"{tipo_documento} registrado com sucesso.",
+        "id_documento": doc_ref.id,
+        "codigo_validacao": codigo_validacao
+    }
+
+# ==========================================
+# 9.1 GERAÇÃO DE PDF DE DOCUMENTOS ACADÊMICOS
+# ==========================================
+@app.get("/api/v1/documentos/{documento_id}/pdf")
+async def gerar_pdf_documento(documento_id: str):
+    try:
+        checar_db()
+
+        # 1. Busca o registro da emissão
+        doc_ref = db.collection("documentos").document(documento_id).get()
+        if not doc_ref.exists:
+            raise HTTPException(status_code=404, detail="Registro de documento não encontrado.")
+
+        dados_emissao = doc_ref.to_dict()
+        aluno_id = dados_emissao.get("aluno_id")
+        tipo_doc = str(dados_emissao.get("tipo_documento", "DOCUMENTO ACADÊMICO")).upper()
+
+        # 2. Busca os dados completos do aluno
+        aluno_ref = db.collection("alunos").document(aluno_id).get()
+        aluno = aluno_ref.to_dict() if aluno_ref.exists else {}
+
+        # 3. Busca configurações da instituição
+        sys_ref = db.collection("sistema").document("configuracoes").get()
+        sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+            "nome_instituicao": "UNIVEAS",
+            "cnpj": "53.199.321/0001-23",
+            "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+        }
+
+        # 4. Configuração do ReportLab
+        buffer = io.BytesIO()
+        pdf = SimpleDocTemplate(
+            buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50
+        )
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=16, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#0f766e')
+        )
+        subtitle_style = ParagraphStyle(
+            'SubtitleStyle', parent=styles['Normal'], fontName='Helvetica',
+            fontSize=10, alignment=TA_CENTER, spaceAfter=30, textColor=colors.HexColor('#334155')
+        )
+        body_style = ParagraphStyle(
+            'BodyStyle', parent=styles['Normal'], fontName='Helvetica',
+            fontSize=12, alignment=TA_JUSTIFY, leading=18, spaceAfter=20
+        )
+        footer_style = ParagraphStyle(
+            'FooterStyle', parent=styles['Normal'], fontName='Helvetica-Oblique',
+            fontSize=9, alignment=TA_CENTER, textColor=colors.gray
+        )
+
+        elements = []
+
+        # Cabeçalho
+        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
+        elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
+
+        # Título do Documento
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(f"<b>{tipo_doc}</b>", ParagraphStyle(
+            'DocType', parent=title_style, fontSize=14, textColor=colors.black, spaceAfter=40
+        )))
+
+        # Corpo do Texto Dinâmico
+        nome = aluno.get('nome', 'NOME NÃO INFORMADO').upper()
+        cpf = aluno.get('cpf', '000.000.000-00')
+        matricula = aluno.get('matricula', 'S/N')
+        curso_id = aluno.get('curso', '')
+
+        # Nome do curso requer uma busca extra, mas usaremos um placeholder seguro se não encontrar
+        nome_curso = "Curso Técnico/Profissionalizante"
+        if curso_id:
+            c_ref = db.collection("cursos").document(curso_id).get()
+            if c_ref.exists:
+                nome_curso = c_ref.to_dict().get("nome_curso", nome_curso).upper()
+
+        if "DECLARAÇÃO" in tipo_doc:
+            texto = f"""Declaramos para os devidos fins de comprovação que o(a) aluno(a) 
+            <b>{nome}</b>, portador(a) do CPF <b>{cpf}</b>, está regularmente 
+            matriculado(a) na instituição de ensino {sys_dados.get('nome_instituicao')}, 
+            sob a matrícula <b>{matricula}</b>, no curso de <b>{nome_curso}</b>."""
+            elements.append(Paragraph(texto, body_style))
+        else:
+            # Texto genérico para Históricos e Certificados
+            texto = f"""Certificamos que o registro acadêmico referente ao(à) aluno(a) 
+            <b>{nome}</b>, matrícula <b>{matricula}</b> (CPF: {cpf}), vinculado(a) ao 
+            curso de <b>{nome_curso}</b>, encontra-se documentado nos arquivos desta instituição."""
+            elements.append(Paragraph(texto, body_style))
+
+        # Data atual (Formatada)
+        data_atual = datetime.now().strftime("%d/%m/%Y")
+        elements.append(Spacer(1, 40))
+        elements.append(
+            Paragraph(f"Vigia/PA, {data_atual}.", ParagraphStyle('DateStyle', parent=body_style, alignment=TA_CENTER)))
+
+        # Assinaturas
+        elements.append(Spacer(1, 60))
+        sig_data = [
+            ['________________________________________', '________________________________________'],
+            ['Secretaria Acadêmica', 'Direção Geral']
+        ]
+        sig_table = Table(sig_data, colWidths=[200, 200])
+        sig_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(sig_table)
+
+        # Rodapé com código de validação
+        elements.append(Spacer(1, 50))
+        cod_val = dados_emissao.get('codigo_validacao', 'N/A')
+        elements.append(
+            Paragraph(f"Documento emitido digitalmente via SIGA UNIVEAS.<br/>Código de Autenticidade: <b>{cod_val}</b>",
+                      footer_style))
+
+        pdf.build(elements)
+        buffer.seek(0)
+
+        nome_arquivo = tipo_doc.replace(" ", "_").replace("/", "-")
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={nome_arquivo}_{matricula}.pdf"}
+        )
+
+    except Exception as e:
+        print("--- ERRO CRITICO NA GERACAO DO PDF DO DOCUMENTO ---")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
