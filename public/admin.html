@@ -648,16 +648,20 @@
 
                     <!-- PARTE INFERIOR: LISTA DE PRESTADORES -->
                     <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+
+
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
                             <h4 class="text-lg font-bold text-gray-900 flex items-center">
                                 <i data-feather="list" class="text-teal-500 mr-2 h-5 w-5"></i> Lista de Prestadores Ativos
                             </h4>
                             <div class="flex space-x-2 w-full sm:w-auto">
                                 <div class="relative flex-1 sm:w-72">
-                                    <input type="text" placeholder="Buscar por Registro, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                    <!-- ADICIONADO ID PARA O FILTRO -->
+                                    <input type="text" id="busca-docente" placeholder="Buscar por Registro, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
                                     <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                                 </div>
-                                <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
+                                <!-- ADICIONADA A AÇÃO ONCLICK -->
+                                <button onclick="imprimirListaDocentes()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
                                     <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
                                 </button>
                             </div>
@@ -2375,6 +2379,50 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
+    // ==========================================
+// BUSCA AO VIVO E IMPRESSÃO DE RELATÓRIO
+// ==========================================
+
+// Filtro instantâneo na tabela do Frontend
+document.getElementById('busca-docente')?.addEventListener('input', function(e) {
+    const termo = e.target.value.toLowerCase();
+    const linhas = document.querySelectorAll('#tabela-docentes tr');
+
+    linhas.forEach(linha => {
+        const textoLinha = linha.innerText.toLowerCase();
+        linha.style.display = textoLinha.includes(termo) ? '' : 'none';
+    });
+});
+
+// Envia o termo de busca para o Python gerar o PDF
+function imprimirListaDocentes() {
+    const termoBusca = document.getElementById('busca-docente')?.value || '';
+    const token = localStorage.getItem('token_siga');
+
+    fetch(`${API_BASE_URL}/docentes/pdf?q=${encodeURIComponent(termoBusca)}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Erro ao gerar o PDF no servidor.");
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Relatorio_Docentes.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Erro ao gerar o relatório PDF. Verifique o servidor.");
+    });
+}
 
 </script>
 </body>
