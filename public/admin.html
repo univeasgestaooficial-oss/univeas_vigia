@@ -1974,6 +1974,120 @@ function imprimirCardCurso(id_firebase) {
     });
 }
 
+    // Adicione junto das funções de carregamento (loadAlunos, loadCursos, etc.)
+async function loadDocumentos() {
+    const documentos = await apiRequest('/documentos');
+    const tbody = document.querySelector('#tela-documentos tbody');
+    if (!tbody || !documentos) return;
+
+    tbody.innerHTML = '';
+
+    if(documentos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-xs text-gray-500">Nenhum documento emitido ainda.</td></tr>';
+        return;
+    }
+
+    documentos.forEach(doc => {
+        // Formatar data
+        let dataFormatada = "Data não informada";
+        if(doc.data_emissao) {
+            const dataObj = new Date(doc.data_emissao);
+            dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' - ' + dataObj.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        }
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="py-3 px-4 text-gray-800 font-bold">${doc.tipo_documento}</td>
+                <td class="py-3 px-4 text-gray-500">${doc.nome_aluno} <span class="text-[10px] bg-gray-100 px-1 py-0.5 rounded font-mono ml-1">${doc.matricula}</span></td>
+                <td class="py-3 px-4 text-gray-400 text-xs">${dataFormatada}</td>
+                <td class="py-3 px-4 text-right">
+                    <button onclick="baixarDocumentoPDF('${doc.id}', '${doc.tipo_documento}')" class="bg-gray-100 text-gray-700 hover:bg-teal-500 hover:text-white px-3 py-1.5 rounded transition text-xs font-bold flex items-center justify-end w-full sm:w-auto ml-auto">
+                        <i data-feather="download" class="w-3 h-3 mr-1.5"></i> Download
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    feather.replace();
+}
+
+// Função para acionar a rota de emissão de um NOVO documento
+async function emitirNovoDocumento() {
+    const inputBusca = document.querySelector('#tela-documentos input[placeholder*="Matrícula"]').value;
+    const tipoDoc = document.querySelector('#tela-documentos select').value;
+
+    if(!inputBusca) {
+        alert("Digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
+        return;
+    }
+
+    // Como o backend exige o aluno_id, precisamos buscar o aluno primeiro.
+    // Para simplificar, vou assumir que você buscará o aluno_id correspondente à matrícula.
+    const alunos = await apiRequest('/alunos');
+    const aluno = alunos.find(a => a.matricula === inputBusca || a.cpf === inputBusca || a.nome.toLowerCase().includes(inputBusca.toLowerCase()));
+
+    if(!aluno) {
+        alert("Aluno não encontrado na base de dados.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('aluno_id', aluno.id);
+    formData.append('tipo_documento', tipoDoc);
+    formData.append('observacao', 'Emitido via Painel Admin');
+
+    const result = await apiRequest('/documentos/emitir', 'POST', formData);
+
+    if(result && result.sucesso) {
+        alert(result.mensagem);
+        loadDocumentos(); // Atualiza a tabela
+        // Opcional: Já forçar o download automático do recém-criado
+        baixarDocumentoPDF(result.id_documento, tipoDoc);
+    } else {
+        alert(result?.detail || "Erro ao emitir documento.");
+    }
+}
+
+// Função para baixar o PDF gerado pelo ReportLab
+function baixarDocumentoPDF(id_documento, tipo_doc) {
+    const token = localStorage.getItem('token_siga');
+
+    fetch(`${API_BASE_URL}/documentos/${id_documento}/pdf`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Erro ao gerar o PDF no servidor.");
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${tipo_doc.replace(/ /g, '_')}_${id_documento}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Erro ao baixar o documento PDF.");
+    });
+}
+
+// Vincular a função ao botão "Gerar Documento PDF" da interface
+document.addEventListener("DOMContentLoaded", () => {
+    const btnGerarDoc = document.querySelector('#tela-documentos button:contains("Gerar Documento PDF")');
+    // Como contains não é nativo, selecionamos pelo HTML:
+    const botoes = document.querySelectorAll('#tela-documentos button');
+    botoes.forEach(b => {
+        if(b.innerText.includes("Gerar Documento PDF")) {
+            b.onclick = emitirNovoDocumento;
+        }
+    });
+});
+
 </script>
 </body>
 </html>
