@@ -4,19 +4,17 @@ import uuid
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
-from fastapi import FastAPI, Form, HTTPException, File, UploadFile, Response
+from fastapi import FastAPI, Form, HTTPException, File, UploadFile, Response, Header
 from firebase_admin import credentials, firestore, storage
 import traceback
 import io
-from fastapi import Response
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
-from reportlab.platypus import Spacer, Paragraph, Image
-import locale
 import urllib.request
+
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
@@ -196,7 +194,8 @@ async def cadastrar_docente(
         cpf_prestador: str = Form(...),
         telefone_prestador: str = Form(...),
         tipo_profissional: str = Form(...),
-        curso_id: str = Form(...)
+        curso_id: str = Form(...),
+modulo_vinculado: str = Form(None)
 ):
     checar_db()
     registro_gerado = f"#PR{str(uuid.uuid4().int)[:4]}"
@@ -207,6 +206,7 @@ async def cadastrar_docente(
         "telefone": telefone_prestador,
         "tipo_profissional": tipo_profissional,
         "curso_id": curso_id,
+        "modulo_vinculado": modulo_vinculado,
         "status": "Ativo"
     }
     db.collection("docentes").add(novo_docente)
@@ -234,7 +234,6 @@ async def listar_cursos():
         return cursos
     except Exception as e:
         print(f"--- ERRO AO LISTAR CURSOS: {e} ---")
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao buscar cursos: {str(e)}")
 
@@ -491,6 +490,7 @@ async def gerar_pdf_curso(curso_id: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
 
+
 # ==========================================
 # 5. MÓDULO FINANCEIRO
 # ==========================================
@@ -512,9 +512,6 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
 # ==========================================
 # 6. MÓDULO DO DOCENTE (PORTAL DO PROFESSOR)
 # ==========================================
-from fastapi import Header
-
-
 def validar_token_docente(authorization: str):
     if not authorization or not authorization.startswith("Bearer docente_"):
         raise HTTPException(status_code=401, detail="Acesso não autorizado.")
@@ -607,23 +604,19 @@ async def salvar_diario_eletronico(
 async def obter_indicadores_dashboard():
     checar_db()
 
-    # Contagens diretas do banco (Usando list() por segurança na iteração simples do Firestore)
     alunos_docs = list(db.collection("alunos").stream())
     docentes_docs = list(db.collection("docentes").stream())
     cursos_docs = list(db.collection("cursos").stream())
     mensalidades_docs = list(db.collection("mensalidades").stream())
 
-    # Cálculos específicos
     total_alunos = len(alunos_docs)
     total_docentes = len(docentes_docs)
     total_cursos = len(cursos_docs)
 
-    # Exemplo: Filtrar alunos pendentes para o card de "Novas Matrículas/Pendentes"
     alunos_pendentes = len([a for a in alunos_docs if a.to_dict().get("status") == "Pendente"])
 
-    # Cálculo rápido de inadimplência (Exemplo: Mensalidades Atrasadas)
     mensalidades_atrasadas = len([m for m in mensalidades_docs if m.to_dict().get("status") == "Atrasado"])
-    total_mensalidades = len(mensalidades_docs) if mensalidades_docs else 1  # evita divisão por zero
+    total_mensalidades = len(mensalidades_docs) if mensalidades_docs else 1
     inadimplencia = round((mensalidades_atrasadas / total_mensalidades) * 100, 1) if mensalidades_docs else 0
 
     return {
@@ -646,7 +639,6 @@ async def obter_configuracoes():
     if doc.exists:
         return doc.to_dict()
 
-    # Retorna o padrão (Fallback) caso ainda não tenha sido configurado
     return {
         "nome_instituicao": "UNIVEAS",
         "cnpj": "53.199.321/0001-23",
@@ -668,7 +660,6 @@ async def atualizar_configuracoes(
 ):
     checar_db()
 
-    # Prepara apenas os dados que vieram preenchidos
     dados_atualizados = {
         "nome_instituicao": nome_instituicao,
         "cnpj": cnpj,
@@ -679,10 +670,7 @@ async def atualizar_configuracoes(
         "data_atualizacao": datetime.now().isoformat()
     }
 
-    # Remove valores Nulos para não sobrescrever com vazio
     dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
-
-    # O merge=True garante que só atualiza os campos enviados, preservando o resto
     db.collection("sistema").document("configuracoes").set(dados_limpos, merge=True)
 
     return {"sucesso": True, "mensagem": "Configurações institucionais atualizadas com sucesso."}
@@ -701,12 +689,11 @@ async def listar_documentos():
 @app.post("/api/v1/documentos/emitir")
 async def registrar_emissao_documento(
         aluno_id: str = Form(...),
-        tipo_documento: str = Form(...),  # ex: "Declaracao de Matricula", "Historico"
+        tipo_documento: str = Form(...),
         observacao: str = Form("")
 ):
     checar_db()
 
-    # Busca os dados do aluno para o registro
     aluno_ref = db.collection("alunos").document(aluno_id).get()
     if not aluno_ref.exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
@@ -733,6 +720,7 @@ async def registrar_emissao_documento(
         "codigo_validacao": codigo_validacao
     }
 
+
 # ==========================================
 # 9.1 GERAÇÃO DE PDF DE DOCUMENTOS ACADÊMICOS
 # ==========================================
@@ -741,7 +729,6 @@ async def gerar_pdf_documento(documento_id: str):
     try:
         checar_db()
 
-        # 1. Busca o registro da emissão
         doc_ref = db.collection("documentos").document(documento_id).get()
         if not doc_ref.exists:
             raise HTTPException(status_code=404, detail="Registro de documento não encontrado.")
@@ -750,11 +737,9 @@ async def gerar_pdf_documento(documento_id: str):
         aluno_id = dados_emissao.get("aluno_id")
         tipo_doc = str(dados_emissao.get("tipo_documento", "DOCUMENTO ACADÊMICO")).upper()
 
-        # 2. Busca os dados completos do aluno
         aluno_ref = db.collection("alunos").document(aluno_id).get()
         aluno = aluno_ref.to_dict() if aluno_ref.exists else {}
 
-        # 3. Busca configurações da instituição
         sys_ref = db.collection("sistema").document("configuracoes").get()
         sys_dados = sys_ref.to_dict() if sys_ref.exists else {
             "nome_instituicao": "UNIVEAS",
@@ -762,7 +747,6 @@ async def gerar_pdf_documento(documento_id: str):
             "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
         }
 
-        # 4. Configuração do ReportLab
         buffer = io.BytesIO()
         pdf = SimpleDocTemplate(
             buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50
@@ -788,17 +772,12 @@ async def gerar_pdf_documento(documento_id: str):
 
         elements = []
 
-        # Cabeçalho
         logo_url = "https://i.imgur.com/ki7mdS2.png"
-
         if logo_url:
             try:
-                # Disfarça a requisição do Python como se fosse um navegador para burlar o bloqueio do Imgur
-                req = urllib.request.Request(logo_url,
-                                             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                req = urllib.request.Request(logo_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
                 with urllib.request.urlopen(req) as response:
                     img_data = io.BytesIO(response.read())
-
                     img = Image(img_data, width=80, height=80)
                     img.hAlign = 'CENTER'
                     elements.append(img)
@@ -806,27 +785,20 @@ async def gerar_pdf_documento(documento_id: str):
             except Exception as e:
                 print(f"Aviso: Não foi possível carregar o logo no PDF - {e}")
 
-        # Título da Instituição (Apenas uma vez)
+        # Cabeçalho limpo (renderizado uma única vez corretamente)
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
         elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
 
-
-        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
-        elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
-
-        # Título do Documento
-        elements.append(Spacer(1, 20))
+        elements.append(Spacer(1, 10))
         elements.append(Paragraph(f"<b>{tipo_doc}</b>", ParagraphStyle(
-            'DocType', parent=title_style, fontSize=14, textColor=colors.black, spaceAfter=40
+            'DocType', parent=title_style, fontSize=14, textColor=colors.black, spaceAfter=30
         )))
 
-        # Corpo do Texto Dinâmico
         nome = aluno.get('nome', 'NOME NÃO INFORMADO').upper()
         cpf = aluno.get('cpf', '000.000.000-00')
         matricula = aluno.get('matricula', 'S/N')
         curso_id = aluno.get('curso', '')
 
-        # Nome do curso requer uma busca extra, mas usaremos um placeholder seguro se não encontrar
         nome_curso = "Curso Técnico/Profissionalizante"
         if curso_id:
             c_ref = db.collection("cursos").document(curso_id).get()
@@ -840,20 +812,17 @@ async def gerar_pdf_documento(documento_id: str):
             sob a matrícula <b>{matricula}</b>, no curso de <b>{nome_curso}</b>."""
             elements.append(Paragraph(texto, body_style))
         else:
-            # Texto genérico para Históricos e Certificados
             texto = f"""Certificamos que o registro acadêmico referente ao(à) aluno(a) 
             <b>{nome}</b>, matrícula <b>{matricula}</b> (CPF: {cpf}), vinculado(a) ao 
             curso de <b>{nome_curso}</b>, encontra-se documentado nos arquivos desta instituição."""
             elements.append(Paragraph(texto, body_style))
 
-        # Data atual (Formatada)
         data_atual = datetime.now().strftime("%d/%m/%Y")
         elements.append(Spacer(1, 40))
         elements.append(
             Paragraph(f"Vigia/PA, {data_atual}.", ParagraphStyle('DateStyle', parent=body_style, alignment=TA_CENTER)))
 
-        # Assinaturas
-        elements.append(Spacer(1, 60))
+        elements.append(Spacer(1, 50))
         sig_data = [
             ['________________________________________', '________________________________________'],
             ['Secretaria Acadêmica', 'Direção Geral']
@@ -866,12 +835,11 @@ async def gerar_pdf_documento(documento_id: str):
         ]))
         elements.append(sig_table)
 
-        # Rodapé com código de validação
-        elements.append(Spacer(1, 50))
+        elements.append(Spacer(1, 40))
         cod_val = dados_emissao.get('codigo_validacao', 'N/A')
         elements.append(
             Paragraph(f"Documento emitido digitalmente via SIGA UNIVEAS.<br/>Código de Autenticidade: <b>{cod_val}</b>",
-                      footer_style))
+                    footer_style))
 
         pdf.build(elements)
         buffer.seek(0)
