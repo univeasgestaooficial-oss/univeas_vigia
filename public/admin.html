@@ -1017,8 +1017,8 @@ function mudarTela(telaId) {
 
     // Gatilhos de carregamento da API
     if(telaId === 'dashboard') loadDashboard();
-    if(telaId === 'alunos') loadAlunos();
-    if(telaId === 'prestadores') loadDocentes();
+    if(telaId === 'alunos') { loadAlunos(); loadCursos(); }
+    if(telaId === 'prestadores') { loadDocentes(); loadCursos(); }
     if(telaId === 'financeiro') loadFinanceiro();
     if(telaId === 'cursos') loadCursos();
     if(telaId === 'documentos') loadDocumentos();
