@@ -192,26 +192,144 @@ async def listar_docentes():
 async def cadastrar_docente(
         nome_prestador: str = Form(...),
         cpf_prestador: str = Form(...),
+        data_nascimento_prestador: str = Form(None),
         telefone_prestador: str = Form(...),
+        email_prestador: str = Form(None),
         tipo_profissional: str = Form(...),
-        curso_id: str = Form(...),
-modulo_vinculado: str = Form(None)
+        turno_atuacao: str = Form(None),
+        especialidade: str = Form(None),
+        curso_id: str = Form(None),
+        modulo_vinculado: str = Form(None),
+        banco: str = Form(None),
+        agencia: str = Form(None),
+        conta: str = Form(None),
+        chave_pix: str = Form(None)
 ):
     checar_db()
     registro_gerado = f"#PR{str(uuid.uuid4().int)[:4]}"
+
     novo_docente = {
         "registro": registro_gerado,
         "nome": nome_prestador,
         "cpf": cpf_prestador,
+        "data_nascimento": data_nascimento_prestador,
         "telefone": telefone_prestador,
+        "email": email_prestador,
         "tipo_profissional": tipo_profissional,
+        "turno_atuacao": turno_atuacao,
+        "especialidade": especialidade,
         "curso_id": curso_id,
         "modulo_vinculado": modulo_vinculado,
-        "status": "Ativo"
+        "banco": banco,
+        "agencia": agencia,
+        "conta": conta,
+        "chave_pix": chave_pix,
+        "status": "Ativo",
+        "data_cadastro": datetime.now().isoformat()
     }
-    db.collection("docentes").add(novo_docente)
-    return {"sucesso": True, "mensagem": "Docente salvo com vínculo ao curso."}
 
+    db.collection("docentes").add(novo_docente)
+    return {"sucesso": True, "mensagem": "Prestador salvo com sucesso."}
+
+
+@app.put("/api/v1/docentes/{docente_id}")
+async def atualizar_docente(
+        docente_id: str,
+        nome_prestador: str = Form(None),
+        cpf_prestador: str = Form(None),
+        data_nascimento_prestador: str = Form(None),
+        telefone_prestador: str = Form(None),
+        email_prestador: str = Form(None),
+        tipo_profissional: str = Form(None),
+        turno_atuacao: str = Form(None),
+        especialidade: str = Form(None),
+        curso_id: str = Form(None),
+        modulo_vinculado: str = Form(None),
+        banco: str = Form(None),
+        agencia: str = Form(None),
+        conta: str = Form(None),
+        chave_pix: str = Form(None)
+):
+    checar_db()
+    ref = db.collection("docentes").document(docente_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Prestador não encontrado.")
+
+    # Mapeando os novos valores
+    dados_atualizados = {
+        "nome": nome_prestador,
+        "cpf": cpf_prestador,
+        "data_nascimento": data_nascimento_prestador,
+        "telefone": telefone_prestador,
+        "email": email_prestador,
+        "tipo_profissional": tipo_profissional,
+        "turno_atuacao": turno_atuacao,
+        "especialidade": especialidade,
+        "curso_id": curso_id,
+        "modulo_vinculado": modulo_vinculado,
+        "banco": banco,
+        "agencia": agencia,
+        "conta": conta,
+        "chave_pix": chave_pix,
+        "data_atualizacao": datetime.now().isoformat()
+    }
+
+    # Limpa os campos que vierem vazios (None) para não apagar dados existentes sem querer
+    dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
+
+    ref.update(dados_limpos)
+    return {"sucesso": True, "mensagem": "Prestador atualizado com sucesso"}
+
+
+@app.put("/api/v1/docentes/{docente_id}")
+async def atualizar_docente(
+        docente_id: str,
+        nome_prestador: str = Form(None),
+        cpf_prestador: str = Form(None),
+        data_nascimento_prestador: str = Form(None),
+        telefone_prestador: str = Form(None),
+        email_prestador: str = Form(None),
+        tipo_profissional: str = Form(None),
+        turno_atuacao: str = Form(None),
+        especialidade: str = Form(None),
+        curso_id: str = Form(None),
+        modulo_vinculado: str = Form(None),
+        banco: str = Form(None),
+        agencia: str = Form(None),
+        conta: str = Form(None),
+        chave_pix: str = Form(None)
+):
+    checar_db()
+    ref = db.collection("docentes").document(docente_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Prestador não encontrado.")
+
+    # Mapeando os novos valores
+    dados_atualizados = {
+        "nome": nome_prestador,
+        "cpf": cpf_prestador,
+        "data_nascimento": data_nascimento_prestador,
+        "telefone": telefone_prestador,
+        "email": email_prestador,
+        "tipo_profissional": tipo_profissional,
+        "turno_atuacao": turno_atuacao,
+        "especialidade": especialidade,
+        "curso_id": curso_id,
+        "modulo_vinculado": modulo_vinculado,
+        "banco": banco,
+        "agencia": agencia,
+        "conta": conta,
+        "chave_pix": chave_pix,
+        "data_atualizacao": datetime.now().isoformat()
+    }
+
+    # Limpa os campos que vierem vazios (None) para não apagar dados existentes sem querer
+    dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
+
+    ref.update(dados_limpos)
+    return {"sucesso": True, "mensagem": "Prestador atualizado com sucesso"}
 
 @app.delete("/api/v1/docentes/{docente_id}")
 async def excluir_docente(docente_id: str):
