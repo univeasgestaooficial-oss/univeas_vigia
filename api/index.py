@@ -789,6 +789,22 @@ async def gerar_pdf_documento(documento_id: str):
         elements = []
 
         # Cabeçalho
+
+        # Cabeçalho
+        logo_url = "https://i.imgur.com/ki7mdS2.png" 
+
+        if logo_url:
+            try:
+                # O ReportLab faz o download da URL nativamente.
+                # Ajuste width (largura) e height (altura) conforme a proporção do seu logo
+                img = Image(logo_url, width=70, height=70)
+                img.hAlign = 'CENTER'
+                elements.append(img)
+                elements.append(Spacer(1, 10))  # Espaço entre o logo e o nome
+            except Exception as e:
+                print(f"Aviso: Não foi possível carregar o logo no PDF - {e}")
+
+        
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
         elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
 
