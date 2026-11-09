@@ -916,6 +916,9 @@
     </div>
 
 <script>
+
+    let docentesGlobais = [];
+
 // ==========================================
 // UNIFIED SCRIPT - UI & API INTEGRATION
 // ==========================================
@@ -1170,15 +1173,18 @@ async function loadDocentes() {
     const tbody = document.getElementById('tabela-docentes');
     if (!tbody || !docentes) return;
 
+    // Salva os docentes globalmente para o Editar e Visualizar funcionarem
+    docentesGlobais = Array.isArray(docentes) ? docentes : (docentes.dados || []);
+
     tbody.innerHTML = '';
-    docentes.forEach(doc => {
+    docentesGlobais.forEach(doc => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
-                <td class="py-3 px-4 text-gray-500 font-mono text-xs">${doc.registro}</td>
-                <td class="py-3 px-4 text-gray-800 font-bold text-xs">${doc.nome}</td>
-                <td class="py-3 px-4 text-gray-500 text-xs">${doc.telefone}</td>
+                <td class="py-3 px-4 text-gray-500 font-mono text-xs">${doc.registro || '-'}</td>
+                <td class="py-3 px-4 text-gray-800 font-bold text-xs">${doc.nome || doc.nome_prestador || '-'}</td>
+                <td class="py-3 px-4 text-gray-500 text-xs">${doc.telefone || doc.telefone_prestador || '-'}</td>
                 <td class="py-3 px-4 text-gray-500 text-xs uppercase tracking-wider">
-                    ${doc.tipo_profissional}
+                    ${doc.tipo_profissional || '-'}
                     <br><span class="text-[10px] text-teal-600 font-bold">${doc.modulo_vinculado || ''}</span>
                 </td>
                 <td class="py-3 px-4 text-right space-x-1 flex justify-end">
@@ -1197,7 +1203,6 @@ async function loadDocentes() {
     });
     feather.replace();
 }
-
 // ==========================================
 // NOVAS FUNÇÕES DE AÇÃO DO DOCENTE
 // ==========================================
@@ -1257,20 +1262,45 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
 document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const result = await apiRequest('/docentes', 'POST', formData);
+    const idEdit = document.getElementById('docente_id_edit')?.value;
+
+    const btnSubmit = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btnSubmit.innerText;
+    btnSubmit.innerText = "Salvando...";
+
+    let result;
+    if (idEdit) {
+        // Se tem ID, é uma edição (PUT)
+        result = await apiRequest(`/docentes/${idEdit}`, 'PUT', formData);
+    } else {
+        // Se não tem, é um novo cadastro (POST)
+        result = await apiRequest('/docentes', 'POST', formData);
+    }
+
     if (result && result.sucesso) {
-        alert("Docente cadastrado!");
+        alert(idEdit ? "Dados do docente atualizados com sucesso!" : "Docente cadastrado com sucesso!");
         e.target.reset();
+
+        // Remove o ID oculto e restaura o botão
+        if (document.getElementById('docente_id_edit')) {
+            document.getElementById('docente_id_edit').value = '';
+        }
+        btnSubmit.innerText = "Salvar Prestador";
+        btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
+        btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
 
         // Reseta o select do módulo
         const selModulo = document.getElementById('select-modulo-docente');
         if(selModulo) {
             selModulo.innerHTML = '<option value="">Aguardando curso...</option>';
             selModulo.disabled = true;
-            selModulo.classList.add('bg-gray-50');
+            selModulo.classList.add('bg-teal-50/50');
         }
 
         loadDocentes();
+    } else {
+        alert(result?.detail || "Erro ao salvar os dados do docente.");
+        btnSubmit.innerText = textoOriginal;
     }
 });
 
@@ -1283,6 +1313,146 @@ document.getElementById('form-config')?.addEventListener('submit', async (e) => 
         fecharModalSistema();
     }
 });
+
+// ==========================================
+// FUNÇÕES DE AÇÃO DO DOCENTE (EDITAR E VISUALIZAR)
+// ==========================================
+
+function editarDocente(id_firebase) {
+    const doc = docentesGlobais.find(d => d.id === id_firebase);
+    if (!doc) return alert("Erro ao carregar dados do docente.");
+
+    const form = document.getElementById('form-docente');
+
+    // Cria um campo oculto para guardar o ID sendo editado (se não existir)
+    let inputId = document.getElementById('docente_id_edit');
+    if (!inputId) {
+        inputId = document.createElement('input');
+        inputId.type = 'hidden';
+        inputId.id = 'docente_id_edit';
+        inputId.name = 'docente_id_edit';
+        form.appendChild(inputId);
+    }
+    inputId.value = doc.id;
+
+    // Preenche os campos
+    form.registro.value = doc.registro || '';
+    form.cpf_prestador.value = doc.cpf_prestador || doc.cpf || '';
+    form.nome_prestador.value = doc.nome_prestador || doc.nome || '';
+    form.data_nascimento_prestador.value = doc.data_nascimento_prestador || doc.data_nascimento || '';
+    form.telefone_prestador.value = doc.telefone_prestador || doc.telefone || '';
+    form.email_prestador.value = doc.email_prestador || doc.email || '';
+    form.tipo_profissional.value = doc.tipo_profissional || 'professor';
+    form.turno_atuacao.value = doc.turno_atuacao || 'manha';
+    form.especialidade.value = doc.especialidade || '';
+
+    // Trata os Selects aninhados
+    if (doc.curso_id) {
+        form.curso_id.value = doc.curso_id;
+        carregarModulosDocente(doc.curso_id, doc.modulo_vinculado);
+    }
+
+    form.banco.value = doc.banco || '';
+    form.agencia.value = doc.agencia || '';
+    form.conta.value = doc.conta || '';
+    form.chave_pix.value = doc.chave_pix || '';
+
+    // Muda o visual do botão
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    btnSubmit.innerText = "Atualizar Prestador";
+    btnSubmit.classList.replace('bg-teal-500', 'bg-yellow-500');
+    btnSubmit.classList.replace('hover:bg-teal-600', 'hover:bg-yellow-600');
+
+    // Rola a página para o topo do formulário suavemente
+    document.getElementById('tela-prestadores').scrollIntoView({ behavior: 'smooth' });
+}
+
+function fecharModalDocente() {
+    const modal = document.getElementById('modal-perfil-docente');
+    if (modal) {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }, 300);
+    }
+}
+
+function verPerfilDocente(id_firebase) {
+    const doc = docentesGlobais.find(d => d.id === id_firebase);
+    if (!doc) return alert("Erro ao carregar o perfil.");
+
+    // Injeta o HTML do modal no final do body, se ainda não existir
+    let modal = document.getElementById('modal-perfil-docente');
+    if (!modal) {
+        const htmlModal = `
+        <div id="modal-perfil-docente" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 transform scale-95 transition-all max-h-[90vh] overflow-y-auto no-scrollbar relative border-t-4 border-teal-500">
+                <button onclick="fecharModalDocente()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-6 w-6"></i></button>
+                <div id="conteudo-perfil-docente"></div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', htmlModal);
+        modal = document.getElementById('modal-perfil-docente');
+    }
+
+    const cursoNome = cursosGlobais.find(c => c.id == doc.curso_id)?.nome_curso || 'Nenhum / Não vinculado';
+    const docNome = doc.nome_prestador || doc.nome || 'Sem Nome';
+
+    // Constrói os dados
+    const htmlConteudo = `
+        <div class="flex items-center mb-6 border-b border-gray-100 pb-4">
+            <div class="h-14 w-14 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-2xl mr-4 border border-teal-100 shadow-sm shrink-0">
+                ${docNome.charAt(0).toUpperCase()}
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">${docNome}</h3>
+                <p class="text-xs font-bold text-teal-600 uppercase tracking-wider">${doc.tipo_profissional || 'Profissional'} | REG: ${doc.registro || 'S/N'}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados de Contato</p>
+                <ul class="text-sm font-medium text-gray-700 space-y-2.5 bg-gray-50 p-4 rounded-xl border border-gray-100 h-full">
+                    <li class="flex items-center"><i data-feather="phone" class="w-4 h-4 mr-2 text-teal-500"></i> ${doc.telefone_prestador || doc.telefone || 'Não informado'}</li>
+                    <li class="flex items-center"><i data-feather="mail" class="w-4 h-4 mr-2 text-teal-500"></i> ${doc.email_prestador || doc.email || 'Não informado'}</li>
+                    <li class="flex items-center"><i data-feather="credit-card" class="w-4 h-4 mr-2 text-teal-500"></i> CPF: ${doc.cpf_prestador || doc.cpf || 'Não informado'}</li>
+                    <li class="flex items-center"><i data-feather="calendar" class="w-4 h-4 mr-2 text-teal-500"></i> Nasc: ${doc.data_nascimento_prestador || doc.data_nascimento || '--/--/----'}</li>
+                </ul>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Atuação Acadêmica</p>
+                <ul class="text-sm font-medium text-gray-700 space-y-2.5 bg-teal-50/30 p-4 rounded-xl border border-teal-100 h-full">
+                    <li class="flex items-center"><i data-feather="book" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> <span class="truncate">Curso: ${cursoNome}</span></li>
+                    <li class="flex items-center"><i data-feather="layers" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> <span class="truncate">Módulo: ${doc.modulo_vinculado || 'Geral / Múltiplos'}</span></li>
+                    <li class="flex items-center"><i data-feather="clock" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Turno: <span class="capitalize ml-1">${doc.turno_atuacao || 'Não especificado'}</span></li>
+                    <li class="flex items-center"><i data-feather="award" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Especialidade: <span class="ml-1">${doc.especialidade || '-'}</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center mb-3">
+                <i data-feather="dollar-sign" class="h-4 w-4 mr-1.5 text-teal-500"></i> Repasse Financeiro (Conta Bancária)
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div class="bg-white p-2 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Banco</span><span class="font-bold text-gray-800">${doc.banco || '-'}</span></div>
+                <div class="bg-white p-2 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Agência</span><span class="font-bold text-gray-800">${doc.agencia || '-'}</span></div>
+                <div class="bg-white p-2 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Conta</span><span class="font-bold text-gray-800">${doc.conta || '-'}</span></div>
+                <div class="bg-white p-2 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Chave PIX</span><span class="font-bold text-teal-600 truncate block mt-0.5">${doc.chave_pix || '-'}</span></div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('conteudo-perfil-docente').innerHTML = htmlConteudo;
+    feather.replace(); // Recarrega os ícones
+
+    // Anima a abertura
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
 
 // --- SISTEMA DE GRADE CURRICULAR DINÂMICA (ATUALIZADO COM SEMESTRE/BLOCO) ---
     let contadorDisciplina = 0;
