@@ -242,8 +242,7 @@ async def cadastrar_docente(
         tipo_profissional: str = Form(...),
         turno_atuacao: str = Form(None),
         especialidade: str = Form(None),
-        curso_id: str = Form(None),
-        modulo_vinculado: str = Form(None),
+        vinculos_json: str = Form("[]"),  # <- NOVO CAMPO RECEBENDO A LISTA
         banco: str = Form(None),
         agencia: str = Form(None),
         conta: str = Form(None),
@@ -262,8 +261,7 @@ async def cadastrar_docente(
         "tipo_profissional": tipo_profissional,
         "turno_atuacao": turno_atuacao,
         "especialidade": especialidade,
-        "curso_id": curso_id,
-        "modulo_vinculado": modulo_vinculado,
+        "vinculos_json": vinculos_json,  # <- GRAVANDO A LISTA NO FIREBASE
         "banco": banco,
         "agencia": agencia,
         "conta": conta,
@@ -287,8 +285,7 @@ async def atualizar_docente(
         tipo_profissional: str = Form(None),
         turno_atuacao: str = Form(None),
         especialidade: str = Form(None),
-        curso_id: str = Form(None),
-        modulo_vinculado: str = Form(None),
+        vinculos_json: str = Form(None),  # <- NOVO CAMPO RECEBENDO A LISTA
         banco: str = Form(None),
         agencia: str = Form(None),
         conta: str = Form(None),
@@ -310,8 +307,7 @@ async def atualizar_docente(
         "tipo_profissional": tipo_profissional,
         "turno_atuacao": turno_atuacao,
         "especialidade": especialidade,
-        "curso_id": curso_id,
-        "modulo_vinculado": modulo_vinculado,
+        "vinculos_json": vinculos_json,  # <- GRAVANDO A LISTA NO FIREBASE
         "banco": banco,
         "agencia": agencia,
         "conta": conta,
