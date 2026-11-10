@@ -281,56 +281,6 @@ async def atualizar_docente(
     ref.update(dados_limpos)
     return {"sucesso": True, "mensagem": "Prestador atualizado com sucesso"}
 
-
-@app.put("/api/v1/docentes/{docente_id}")
-async def atualizar_docente(
-        docente_id: str,
-        nome_prestador: str = Form(None),
-        cpf_prestador: str = Form(None),
-        data_nascimento_prestador: str = Form(None),
-        telefone_prestador: str = Form(None),
-        email_prestador: str = Form(None),
-        tipo_profissional: str = Form(None),
-        turno_atuacao: str = Form(None),
-        especialidade: str = Form(None),
-        curso_id: str = Form(None),
-        modulo_vinculado: str = Form(None),
-        banco: str = Form(None),
-        agencia: str = Form(None),
-        conta: str = Form(None),
-        chave_pix: str = Form(None)
-):
-    checar_db()
-    ref = db.collection("docentes").document(docente_id)
-
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Prestador não encontrado.")
-
-    # Mapeando os novos valores
-    dados_atualizados = {
-        "nome": nome_prestador,
-        "cpf": cpf_prestador,
-        "data_nascimento": data_nascimento_prestador,
-        "telefone": telefone_prestador,
-        "email": email_prestador,
-        "tipo_profissional": tipo_profissional,
-        "turno_atuacao": turno_atuacao,
-        "especialidade": especialidade,
-        "curso_id": curso_id,
-        "modulo_vinculado": modulo_vinculado,
-        "banco": banco,
-        "agencia": agencia,
-        "conta": conta,
-        "chave_pix": chave_pix,
-        "data_atualizacao": datetime.now().isoformat()
-    }
-
-    # Limpa os campos que vierem vazios (None) para não apagar dados existentes sem querer
-    dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
-
-    ref.update(dados_limpos)
-    return {"sucesso": True, "mensagem": "Prestador atualizado com sucesso"}
-
 @app.delete("/api/v1/docentes/{docente_id}")
 async def excluir_docente(docente_id: str):
     checar_db()
@@ -1110,5 +1060,136 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         )
     except Exception as e:
         print("--- ERRO AO GERAR PDF DOCENTES ---")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
+
+# ==========================================
+# GERAÇÃO DO PDF DE RELATÓRIO DE ALUNOS
+# ==========================================
+@app.get("/api/v1/alunos/pdf")
+async def gerar_relatorio_alunos_pdf(q: str = None):
+    try:
+        checar_db()
+
+        # Puxa os dados da instituição para o cabeçalho
+        sys_ref = db.collection("sistema").document("configuracoes").get()
+        sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+            "nome_instituicao": "UNIVEAS",
+            "cnpj": "53.199.321/0001-23",
+            "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+        }
+
+        # Busca todos os alunos
+        docs = db.collection("alunos").stream()
+        alunos = [{"id": d.id, **d.to_dict()} for d in docs]
+
+        # Aplica o filtro de pesquisa
+        if q:
+            q_lower = q.lower()
+            alunos = [
+                a for a in alunos
+                if q_lower in str(a.get("nome", "")).lower() or
+                   q_lower in str(a.get("matricula", "")).lower() or
+                   q_lower in str(a.get("cpf", "")).lower()
+            ]
+
+        # Preparação do PDF com ReportLab
+        buffer = io.BytesIO()
+        pdf = SimpleDocTemplate(
+            buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40
+        )
+
+        elements = []
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            'TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=14, alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e')
+        )
+        subtitle_style = ParagraphStyle(
+            'SubtitleStyle', parent=styles['Normal'], fontName='Helvetica',
+            fontSize=9, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155')
+        )
+
+        # Cabeçalho
+        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
+        elements.append(
+            Paragraph(f"CNPJ: {sys_dados.get('cnpj', '')} | {sys_dados.get('endereco', '')}", subtitle_style))
+
+        elements.append(Paragraph("<b>RELATÓRIO GERAL DE ALUNOS MATRICULADOS</b>", ParagraphStyle(
+            'ReportTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=12, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#0f172a')
+        )))
+
+        if q:
+            elements.append(Paragraph(f"<i>Filtro aplicado: '{q}'</i>", ParagraphStyle(
+                'FilterText', parent=styles['Normal'], fontName='Helvetica-Oblique',
+                fontSize=9, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#64748b')
+            )))
+
+        # Dados na Tabela
+        table_data = [['MATRÍCULA', 'NOME DO ALUNO', 'CPF', 'TELEFONE', 'STATUS']]
+
+        for a in alunos:
+            nome = str(a.get('nome') or '-').upper()
+            matricula = str(a.get('matricula') or '-')
+            cpf = str(a.get('cpf') or '-')
+            telefone = str(a.get('telefone') or '-')
+            status = str(a.get('status') or 'Pendente').upper()
+
+            table_data.append([matricula, nome, cpf, telefone, status])
+
+        if len(alunos) == 0:
+            table_data.append(['Nenhum aluno encontrado para os critérios de busca.', '', '', '', ''])
+
+        # Estilização
+        t_obj = Table(table_data, colWidths=[75, 175, 90, 90, 105])
+        t_obj.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Matrícula
+            ('ALIGN', (2, 1), (4, -1), 'CENTER'),  # CPF, Telefone e Status
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
+        ]))
+
+        if len(alunos) == 0:
+            t_obj.setStyle(TableStyle([('SPAN', (0, 1), (-1, 1)), ('ALIGN', (0, 1), (-1, 1), 'CENTER')]))
+
+        elements.append(t_obj)
+
+        # Rodapé
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(f"Total de registros encontrados: {len(alunos)}", ParagraphStyle(
+            'TotalText', parent=styles['Normal'], fontName='Helvetica-Bold',
+            fontSize=9, textColor=colors.HexColor('#334155')
+        )))
+
+        data_atual = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(f"Documento gerado em {data_atual} via Sistema SIGA UNIVEAS", ParagraphStyle(
+            'FooterText', parent=styles['Normal'], fontName='Helvetica-Oblique',
+            fontSize=8, textColor=colors.gray, alignment=TA_CENTER
+        )))
+
+        pdf.build(elements)
+        buffer.seek(0)
+
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=Relatorio_Alunos_UNIVEAS.pdf"}
+        )
+    except Exception as e:
+        print("--- ERRO AO GERAR PDF ALUNOS ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
