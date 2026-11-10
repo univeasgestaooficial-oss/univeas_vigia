@@ -148,29 +148,25 @@
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Total Docentes</p>
-                            <h3 id="ind-docentes" class="text-2xl font-black text-gray-800 mt-1">24</h3>
-                        </div>
+<h3 id="ind-docentes" class="text-2xl font-black text-gray-800 mt-1">0</h3>                        </div>
                         <div class="p-3 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="briefcase" class="h-6 w-6"></i></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Alunos Ativos</p>
-                            <h3 id="ind-alunos" class="text-2xl font-black text-gray-800 mt-1">1,420</h3>
-                        </div>
+<h3 id="ind-alunos" class="text-2xl font-black text-gray-800 mt-1">0</h3>                        </div>
                         <div class="p-3 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="users" class="h-6 w-6"></i></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Turmas Ativas</p>
-                            <h3 id="ind-turmas" class="text-2xl font-black text-gray-800 mt-1">45</h3>
-                        </div>
+<h3 id="ind-turmas" class="text-2xl font-black text-gray-800 mt-1">0</h3>                        </div>
                         <div class="p-3 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="calendar" class="h-6 w-6"></i></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Inadimplência</p>
-                            <h3 id="ind-inadimplencia" class="text-2xl font-black text-red-500 mt-1">4.2%</h3>
-                        </div>
+<h3 id="ind-inadimplencia" class="text-2xl font-black text-red-500 mt-1">0</h3>                        </div>
                         <div class="p-3 bg-red-50 text-red-500 rounded-xl"><i data-feather="trending-down" class="h-6 w-6"></i></div>
                     </div>
                 </div>
@@ -199,16 +195,7 @@
                                     <th class="py-3 px-4 text-right">Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabela-notificacoes" class="divide-y divide-gray-100 font-medium">
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="py-3 px-4 text-gray-800">Nova solicitação de pré-matrícula: Carlos E. Souza</td>
-                                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] font-bold">Pendente</span></td>
-                                    <td class="py-3 px-4 text-right space-x-2">
-                                        <button class="bg-teal-50 text-teal-600 px-3 py-1 rounded hover:bg-teal-100 text-xs font-bold transition">Atenção</button>
-                                        <button class="bg-gray-100 text-gray-500 px-3 py-1 rounded hover:bg-gray-200 text-xs font-bold transition">Ignorar</button>
-                                    </td>
-                                </tr>
-                            </tbody>
+                            <tbody id="tabela-notificacoes" class="divide-y divide-gray-100 font-medium"></tbody>
                         </table>
                     </div>
                 </div>
@@ -422,17 +409,8 @@
                                         <th class="py-3 px-4 text-right">Ação</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100 font-medium">
-                                    <tr class="hover:bg-gray-50 transition">
-                                        <td class="py-3 px-4 text-gray-800 font-bold">Declaração de Vínculo/Matrícula</td>
-                                        <td class="py-3 px-4 text-gray-500">Carlos E. Souza</td>
-                                        <td class="py-3 px-4 text-gray-400 text-xs">02/11/2026 - 10:45</td>
-                                        <td class="py-3 px-4 text-right">
-                                            <button class="bg-gray-100 text-gray-700 hover:bg-teal-500 hover:text-white px-3 py-1.5 rounded transition text-xs font-bold flex items-center justify-end w-full sm:w-auto ml-auto">
-                                                <i data-feather="download" class="w-3 h-3 mr-1.5"></i> Download
-                                            </button>
-                                        </td>
-                                    </tr>
+                                <tbody class="divide-y divide-gray-100 font-medium" id="tabela-documentos-emitidos">
+                                    <!-- Vazio: Populado dinamicamente via loadDocumentos() -->
                                 </tbody>
                             </table>
                         </div>
@@ -757,15 +735,8 @@
                                     <th class="py-3 px-4 text-center w-24">Média</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100 font-medium">
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="py-3 px-4 font-mono text-gray-400 text-xs">#20260941</td>
-                                    <td class="py-3 px-4 text-gray-800 font-bold">Carlos E. Souza</td>
-                                    <td class="py-3 px-4 text-center"><input type="number" min="0" value="0" class="w-16 text-center border border-gray-300 p-1.5 rounded-md text-sm focus:border-teal-500 focus:outline-none"></td>
-                                    <td class="py-3 px-4 text-center"><input type="number" step="0.1" value="9.0" class="w-16 text-center border border-gray-300 p-1.5 rounded-md text-sm focus:border-teal-500 focus:outline-none"></td>
-                                    <td class="py-3 px-4 text-center"><input type="number" step="0.1" value="8.5" class="w-16 text-center border border-gray-300 p-1.5 rounded-md text-sm focus:border-teal-500 focus:outline-none"></td>
-                                    <td class="py-3 px-4 text-center font-black text-teal-600">8.75</td>
-                                </tr>
+                            <tbody class="divide-y divide-gray-100 font-medium" id="tabela-diario">
+                                <!-- Vazio: Aguardando carregamento da pauta pelo professor -->
                             </tbody>
                         </table>
                     </div>
@@ -778,58 +749,41 @@
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 7. GESTÃO FINANCEIRA -->
-            <!-- ============================================== -->
-            <div id="tela-financeiro" class="tela hidden">
-                <!-- Indicadores Financeiros -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Recebidos no Mês</p>
-                        <h3 class="text-3xl font-black text-teal-600 mt-2">R$ 45.230,00</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">A Receber (Previsão)</p>
-                        <h3 class="text-3xl font-black text-gray-800 mt-2">R$ 12.800,00</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Atrasados</p>
-                        <h3 class="text-3xl font-black text-red-500 mt-2">R$ 3.450,00</h3>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
-                        <h4 class="text-lg font-bold text-gray-900">Lista de Mensalidades e Cobranças</h4>
-                        <div class="flex space-x-2 w-full sm:w-auto">
-                            <div class="relative flex-1 sm:w-64">
-                                <input type="text" placeholder="Matrícula, Nome, CPF..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
-                                <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
-                            </div>
-                            <button class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
-                                <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
-                            <thead class="bg-gray-50">
-                                <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                    <th class="py-3 px-4">Matrícula</th>
-                                    <th class="py-3 px-4">Nome do Aluno</th>
-                                    <th class="py-3 px-4">Detalhes / Referências do Carnê</th>
-                                    <th class="py-3 px-4 text-center">Status</th>
-                                    <th class="py-3 px-4 text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabela-financeiro" class="divide-y divide-gray-100 font-medium">
-                                <!-- População via JS -->
-                            </tbody>
-                        </table>
-                    </div>
+           <!-- ============================================== -->
+<!-- 7. GESTÃO FINANCEIRA (CONSOLIDADA) -->
+<!-- ============================================== -->
+<div id="tela-financeiro" class="tela hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
+            <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                <i data-feather="dollar-sign" class="text-teal-500 mr-2 h-5 w-5"></i> Controle de Carnês e Mensalidades
+            </h4>
+            <div class="flex space-x-2 w-full sm:w-auto">
+                <div class="relative flex-1 sm:w-64">
+                    <input type="text" id="busca-financeiro" placeholder="Buscar aluno..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500" onkeyup="filtrarFinanceiro()">
+                    <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                 </div>
             </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                <thead class="bg-gray-50">
+                    <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        <th class="py-3 px-4">Matrícula</th>
+                        <th class="py-3 px-4">Nome do Aluno</th>
+                        <th class="py-3 px-4">Referência / Carnê</th>
+                        <th class="py-3 px-4 text-center">Status</th>
+                        <th class="py-3 px-4 text-right">Ações Financeiras</th>
+                    </tr>
+                </thead>
+                <!-- AQUI OS DADOS REAIS SERÃO INJETADOS -->
+                <tbody id="tabela-financeiro" class="divide-y divide-gray-100 font-medium">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
     <!-- ============================================== -->
     <!-- 8. CONFIGURAÇÃO (MODAL DE SOBREPOSIÇÃO) -->
@@ -1393,47 +1347,102 @@ function editarDocente(id_firebase) {
     alert("Função para editar o docente com ID: " + id_firebase);
 }
 
+// Carrega os alunos reais na aba Financeira
 async function loadFinanceiro() {
     const tbody = document.getElementById('tabela-financeiro');
     if (!tbody) return;
 
-    // Se a lista global de alunos já estiver populada, usamos ela para ser instantâneo. 
-    // Se não estiver, fazemos a requisição na API.
-    let listaAlunos = alunosGlobais;
-    if (!listaAlunos || listaAlunos.length === 0) {
-        const resposta = await apiRequest('/alunos');
-        if (!resposta) return;
-        listaAlunos = Array.isArray(resposta) ? resposta : (resposta.dados || []);
-    }
+    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500">Carregando dados...</td></tr>';
 
-    // Filtra apenas os alunos que possuem pendência de carnê cadastrada ("Sim")
-    const inadimplentes = listaAlunos.filter(a => 
-        a.possui_pendencia_financeira === "Sim" || a.possui_pendencia === "Sim"
-    );
+    const alunos = await apiRequest('/alunos');
+    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos.dados || []);
+
+    // Filtra apenas quem tem carnê/pendência ativa
+    const pendentes = listaAlunos.filter(a => a.possui_pendencia_financeira === "Sim");
 
     tbody.innerHTML = '';
 
-    if (inadimplentes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno com pendência de carnê registrada no momento.</td></tr>`;
+    if(pendentes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno com carnê em aberto no momento.</td></tr>`;
         return;
     }
 
-    inadimplentes.forEach(aluno => {
+    pendentes.forEach(aluno => {
+        // Mostra a NF se o aluno tiver uma registrada
+        const nfText = aluno.numero_nf ? `<br><span class="text-[9px] text-gray-400 uppercase">NF: ${aluno.numero_nf}</span>` : '';
+
         tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 transition">
+            <tr class="hover:bg-gray-50 transition linha-financeiro">
                 <td class="py-4 px-4 text-gray-500 font-mono text-xs">${aluno.matricula || '-'}</td>
-                <td class="py-4 px-4 text-gray-800 font-bold">${aluno.nome || 'Aluno'}</td>
-                <td class="py-4 px-4 text-gray-600 text-xs font-medium">${aluno.detalhes_pendencia_financeira || aluno.detalhes_pendencia || 'Carnê em aberto'}</td>
+                <td class="py-4 px-4 text-gray-800 font-bold busca-nome">${aluno.nome || 'Aluno'} ${nfText}</td>
+                <td class="py-4 px-4 text-gray-600 text-xs font-medium">${aluno.detalhes_pendencia_financeira || 'Carnê'}</td>
                 <td class="py-4 px-4 text-center">
-                    <span class="px-2.5 py-1 bg-red-50 text-red-600 rounded text-[10px] uppercase font-bold">Pendente / Carnê</span>
+                    <span class="px-2.5 py-1 bg-red-50 text-red-600 rounded text-[10px] uppercase font-bold">Pendente</span>
                 </td>
-                <td class="py-4 px-4 text-right">
-                    <button onclick="mudarTela('alunos')" class="bg-teal-50 text-teal-600 hover:bg-teal-100 px-3 py-1.5 rounded text-xs font-bold transition">Gerenciar no Aluno</button>
+                <td class="py-4 px-4 text-right space-x-2 flex justify-end">
+                    <!-- BOTÃO PARA INFORMAR NF (Opcional) -->
+                    <button onclick="informarNFFinanceiro('${aluno.id}')" class="bg-gray-100 text-gray-600 hover:bg-gray-200 px-3 py-1.5 rounded text-xs font-bold transition" title="Adicionar NF">
+                        + NF
+                    </button>
+                    <!-- BOTÃO PARA DAR BAIXA/PAGO -->
+                    <button onclick="darBaixaFinanceiro('${aluno.id}')" class="bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded text-xs font-bold transition">
+                        <i data-feather="check-circle" class="w-3 h-3 inline mr-1"></i> Receber
+                    </button>
                 </td>
             </tr>
         `;
     });
     feather.replace();
+}
+
+// Função do Botão "Receber"
+async function darBaixaFinanceiro(alunoId) {
+    if(!confirm("Tem certeza que deseja dar baixa neste carnê e marcar como pago?")) return;
+
+    const formData = new FormData();
+    formData.append('possui_pendencia', 'Não');
+    formData.append('detalhes_pendencia', '');
+
+    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Baixa financeira realizada com sucesso!");
+        loadFinanceiro(); // Atualiza a tela na hora
+        loadAlunos(); // Atualiza a lista de alunos escondida
+    } else {
+        alert("Erro ao dar baixa.");
+    }
+}
+
+// Função do Botão "+ NF" (Não obrigatório)
+async function informarNFFinanceiro(alunoId) {
+    const nf = prompt("Informe o número da Nota Fiscal ou Recibo (deixe em branco se não quiser informar):");
+
+    // Se clicou em cancelar, aborta
+    if(nf === null) return;
+
+    // Se informou algo, enviamos usando a sua rota de edição de alunos atual adaptada
+    const formData = new FormData();
+    formData.append('numero_nf', nf);
+
+    const result = await apiRequest(`/alunos/${alunoId}/nf`, 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Nota fiscal anexada com sucesso!");
+        loadFinanceiro();
+    } else {
+        alert(result?.detail || "Erro ao salvar a Nota Fiscal. O backend precisa de uma rota /nf.");
+    }
+}
+
+// Filtro rápido de busca
+function filtrarFinanceiro() {
+    const termo = document.getElementById('busca-financeiro').value.toLowerCase();
+    const linhas = document.querySelectorAll('.linha-financeiro');
+    linhas.forEach(linha => {
+        const nome = linha.querySelector('.busca-nome').innerText.toLowerCase();
+        linha.style.display = nome.includes(termo) ? '' : 'none';
+    });
 }
 
 async function auditarMensalidade(mensalidadeId, acao) {
@@ -2704,43 +2713,59 @@ function imprimirListaAlunos() {
     });
 }
 
-    // Abre o modal para gerenciar a pendência do aluno
-function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais) {
-    let modal = document.getElementById('modal-pendencia-financeira');
-    if (!modal) {
-        const htmlModal = `
-        <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-red-500">
-                <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
-                <h3 id="titulo-modal-pendencia" class="text-lg font-black text-gray-900 mb-1 uppercase">Pendência Financeira</h3>
-                <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
 
-                <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
-                    <input type="hidden" id="pendencia_aluno_id">
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Possui Pendência nos Carnês?</label>
-                        <select id="select-possui-pendencia" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
-                            <option value="Não">Não (Regular)</option>
-                            <option value="Sim">Sim (Possui pendências/referências em aberto)</option>
-                        </select>
-                    </div>
-                    <div id="bloco-detalhes-pendencia" class="hidden">
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Detalhes / Referências (Ex: Carnê nº 04, Ref. Março/2026)</label>
-                        <textarea id="input-detalhes-pendencia" rows="3" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Informe os detalhes do carnê ou comprovante ausente..."></textarea>
-                    </div>
-                    <div class="flex justify-end space-x-2 pt-2">
-                        <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
-                        <button type="submit" class="bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-red-600 transition">Salvar Registro</button>
-                    </div>
-                </form>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', htmlModal);
-        modal = document.getElementById('modal-pendencia-financeira');
+
+    // Abre o modal para gerenciar a pendência do aluno
+
+function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais, nfAtual = '') {
+    let modal = document.getElementById('modal-pendencia-financeira');
+
+    if (modal) {
+        modal.remove(); // Remove versão antiga se existir na memória
     }
+
+    const htmlModal = `
+    <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-red-500">
+            <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
+            <h3 id="titulo-modal-pendencia" class="text-lg font-black text-gray-900 mb-1 uppercase">Pendência Financeira / NF</h3>
+            <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
+
+            <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
+                <input type="hidden" id="pendencia_aluno_id">
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status do Carnê / Mensalidade</label>
+                    <select id="select-possui-pendencia" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
+                        <option value="Não">Pago / Regular</option>
+                        <option value="Sim">Pendente (Possui carnês em aberto)</option>
+                    </select>
+                </div>
+
+                <div id="bloco-detalhes-pendencia" class="hidden">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Detalhes / Referências em Aberto</label>
+                    <textarea id="input-detalhes-pendencia" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: Carnê nº 04..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº da Nota Fiscal / Recibo (Opcional)</label>
+                    <input type="text" id="input-nf-aluno" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: NF-2026/004 (Opcional)">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
+                    <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="bg-teal-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-teal-600 transition">Salvar Situação</button>
+                </div>
+            </form>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', htmlModal);
+    modal = document.getElementById('modal-pendencia-financeira');
 
     document.getElementById('pendencia_aluno_id').value = alunoId;
     document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome}`;
+    document.getElementById('input-nf-aluno').value = nfAtual || "";
 
     const select = document.getElementById('select-possui-pendencia');
     const textarea = document.getElementById('input-detalhes-pendencia');
@@ -2756,8 +2781,28 @@ function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais) {
     }
 
     feather.replace();
-    modal.classList.remove('hidden', 'opacity-0');
-    modal.classList.add('flex');
+}
+
+async function salvarPendenciaAluno(e) {
+    e.preventDefault();
+    const alunoId = document.getElementById('pendencia_aluno_id').value;
+    const possuiPendencia = document.getElementById('select-possui-pendencia').value;
+    const detalhes = document.getElementById('input-detalhes-pendencia').value;
+    const numeroNF = document.getElementById('input-nf-aluno').value;
+
+    const formData = new FormData();
+    formData.append('possui_pendencia', possuiPendencia);
+    formData.append('detalhes_pendencia', detalhes);
+    formData.append('numero_nf', numeroNF); // Envia a NF (mesmo que vazia)
+
+    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
+    if (result && result.sucesso) {
+        fecharModalPendencia();
+        loadAlunos();
+        loadFinanceiro(); // Atualiza a aba financeira instantaneamente
+    } else {
+        alert(result?.detail || "Erro ao atualizar o registro.");
+    }
 }
 
 function toggleCampoDetalhes(valor) {
