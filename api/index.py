@@ -132,8 +132,17 @@ async def listar_alunos():
 
 @app.post("/api/v1/alunos/matricular")
 async def matricular_aluno(
-        nome: str = Form(...), cpf: str = Form(...), email: str = Form(...),
-        telefone: str = Form(...), endereco: str = Form(...), curso_id: str = Form(...)
+        nome: str = Form(...),
+        cpf: str = Form(...),
+        email: str = Form(...),
+        telefone: str = Form(...),
+        endereco: str = Form(...),
+        curso_id: str = Form(...),
+        data_nascimento: str = Form(None),
+        dia_vencimento: str = Form(None),
+        forma_pagamento: str = Form(None),
+        pcd: str = Form(None),
+        aceite_termos: str = Form(None)
 ):
     checar_db()
     matricula_gerada = f"#{datetime.now().strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
@@ -146,6 +155,11 @@ async def matricular_aluno(
         "telefone": telefone,
         "endereco": endereco,
         "curso": curso_id,
+        "data_nascimento": data_nascimento,
+        "dia_vencimento": dia_vencimento,
+        "forma_pagamento": forma_pagamento,
+        "pcd": pcd,
+        "aceite_termos": aceite_termos,
         "status": "Pendente",
         "data_cadastro": datetime.now().isoformat()
     }
@@ -155,18 +169,48 @@ async def matricular_aluno(
 
 
 @app.put("/api/v1/alunos/{aluno_id}")
-async def alterar_aluno(aluno_id: str, nome: str = Form(None), status: str = Form(None)):
+async def alterar_aluno(
+        aluno_id: str,
+        nome: str = Form(None),
+        cpf: str = Form(None),
+        email: str = Form(None),
+        telefone: str = Form(None),
+        endereco: str = Form(None),
+        curso_id: str = Form(None),
+        data_nascimento: str = Form(None),
+        dia_vencimento: str = Form(None),
+        forma_pagamento: str = Form(None),
+        pcd: str = Form(None),
+        status: str = Form(None)
+):
     checar_db()
     ref = db.collection("alunos").document(aluno_id)
 
     if not ref.get().exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado.")
 
-    atualizacoes = {}
-    if nome: atualizacoes["nome"] = nome
-    if status: atualizacoes["status"] = status
+    # Mapeia todos os campos possíveis de atualização
+    dados_atualizados = {
+        "nome": nome,
+        "cpf": cpf,
+        "email": email,
+        "telefone": telefone,
+        "endereco": endereco,
+        "curso": curso_id,
+        "data_nascimento": data_nascimento,
+        "dia_vencimento": dia_vencimento,
+        "forma_pagamento": forma_pagamento,
+        "pcd": pcd,
+        "status": status,
+        "data_atualizacao": datetime.now().isoformat()
+    }
 
-    ref.update(atualizacoes)
+    # Limpa os campos que vierem vazios (None) para não apagar dados existentes
+    dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
+
+    if dados_limpos:
+        ref.update(dados_limpos)
+
     return {"sucesso": True, "mensagem": "Aluno atualizado com sucesso"}
 
 
