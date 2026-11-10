@@ -1161,6 +1161,11 @@ async function loadAlunos() {
         else if (aluno.status === "Trancado") statusColor = "bg-red-50 text-red-600";
         else if (aluno.status === "Concluído") statusColor = "bg-blue-50 text-blue-600";
 
+        // Cria o ícone de pendência financeira
+        let iconePendencia = aluno.possui_pendencia_financeira === "Sim"
+            ? `<button onclick="abrirModalPendencia('${aluno.id}', '${aluno.nome}', '${aluno.detalhes_pendencia_financeira || ''}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Pendência Financeira Ativa: ${aluno.detalhes_pendencia_financeira || ''}"><i data-feather="alert-circle" class="h-4 w-4"></i></button>`
+            : `<button onclick="abrirModalPendencia('${aluno.id}', '${aluno.nome}', '')" class="text-gray-400 hover:text-white hover:bg-teal-500 bg-gray-50 p-2 rounded transition" title="Registrar Pendência de Carnê"><i data-feather="dollar-sign" class="h-4 w-4"></i></button>`;
+
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
                 <td class="py-3 px-4 text-gray-500 font-mono text-xs">${aluno.matricula || '-'}</td>
@@ -1169,7 +1174,10 @@ async function loadAlunos() {
                 <td class="py-3 px-4 text-center">
                     <span class="px-2 py-1 ${statusColor} rounded text-[10px] font-bold uppercase">${aluno.status || 'Desconhecido'}</span>
                 </td>
-                <td class="py-3 px-4 text-right space-x-1 flex justify-end">
+                <td class="py-3 px-4 text-right space-x-1 flex justify-end items-center">
+                    <!-- AQUI ENTRA O BOTÃO DE PENDÊNCIA QUE FALTAVA -->
+                    ${iconePendencia}
+
                     <button onclick="verPerfilAluno('${aluno.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Perfil Completo">
                         <i data-feather="eye" class="h-4 w-4"></i>
                     </button>
@@ -1391,19 +1399,55 @@ async function loadFinanceiro() {
     if (!tbody || !data) return;
 
     tbody.innerHTML = '';
-    data.lista.forEach(item => {
+
+    const listaMensalidades = data.lista || [];
+
+    if(listaMensalidades.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-gray-500">Nenhuma cobrança registrada.</td></tr>`;
+        return;
+    }
+
+    listaMensalidades.forEach(item => {
+        let statusBadge = `<span class="px-2.5 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold">Pendente</span>`;
+
+        if (item.status === 'Pago') {
+            statusBadge = `<span class="px-2.5 py-1 bg-green-50 text-green-600 rounded text-[10px] uppercase font-bold">Quitado</span>`;
+        } else if (item.status === 'Em Análise') {
+            statusBadge = `<span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded text-[10px] uppercase font-bold">Comprovante Enviado</span>`;
+        }
+
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
-                <td class="py-4 px-4 text-gray-500">${item.vencimento}</td>
-                <td class="py-4 px-4 text-gray-800 font-bold">${item.aluno}</td>
-                <td class="py-4 px-4 text-gray-800">R$ ${item.valor}</td>
-                <td class="py-4 px-4 text-center"><span class="px-2.5 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold">${item.status}</span></td>
-                <td class="py-4 px-4 text-right">
-                    <button class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded text-xs font-bold transition">Emitir NF</button>
+                <td class="py-4 px-4 text-gray-500 font-mono text-xs">${item.vencimento || '-'}</td>
+                <td class="py-4 px-4 text-gray-800 font-bold">${item.aluno || 'Aluno'}</td>
+                <td class="py-4 px-4 text-gray-800 font-black">R$ ${item.valor || '0,00'}</td>
+                <td class="py-4 px-4 text-center">${statusBadge}</td>
+                <td class="py-4 px-4 text-right space-x-2">
+                    ${item.status === 'Em Análise' ? `
+                        <button onclick="auditarMensalidade('${item.id}', 'aprovar')" class="bg-green-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-600 transition">Aprovar Quitação</button>
+                    ` : `
+                        <button class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-200 transition">Ver Carnê</button>
+                    `}
                 </td>
             </tr>
         `;
     });
+    feather.replace();
+}
+
+async function auditarMensalidade(mensalidadeId, acao) {
+    if(!confirm("Confirma a quitação desta mensalidade baseada no comprovante do aluno?")) return;
+
+    const formData = new FormData();
+    formData.append('acao', acao);
+
+    const result = await apiRequest(`/financeiro/auditar/${mensalidadeId}`, 'POST', formData);
+    if(result && result.sucesso) {
+        alert("Status financeiro atualizado com sucesso!");
+        loadFinanceiro();
+    } else {
+        alert(result?.detail || "Erro ao processar auditoria.");
+    }
 }
 
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
@@ -2658,6 +2702,104 @@ function imprimirListaAlunos() {
         alert("Erro ao gerar o relatório PDF. Verifique o servidor.");
     });
 }
+
+    // Abre o modal para gerenciar a pendência do aluno
+function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais) {
+    let modal = document.getElementById('modal-pendencia-financeira');
+    if (!modal) {
+        const htmlModal = `
+        <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-red-500">
+                <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
+                <h3 id="titulo-modal-pendencia" class="text-lg font-black text-gray-900 mb-1 uppercase">Pendência Financeira</h3>
+                <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
+
+                <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
+                    <input type="hidden" id="pendencia_aluno_id">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Possui Pendência nos Carnês?</label>
+                        <select id="select-possui-pendencia" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
+                            <option value="Não">Não (Regular)</option>
+                            <option value="Sim">Sim (Possui pendências/referências em aberto)</option>
+                        </select>
+                    </div>
+                    <div id="bloco-detalhes-pendencia" class="hidden">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Detalhes / Referências (Ex: Carnê nº 04, Ref. Março/2026)</label>
+                        <textarea id="input-detalhes-pendencia" rows="3" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Informe os detalhes do carnê ou comprovante ausente..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
+                        <button type="submit" class="bg-red-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-red-600 transition">Salvar Registro</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', htmlModal);
+        modal = document.getElementById('modal-pendencia-financeira');
+    }
+
+    document.getElementById('pendencia_aluno_id').value = alunoId;
+    document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome}`;
+
+    const select = document.getElementById('select-possui-pendencia');
+    const textarea = document.getElementById('input-detalhes-pendencia');
+
+    if (detalhesAtuais && detalhesAtuais !== 'undefined' && detalhesAtuais !== '') {
+        select.value = "Sim";
+        textarea.value = detalhesAtuais;
+        document.getElementById('bloco-detalhes-pendencia').classList.remove('hidden');
+    } else {
+        select.value = "Não";
+        textarea.value = "";
+        document.getElementById('bloco-detalhes-pendencia').classList.add('hidden');
+    }
+
+    feather.replace();
+    modal.classList.remove('hidden', 'opacity-0');
+    modal.classList.add('flex');
+}
+
+function toggleCampoDetalhes(valor) {
+    const bloco = document.getElementById('bloco-detalhes-pendencia');
+    if (valor === 'Sim') {
+        bloco.classList.remove('hidden');
+    } else {
+        bloco.classList.add('hidden');
+        document.getElementById('input-detalhes-pendencia').value = '';
+    }
+}
+
+function fecharModalPendencia() {
+    const modal = document.getElementById('modal-pendencia-financeira');
+    if (modal) {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }, 300);
+    }
+}
+
+async function salvarPendenciaAluno(e) {
+    e.preventDefault();
+    const alunoId = document.getElementById('pendencia_aluno_id').value;
+    const possuiPendencia = document.getElementById('select-possui-pendencia').value;
+    const detalhes = document.getElementById('input-detalhes-pendencia').value;
+
+    const formData = new FormData();
+    formData.append('possui_pendencia', possuiPendencia);
+    formData.append('detalhes_pendencia', detalhes);
+
+    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
+    if (result && result.sucesso) {
+        alert("Status de pendência atualizado!");
+        fecharModalPendencia();
+        loadAlunos(); // Atualiza a tabela para refletir a cor/ícone do alerta
+    } else {
+        alert(result?.detail || "Erro ao atualizar pendência.");
+    }
+}
+
 </script>
 </body>
 </html>
