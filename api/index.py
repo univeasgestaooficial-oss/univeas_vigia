@@ -1193,3 +1193,83 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
         print("--- ERRO AO GERAR PDF ALUNOS ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
+
+    # ==========================================
+    # MÓDULO FINANCEIRO (CARNÊS E COMPROVANTES)
+    # ==========================================
+
+    @app.get("/api/v1/financeiro/mensalidades")
+    async def listar_mensalidades():
+        checar_db()
+        docs = db.collection("mensalidades").stream()
+        return {"lista": [{"id": doc.id, **doc.to_dict()} for doc in docs]}
+
+    @app.post("/api/v1/financeiro/enviar-comprovante")
+    async def aluno_enviar_comprovante(
+            aluno_id: str = Form(...),
+            mensalidade_id: str = Form(...),
+            referencia_pagamento: str = Form(...),  # Ex: ID da transação ou identificação do carnê
+            comprovante: UploadFile = File(...)
+    ):
+        checar_db()
+
+        # Opcional: Upload do arquivo para o Firebase Storage se configurado, ou salvar metadados
+        # Aqui salvamos o registro do envio pendente de auditoria da secretaria
+
+        dados_baixa = {
+            "aluno_id": aluno_id,
+            "mensalidade_id": mensalidade_id,
+            "referencia_pagamento": referencia_pagamento,
+            "nome_arquivo": comprovante.filename,
+            "status": "Em Análise",
+            "data_envio": datetime.now().isoformat()
+        }
+
+        _, doc_ref = db.collection("comprovantes_pagamento").add(dados_baixa)
+
+        # Atualiza o status da mensalidade para indicar que o comprovante foi enviado
+        db.collection("mensalidades").document(mensalidade_id).update({
+            "status": "Em Análise",
+            "comprovante_id": doc_ref.id
+        })
+
+        return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso. Aguardando validação da secretaria."}
+
+    @app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
+    async def auditar_e_quitar_mensalidade(
+            mensalidade_id: str,
+            acao: str = Form(...)  # 'aprovar' ou 'rejeitar'
+    ):
+        checar_db()
+
+        novo_status = "Pago" if acao == 'aprovar' else "Rejeitado"
+
+        db.collection("mensalidades").document(mensalidade_id).update({
+            "status": novo_status,
+            "data_pagamento": datetime.now().isoformat() if acao == 'aprovar' else None
+        })
+
+        return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
+
+
+# ==========================================
+# GESTÃO DE PENDÊNCIAS FINANCEIRAS NO ALUNO
+# ==========================================
+@app.post("/api/v1/alunos/{aluno_id}/pendencia")
+async def gerenciar_pendencia_aluno(
+        aluno_id: str,
+        possui_pendencia: str = Form(...),  # "Sim" ou "Não"
+        detalhes_pendencia: str = Form("")  # Ex: Carnê X - Ref a Março/2026
+):
+    checar_db()
+    ref = db.collection("alunos").document(aluno_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    ref.update({
+        "possui_pendencia_financeira": possui_pendencia,
+        "detalhes_pendencia_financeira": detalhes_pendencia if possui_pendencia == "Sim" else ""
+    })
+
+    return {"sucesso": True, "mensagem": "Status de pendência atualizado com sucesso."}
