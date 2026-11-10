@@ -1369,18 +1369,6 @@ function verPerfilDocente(id_firebase) {
     alert("Função para visualizar o perfil do docente com ID: " + id_firebase);
 }
 
-// Trata os múltiplos vínculos
-    document.getElementById('container-vinculos-docente').innerHTML = '';
-    let vinculos = [];
-    try {
-        // Verifica se já usa o novo formato JSON ou o formato antigo
-        if(doc.vinculos_json) vinculos = JSON.parse(doc.vinculos_json);
-        else if (doc.curso_id) vinculos = [{ curso_id: doc.curso_id, modulo: doc.modulo_vinculado }];
-    } catch(e){}
-
-    if(vinculos.length === 0) adicionarVinculoDocente();
-    else vinculos.forEach(v => adicionarVinculoDocente(v.curso_id, v.modulo));
-
 // Carrega os alunos reais na aba Financeira
 async function loadFinanceiro() {
     // 1. PREENCHIMENTO AUTOMÁTICO DO MÊS ATUAL
@@ -1625,7 +1613,6 @@ document.getElementById('form-docente')?.addEventListener('submit', async (e) =>
     // Converte para texto e coloca no campo oculto
     document.getElementById('vinculos_json').value = JSON.stringify(arrayVinculos);
     const formData = new FormData(e.target);
-    const formData = new FormData(e.target);
     const idEdit = document.getElementById('docente_id_edit')?.value;
 
     const btnSubmit = e.target.querySelector('button[type="submit"]');
@@ -1710,11 +1697,19 @@ function editarDocente(id_firebase) {
     form.turno_atuacao.value = doc.turno_atuacao || 'manha';
     form.especialidade.value = doc.especialidade || '';
 
-    // Trata os Selects aninhados
-    if (doc.curso_id) {
-        form.curso_id.value = doc.curso_id;
-        carregarModulosDocente(doc.curso_id, doc.modulo_vinculado);
-    }
+    // ==========================================
+    // TRATA OS MÚLTIPLOS VÍNCULOS (Cursos e Módulos)
+    // ==========================================
+    document.getElementById('container-vinculos-docente').innerHTML = '';
+    let vinculos = [];
+    try {
+        if(doc.vinculos_json) vinculos = JSON.parse(doc.vinculos_json);
+        else if (doc.curso_id) vinculos = [{ curso_id: doc.curso_id, modulo: doc.modulo_vinculado }];
+    } catch(e){}
+
+    if(vinculos.length === 0) adicionarVinculoDocente();
+    else vinculos.forEach(v => adicionarVinculoDocente(v.curso_id, v.modulo));
+    // ==========================================
 
     form.banco.value = doc.banco || '';
     form.agencia.value = doc.agencia || '';
@@ -1730,7 +1725,6 @@ function editarDocente(id_firebase) {
     // Rola a página para o topo do formulário suavemente
     document.getElementById('tela-prestadores').scrollIntoView({ behavior: 'smooth' });
 }
-
 function fecharModalDocente() {
     const modal = document.getElementById('modal-perfil-docente');
     if (modal) {
