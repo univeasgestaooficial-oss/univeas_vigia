@@ -750,67 +750,69 @@
             </div>
 
 <!-- ============================================== -->
-<!-- 7. GESTÃO FINANCEIRA (LAYOUT CAPTURAR.PNG) -->
+<!-- 7. GESTÃO FINANCEIRA (PADRÃO UNIVEAS) -->
 <!-- ============================================== -->
 <div id="tela-financeiro" class="tela hidden">
-    <div class="flex flex-col space-y-8 max-w-7xl mx-auto pb-8 pt-4">
+    <div class="flex flex-col space-y-8 max-w-6xl mx-auto pb-8">
 
         <!-- CARDS DE INDICADORES FINANCEIROS -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
-                <p class="text-sm font-black text-black">Total recebido</p>
-                <h3 class="text-lg font-black text-black my-1" id="fin-total-recebido">R$ 0,00</h3>
-                <p class="text-sm font-black text-black">Mensalidades pagas</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Total Recebido</p>
+                <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-total-recebido">R$ 0,00</h3>
+                <p class="text-xs text-green-500 font-medium flex items-center"><i data-feather="check-circle" class="w-3 h-3 mr-1"></i> Mensalidades pagas</p>
             </div>
-            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
-                <p class="text-sm font-black text-black">A receber</p>
-                <h3 class="text-lg font-black text-black my-1" id="fin-total-receber">R$ 0,00</h3>
-                <p class="text-sm font-black text-black">Mensalidades pendentes</p>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">A Receber</p>
+                <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-total-receber">R$ 0,00</h3>
+                <p class="text-xs text-blue-500 font-medium flex items-center"><i data-feather="clock" class="w-3 h-3 mr-1"></i> Mensalidades pendentes</p>
             </div>
-            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
-                <p class="text-sm font-black text-black">Inadimplência</p>
-                <h3 class="text-lg font-black text-black my-1" id="fin-inadimplencia">0</h3>
-                <p class="text-sm font-black text-black">Mensalidades vencidas</p>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
+                <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Inadimplência</p>
+                <h3 class="text-2xl font-black text-red-500 my-2" id="fin-inadimplencia">0</h3>
+                <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades vencidas</p>
             </div>
-            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
-                <p class="text-sm font-black text-black">Pagamentos do mês</p>
-                <h3 class="text-lg font-black text-black my-1" id="fin-pagamentos-mes">0</h3>
-                <p class="text-sm font-black text-black">Quantidade confirmada</p>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos do Mês</p>
+                <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-pagamentos-mes">0</h3>
+                <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Quantidade confirmada</p>
             </div>
         </div>
 
-        <!-- CONTROLES DE BUSCA E IMPRESSÃO -->
-        <div class="flex flex-col md:flex-row items-end md:items-center justify-between gap-6">
-            <div class="flex items-end w-full md:w-auto">
-                <label class="text-lg font-black text-black uppercase mr-2 pb-1">MES DE FATURAMENTO:</label>
-                <input type="month" id="filtro-mes-financeiro" class="border-b-2 border-black px-2 py-1 focus:outline-none bg-transparent font-bold w-48 text-black">
-            </div>
-            <div class="flex items-center space-x-4 w-full md:w-auto">
-                <div class="relative w-full md:w-64">
-                    <input type="text" id="busca-financeiro" placeholder="BUSCAR" class="w-full border-2 border-black rounded-full px-6 py-2 font-black uppercase text-sm focus:outline-none text-center placeholder-black">
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+            <!-- CONTROLES E BUSCA -->
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-gray-100 pb-6 mb-6">
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mês de Faturamento</label>
+                    <input type="month" id="filtro-mes-financeiro" class="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-teal-700 transition w-48 shadow-inner">
                 </div>
-                <button class="bg-black text-white px-8 py-2.5 rounded-full font-black uppercase text-sm hover:bg-gray-800 transition shadow-md">IMPRIMIR</button>
-            </div>
-        </div>
 
-        <!-- TABELA FINANCEIRO -->
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mt-4">
-            <div class="p-6 border-b border-gray-100">
-                <h3 class="text-xl font-black text-black uppercase tracking-wide">FINANCEIRO</h3>
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <div class="relative w-full md:w-64">
+                        <input type="text" id="busca-financeiro" placeholder="Buscar cliente..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
+                        <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
+                    </div>
+                    <button class="bg-gray-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
+                        <i data-feather="printer" class="h-4 w-4 mr-2"></i> Imprimir
+                    </button>
+                </div>
             </div>
+
+            <!-- TABELA DE RESULTADOS -->
             <div class="overflow-x-auto">
-                <table class="min-w-full text-left">
-                    <thead>
-                        <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100">
-                            <th class="py-4 px-6">id comprovante</th>
-                            <th class="py-4 px-6">CLIENTE</th>
-                            <th class="py-4 px-6 text-center">mês/ano<br><span class="text-[8px]">REF.</span></th>
-                            <th class="py-4 px-6">STATUS DE PAGAMENTO</th>
-                            <th class="py-4 px-4 text-center">view</th>
-                            <th class="py-4 px-4 text-center">nf</th>
+                <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                    <thead class="bg-gray-50">
+                        <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                            <th class="py-3 px-4">ID Comprovante</th>
+                            <th class="py-3 px-4">Cliente</th>
+                            <th class="py-3 px-4 text-center">Mês/Ano Ref.</th>
+                            <th class="py-3 px-4 text-center">Status de Pagamento</th>
+                            <th class="py-3 px-4 text-center">View</th>
+                            <th class="py-3 px-4 text-center">NF</th>
                         </tr>
                     </thead>
-                    <tbody id="tabela-financeiro" class="font-medium">
+                    <tbody id="tabela-financeiro" class="divide-y divide-gray-100 font-medium">
                         <!-- Será preenchido pelo JavaScript -->
                     </tbody>
                 </table>
@@ -1375,15 +1377,26 @@ function editarDocente(id_firebase) {
 
 // Carrega os alunos reais na aba Financeira
 async function loadFinanceiro() {
-    await carregarIndicadoresFinanceiros();
+    // 1. PREENCHIMENTO AUTOMÁTICO DO MÊS ATUAL
+    const inputMes = document.getElementById('filtro-mes-financeiro');
+    if (inputMes && !inputMes.value) {
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        inputMes.value = `${ano}-${mes}`; // Define automaticamente para o mês atual
+    }
+
+    // 2. ATUALIZA OS CARDS SUPERIORES DO BANCO DE DADOS
+    if (typeof carregarIndicadoresFinanceiros === 'function') {
+        await carregarIndicadoresFinanceiros();
+    }
+
     const tbody = document.getElementById('tabela-financeiro');
     if (!tbody) return;
 
     tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando dados...</td></tr>';
 
-    // Aqui você chamará a rota real do seu backend que traz as mensalidades/faturas
-    // Exemplo: const pagamentos = await apiRequest('/financeiro/mensalidades');
-    // Por enquanto, vamos buscar os alunos para preencher a tela e você não ficar com a tabela vazia
+    // Aqui será feita a requisição real no backend.
     const resposta = await apiRequest('/alunos');
     const lista = Array.isArray(resposta) ? resposta : (resposta.dados || []);
 
@@ -1395,35 +1408,35 @@ async function loadFinanceiro() {
     }
 
     lista.forEach((item, index) => {
-        // Simulando PAGO e PENDENTE para bater com o design,
-        // depois você troca pela variável real do seu banco (ex: item.status_pagamento)
+        // Simulando a listagem. Substitua pelas variáveis corretas do banco quando integrar.
         const isPago = index % 2 !== 0;
         const statusHtml = isPago
-            ? '<span class="bg-green-100 text-green-700 px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider">PAGO</span>'
-            : '<span class="bg-orange-100 text-orange-700 px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider">PENDENTE</span>';
+            ? '<span class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Pago</span>'
+            : '<span class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Pendente</span>';
 
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-6 text-gray-800 font-medium text-sm">janeiro</td>
-                <td class="py-4 px-6 text-gray-900 font-black text-sm uppercase">${item.nome || 'Cliente'}</td>
-                <td class="py-4 px-6 text-gray-900 font-black text-sm text-center">R$ 150,00</td>
-                <td class="py-4 px-6">${statusHtml}</td>
+                <td class="py-4 px-4 text-gray-500 font-mono text-xs">janeiro</td>
+                <td class="py-4 px-4 text-gray-800 font-bold uppercase text-xs">${item.nome || 'Cliente'}</td>
+                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center">R$ 150,00</td>
+                <td class="py-4 px-4 text-center">${statusHtml}</td>
                 <td class="py-4 px-4 text-center">
-                    <button class="text-teal-500 hover:text-teal-700 p-1 transition" title="Visualizar">
-                        <i data-feather="eye" class="w-5 h-5"></i>
+                    <button class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar">
+                        <i data-feather="eye" class="w-4 h-4"></i>
                     </button>
                 </td>
                 <td class="py-4 px-4 text-center">
-                    <button class="text-teal-500 hover:text-teal-700 p-1 transition" title="Nota Fiscal / Comprovante">
-                        <i data-feather="cloud-upload" class="w-5 h-5"></i>
+                    <button class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Nota Fiscal / Comprovante">
+                        <i data-feather="cloud-upload" class="w-4 h-4"></i>
                     </button>
                 </td>
             </tr>
         `;
     });
+
+    // Atualiza os ícones gerados
     feather.replace();
 }
-
 // Busca os totais do banco e atualiza os cards superiores
 async function carregarIndicadoresFinanceiros() {
     // Aqui você chama a rota do seu Python que calcula os totais
