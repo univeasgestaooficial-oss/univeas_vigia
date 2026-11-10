@@ -1394,19 +1394,26 @@ function editarDocente(id_firebase) {
 }
 
 async function loadFinanceiro() {
-    // Busca os alunos cadastrados para checar as pendências
-    const alunos = await apiRequest('/alunos');
     const tbody = document.getElementById('tabela-financeiro');
-    if (!tbody || !alunos) return;
+    if (!tbody) return;
 
-    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos.dados || []);
+    // Se a lista global de alunos já estiver populada, usamos ela para ser instantâneo. 
+    // Se não estiver, fazemos a requisição na API.
+    let listaAlunos = alunosGlobais;
+    if (!listaAlunos || listaAlunos.length === 0) {
+        const resposta = await apiRequest('/alunos');
+        if (!resposta) return;
+        listaAlunos = Array.isArray(resposta) ? resposta : (resposta.dados || []);
+    }
 
-    // Filtra apenas os alunos que possuem pendência de carnê cadastrada
-    const inadimplentes = listaAlunos.filter(a => a.possui_pendencia_financeira === "Sim");
+    // Filtra apenas os alunos que possuem pendência de carnê cadastrada ("Sim")
+    const inadimplentes = listaAlunos.filter(a => 
+        a.possui_pendencia_financeira === "Sim" || a.possui_pendencia === "Sim"
+    );
 
     tbody.innerHTML = '';
 
-    if(inadimplentes.length === 0) {
+    if (inadimplentes.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno com pendência de carnê registrada no momento.</td></tr>`;
         return;
     }
@@ -1416,8 +1423,10 @@ async function loadFinanceiro() {
             <tr class="hover:bg-gray-50 transition">
                 <td class="py-4 px-4 text-gray-500 font-mono text-xs">${aluno.matricula || '-'}</td>
                 <td class="py-4 px-4 text-gray-800 font-bold">${aluno.nome || 'Aluno'}</td>
-                <td class="py-4 px-4 text-gray-600 text-xs font-medium">${aluno.detalhes_pendencia_financeira || 'Carnê em aberto'}</td>
-                <td class="py-4 px-4 text-center"><span class="px-2.5 py-1 bg-red-50 text-red-600 rounded text-[10px] uppercase font-bold">Pendente / Carnê</span></td>
+                <td class="py-4 px-4 text-gray-600 text-xs font-medium">${aluno.detalhes_pendencia_financeira || aluno.detalhes_pendencia || 'Carnê em aberto'}</td>
+                <td class="py-4 px-4 text-center">
+                    <span class="px-2.5 py-1 bg-red-50 text-red-600 rounded text-[10px] uppercase font-bold">Pendente / Carnê</span>
+                </td>
                 <td class="py-4 px-4 text-right">
                     <button onclick="mudarTela('alunos')" class="bg-teal-50 text-teal-600 hover:bg-teal-100 px-3 py-1.5 rounded text-xs font-bold transition">Gerenciar no Aluno</button>
                 </td>
@@ -1426,7 +1435,6 @@ async function loadFinanceiro() {
     });
     feather.replace();
 }
-
 async function auditarMensalidade(mensalidadeId, acao) {
     if(!confirm("Confirma a quitação desta mensalidade baseada no comprovante do aluno?")) return;
 
