@@ -1383,7 +1383,7 @@ async function loadFinanceiro() {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        inputMes.value = `${ano}-${mes}`; // Define automaticamente para o mês atual
+        inputMes.value = `${ano}-${mes}`;
     }
 
     // 2. ATUALIZA OS CARDS SUPERIORES DO BANCO DE DADOS
@@ -1394,9 +1394,14 @@ async function loadFinanceiro() {
     const tbody = document.getElementById('tabela-financeiro');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando dados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando dados financeiros...</td></tr>';
 
-    // Aqui será feita a requisição real no backend.
+    // 3. GARANTE QUE OS CURSOS ESTÃO CARREGADOS PARA PEGAR OS PREÇOS REAIS
+    if (cursosGlobais.length === 0 && typeof loadCursos === 'function') {
+        await loadCursos();
+    }
+
+    // 4. BUSCA OS ALUNOS REAIS DO BANCO
     const resposta = await apiRequest('/alunos');
     const lista = Array.isArray(resposta) ? resposta : (resposta.dados || []);
 
@@ -1407,21 +1412,48 @@ async function loadFinanceiro() {
         return;
     }
 
-    lista.forEach((item, index) => {
-        // Simulando a listagem. Substitua pelas variáveis corretas do banco quando integrar.
-        const isPago = index % 2 !== 0;
-        const statusHtml = isPago
+    lista.forEach((item) => {
+        // --- BUSCANDO O VALOR REAL DO CURSO ---
+        const cursoDoAluno = cursosGlobais.find(c => c.id == (item.curso || item.curso_id));
+        let valorCobranca = 0;
+
+        if (cursoDoAluno) {
+            // Se tiver promoção ativa, cobra o promocional. Se não, cobra a mensalidade normal.
+            valorCobranca = (cursoDoAluno.promocao_ativa === 'Sim' && cursoDoAluno.valor_promocional)
+                            ? parseFloat(cursoDoAluno.valor_promocional)
+                            : parseFloat(cursoDoAluno.valor_mensalidade);
+        }
+
+        // Formata para a moeda Brasileira (R$)
+        const valorFormatado = valorCobranca
+            ? valorCobranca.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})
+            : 'R$ 0,00';
+
+        // --- DEFININDO STATUS, MÊS DE REF E COMPROVANTE ---
+        const isPendente = item.possui_pendencia_financeira === 'Sim';
+
+        const statusHtml = !isPendente
             ? '<span class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Pago</span>'
             : '<span class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Pendente</span>';
 
+        // Se o aluno estiver pendente, mostra o detalhe do carnê. Se não, mostra o mês atual do filtro.
+        let mesRef = item.detalhes_pendencia_financeira || inputMes.value;
+
+        // Gera um ID de comprovante baseado na NF registrada ou na Matrícula
+        let idComprovante = item.numero_nf || `#FIN-${item.matricula || '000'}`;
+
+        // --- INJETANDO NA TABELA ---
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 text-gray-500 font-mono text-xs">janeiro</td>
-                <td class="py-4 px-4 text-gray-800 font-bold uppercase text-xs">${item.nome || 'Cliente'}</td>
-                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center">R$ 150,00</td>
+                <td class="py-4 px-4 text-gray-500 font-mono text-xs">${idComprovante}</td>
+                <td class="py-4 px-4 text-gray-800 font-bold uppercase text-xs">${item.nome || 'Cliente Desconhecido'}</td>
+                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center flex flex-col items-center justify-center">
+                    <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">${mesRef}</span>
+                    ${valorFormatado}
+                </td>
                 <td class="py-4 px-4 text-center">${statusHtml}</td>
                 <td class="py-4 px-4 text-center">
-                    <button class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar">
+                    <button class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Detalhes">
                         <i data-feather="eye" class="w-4 h-4"></i>
                     </button>
                 </td>
@@ -1434,9 +1466,12 @@ async function loadFinanceiro() {
         `;
     });
 
-    // Atualiza os ícones gerados
+    // Atualiza os ícones gerados (Olho e Nuvem)
     feather.replace();
 }
+
+
+
 // Busca os totais do banco e atualiza os cards superiores
 async function carregarIndicadoresFinanceiros() {
     // Aqui você chama a rota do seu Python que calcula os totais
