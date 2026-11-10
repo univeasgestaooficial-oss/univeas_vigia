@@ -1557,6 +1557,12 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
 
+    // CORREÇÃO: Força o envio do aceite dos termos (Checkbox fantasma)
+    const termosCheck = document.getElementById('termos_aluno');
+    if (termosCheck) {
+        formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
+    }
+
     const btnSubmit = e.target.querySelector('button[type="submit"]');
     const textoOriginal = btnSubmit.innerText;
     btnSubmit.innerText = "Salvando...";
@@ -1588,6 +1594,7 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
         btnSubmit.innerText = textoOriginal;
     }
 });
+
 
 // Adiciona o botão de Limpar para resetar o form de edição
 document.querySelector('#form-matricula button[type="reset"]')?.addEventListener('click', () => {
