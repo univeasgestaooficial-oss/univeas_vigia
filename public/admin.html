@@ -749,39 +749,74 @@
                 </div>
             </div>
 
-           <!-- ============================================== -->
-<!-- 7. GESTÃO FINANCEIRA (CONSOLIDADA) -->
+<!-- ============================================== -->
+<!-- 7. GESTÃO FINANCEIRA (LAYOUT CAPTURAR.PNG) -->
 <!-- ============================================== -->
 <div id="tela-financeiro" class="tela hidden">
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 border-b border-gray-100 pb-4">
-            <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                <i data-feather="dollar-sign" class="text-teal-500 mr-2 h-5 w-5"></i> Controle de Carnês e Mensalidades
-            </h4>
-            <div class="flex space-x-2 w-full sm:w-auto">
-                <div class="relative flex-1 sm:w-64">
-                    <input type="text" id="busca-financeiro" placeholder="Buscar aluno..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500" onkeyup="filtrarFinanceiro()">
-                    <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
-                </div>
+    <div class="flex flex-col space-y-8 max-w-7xl mx-auto pb-8 pt-4">
+
+        <!-- CARDS DE INDICADORES FINANCEIROS -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
+                <p class="text-sm font-black text-black">Total recebido</p>
+                <h3 class="text-lg font-black text-black my-1" id="fin-total-recebido">R$ 0,00</h3>
+                <p class="text-sm font-black text-black">Mensalidades pagas</p>
+            </div>
+            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
+                <p class="text-sm font-black text-black">A receber</p>
+                <h3 class="text-lg font-black text-black my-1" id="fin-total-receber">R$ 0,00</h3>
+                <p class="text-sm font-black text-black">Mensalidades pendentes</p>
+            </div>
+            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
+                <p class="text-sm font-black text-black">Inadimplência</p>
+                <h3 class="text-lg font-black text-black my-1" id="fin-inadimplencia">0</h3>
+                <p class="text-sm font-black text-black">Mensalidades vencidas</p>
+            </div>
+            <div class="bg-white border-2 border-black rounded-xl p-5 flex flex-col justify-center min-h-[120px]">
+                <p class="text-sm font-black text-black">Pagamentos do mês</p>
+                <h3 class="text-lg font-black text-black my-1" id="fin-pagamentos-mes">0</h3>
+                <p class="text-sm font-black text-black">Quantidade confirmada</p>
             </div>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
-                <thead class="bg-gray-50">
-                    <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                        <th class="py-3 px-4">Matrícula</th>
-                        <th class="py-3 px-4">Nome do Aluno</th>
-                        <th class="py-3 px-4">Referência / Carnê</th>
-                        <th class="py-3 px-4 text-center">Status</th>
-                        <th class="py-3 px-4 text-right">Ações Financeiras</th>
-                    </tr>
-                </thead>
-                <!-- AQUI OS DADOS REAIS SERÃO INJETADOS -->
-                <tbody id="tabela-financeiro" class="divide-y divide-gray-100 font-medium">
-                </tbody>
-            </table>
+        <!-- CONTROLES DE BUSCA E IMPRESSÃO -->
+        <div class="flex flex-col md:flex-row items-end md:items-center justify-between gap-6">
+            <div class="flex items-end w-full md:w-auto">
+                <label class="text-lg font-black text-black uppercase mr-2 pb-1">MES DE FATURAMENTO:</label>
+                <input type="month" id="filtro-mes-financeiro" class="border-b-2 border-black px-2 py-1 focus:outline-none bg-transparent font-bold w-48 text-black">
+            </div>
+            <div class="flex items-center space-x-4 w-full md:w-auto">
+                <div class="relative w-full md:w-64">
+                    <input type="text" id="busca-financeiro" placeholder="BUSCAR" class="w-full border-2 border-black rounded-full px-6 py-2 font-black uppercase text-sm focus:outline-none text-center placeholder-black">
+                </div>
+                <button class="bg-black text-white px-8 py-2.5 rounded-full font-black uppercase text-sm hover:bg-gray-800 transition shadow-md">IMPRIMIR</button>
+            </div>
         </div>
+
+        <!-- TABELA FINANCEIRO -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mt-4">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="text-xl font-black text-black uppercase tracking-wide">FINANCEIRO</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100">
+                            <th class="py-4 px-6">id comprovante</th>
+                            <th class="py-4 px-6">CLIENTE</th>
+                            <th class="py-4 px-6 text-center">mês/ano<br><span class="text-[8px]">REF.</span></th>
+                            <th class="py-4 px-6">STATUS DE PAGAMENTO</th>
+                            <th class="py-4 px-4 text-center">view</th>
+                            <th class="py-4 px-4 text-center">nf</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-financeiro" class="font-medium">
+                        <!-- Será preenchido pelo JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -1104,21 +1139,15 @@ async function loadAlunos() {
     const tbody = document.getElementById('tabela-alunos');
     if (!tbody || !alunos) return;
 
-    // Salva os alunos globalmente
     alunosGlobais = Array.isArray(alunos) ? alunos : (alunos.dados || []);
-
     tbody.innerHTML = '';
+
     alunosGlobais.forEach(aluno => {
         let statusColor = "bg-gray-50 text-gray-600";
         if (aluno.status === "Ativo") statusColor = "bg-green-50 text-green-600";
         else if (aluno.status === "Pendente") statusColor = "bg-yellow-50 text-yellow-600";
         else if (aluno.status === "Trancado") statusColor = "bg-red-50 text-red-600";
         else if (aluno.status === "Concluído") statusColor = "bg-blue-50 text-blue-600";
-
-        // Cria o ícone de pendência financeira
-        let iconePendencia = aluno.possui_pendencia_financeira === "Sim"
-            ? `<button onclick="abrirModalPendencia('${aluno.id}', '${aluno.nome}', '${aluno.detalhes_pendencia_financeira || ''}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Pendência Financeira Ativa: ${aluno.detalhes_pendencia_financeira || ''}"><i data-feather="alert-circle" class="h-4 w-4"></i></button>`
-            : `<button onclick="abrirModalPendencia('${aluno.id}', '${aluno.nome}', '')" class="text-gray-400 hover:text-white hover:bg-teal-500 bg-gray-50 p-2 rounded transition" title="Registrar Pendência de Carnê"><i data-feather="dollar-sign" class="h-4 w-4"></i></button>`;
 
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
@@ -1129,9 +1158,6 @@ async function loadAlunos() {
                     <span class="px-2 py-1 ${statusColor} rounded text-[10px] font-bold uppercase">${aluno.status || 'Desconhecido'}</span>
                 </td>
                 <td class="py-3 px-4 text-right space-x-1 flex justify-end items-center">
-                    <!-- AQUI ENTRA O BOTÃO DE PENDÊNCIA QUE FALTAVA -->
-                    ${iconePendencia}
-
                     <button onclick="verPerfilAluno('${aluno.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Perfil Completo">
                         <i data-feather="eye" class="h-4 w-4"></i>
                     </button>
@@ -1349,50 +1375,69 @@ function editarDocente(id_firebase) {
 
 // Carrega os alunos reais na aba Financeira
 async function loadFinanceiro() {
+    await carregarIndicadoresFinanceiros();
     const tbody = document.getElementById('tabela-financeiro');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500">Carregando dados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando dados...</td></tr>';
 
-    const alunos = await apiRequest('/alunos');
-    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos.dados || []);
-
-    // Filtra apenas quem tem carnê/pendência ativa
-    const pendentes = listaAlunos.filter(a => a.possui_pendencia_financeira === "Sim");
+    // Aqui você chamará a rota real do seu backend que traz as mensalidades/faturas
+    // Exemplo: const pagamentos = await apiRequest('/financeiro/mensalidades');
+    // Por enquanto, vamos buscar os alunos para preencher a tela e você não ficar com a tabela vazia
+    const resposta = await apiRequest('/alunos');
+    const lista = Array.isArray(resposta) ? resposta : (resposta.dados || []);
 
     tbody.innerHTML = '';
 
-    if(pendentes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno com carnê em aberto no momento.</td></tr>`;
+    if(lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum registro encontrado.</td></tr>`;
         return;
     }
 
-    pendentes.forEach(aluno => {
-        // Mostra a NF se o aluno tiver uma registrada
-        const nfText = aluno.numero_nf ? `<br><span class="text-[9px] text-gray-400 uppercase">NF: ${aluno.numero_nf}</span>` : '';
+    lista.forEach((item, index) => {
+        // Simulando PAGO e PENDENTE para bater com o design,
+        // depois você troca pela variável real do seu banco (ex: item.status_pagamento)
+        const isPago = index % 2 !== 0;
+        const statusHtml = isPago
+            ? '<span class="bg-green-100 text-green-700 px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider">PAGO</span>'
+            : '<span class="bg-orange-100 text-orange-700 px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider">PENDENTE</span>';
 
         tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 transition linha-financeiro">
-                <td class="py-4 px-4 text-gray-500 font-mono text-xs">${aluno.matricula || '-'}</td>
-                <td class="py-4 px-4 text-gray-800 font-bold busca-nome">${aluno.nome || 'Aluno'} ${nfText}</td>
-                <td class="py-4 px-4 text-gray-600 text-xs font-medium">${aluno.detalhes_pendencia_financeira || 'Carnê'}</td>
+            <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                <td class="py-4 px-6 text-gray-800 font-medium text-sm">janeiro</td>
+                <td class="py-4 px-6 text-gray-900 font-black text-sm uppercase">${item.nome || 'Cliente'}</td>
+                <td class="py-4 px-6 text-gray-900 font-black text-sm text-center">R$ 150,00</td>
+                <td class="py-4 px-6">${statusHtml}</td>
                 <td class="py-4 px-4 text-center">
-                    <span class="px-2.5 py-1 bg-red-50 text-red-600 rounded text-[10px] uppercase font-bold">Pendente</span>
-                </td>
-                <td class="py-4 px-4 text-right space-x-2 flex justify-end">
-                    <!-- BOTÃO PARA INFORMAR NF (Opcional) -->
-                    <button onclick="informarNFFinanceiro('${aluno.id}')" class="bg-gray-100 text-gray-600 hover:bg-gray-200 px-3 py-1.5 rounded text-xs font-bold transition" title="Adicionar NF">
-                        + NF
+                    <button class="text-teal-500 hover:text-teal-700 p-1 transition" title="Visualizar">
+                        <i data-feather="eye" class="w-5 h-5"></i>
                     </button>
-                    <!-- BOTÃO PARA DAR BAIXA/PAGO -->
-                    <button onclick="darBaixaFinanceiro('${aluno.id}')" class="bg-teal-50 text-teal-600 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded text-xs font-bold transition">
-                        <i data-feather="check-circle" class="w-3 h-3 inline mr-1"></i> Receber
+                </td>
+                <td class="py-4 px-4 text-center">
+                    <button class="text-teal-500 hover:text-teal-700 p-1 transition" title="Nota Fiscal / Comprovante">
+                        <i data-feather="cloud-upload" class="w-5 h-5"></i>
                     </button>
                 </td>
             </tr>
         `;
     });
     feather.replace();
+}
+
+// Busca os totais do banco e atualiza os cards superiores
+async function carregarIndicadoresFinanceiros() {
+    // Aqui você chama a rota do seu Python que calcula os totais
+    const dados = await apiRequest('/financeiro/indicadores');
+
+    if (dados && !dados.detail) {
+        // Formata os valores para moeda (R$) onde necessário
+        document.getElementById('fin-total-recebido').innerText = `R$ ${parseFloat(dados.total_recebido || 0).toFixed(2).replace('.', ',')}`;
+        document.getElementById('fin-total-receber').innerText = `R$ ${parseFloat(dados.total_receber || 0).toFixed(2).replace('.', ',')}`;
+
+        // Atualiza as quantidades
+        document.getElementById('fin-inadimplencia').innerText = dados.inadimplencia || 0;
+        document.getElementById('fin-pagamentos-mes').innerText = dados.pagamentos_mes || 0;
+    }
 }
 
 // Função do Botão "Receber"
