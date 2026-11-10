@@ -223,7 +223,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº Matrícula (Auto)</label>
-                                    <input type="text" name="matricula" value="#GERADO-AUTO" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 font-mono text-gray-500 cursor-not-allowed">
+                                    <input type="text" name="matricula" value="#GERADO-AUTO" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 font-mono text-gray-500 cursor-not-allowed focus:outline-none">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF do Aluno</label>
@@ -1433,9 +1433,8 @@ async function loadFinanceiro() {
         const isPendente = item.possui_pendencia_financeira === 'Sim';
 
         const statusHtml = !isPendente
-            ? '<span class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Pago</span>'
-            : '<span class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Pendente</span>';
-
+            ? `<button onclick="abrirModalPendencia('${item.id}', '${item.nome}', '', '${item.numero_nf || ''}')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer" title="Clique para alterar status">PAGO</button>`
+            : `<button onclick="abrirModalPendencia('${item.id}', '${item.nome}', '${mesRef}', '${item.numero_nf || ''}')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer" title="Clique para dar baixa">PENDENTE</button>`;
         // Se o aluno estiver pendente, mostra o detalhe do carnê. Se não, mostra o mês atual do filtro.
         let mesRef = item.detalhes_pendencia_financeira || inputMes.value;
 
@@ -2919,25 +2918,6 @@ function fecharModalPendencia() {
     }
 }
 
-async function salvarPendenciaAluno(e) {
-    e.preventDefault();
-    const alunoId = document.getElementById('pendencia_aluno_id').value;
-    const possuiPendencia = document.getElementById('select-possui-pendencia').value;
-    const detalhes = document.getElementById('input-detalhes-pendencia').value;
-
-    const formData = new FormData();
-    formData.append('possui_pendencia', possuiPendencia);
-    formData.append('detalhes_pendencia', detalhes);
-
-    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
-    if (result && result.sucesso) {
-        alert("Status de pendência atualizado!");
-        fecharModalPendencia();
-        loadAlunos(); // Atualiza a tabela para refletir a cor/ícone do alerta
-    } else {
-        alert(result?.detail || "Erro ao atualizar pendência.");
-    }
-}
 
 </script>
 </body>
