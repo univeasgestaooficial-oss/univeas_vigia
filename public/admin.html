@@ -1640,13 +1640,12 @@ document.getElementById('form-docente')?.addEventListener('submit', async (e) =>
         btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
         btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
 
-        // Reseta o select do módulo
-        const selModulo = document.getElementById('select-modulo-docente');
-        if(selModulo) {
-            selModulo.innerHTML = '<option value="">Aguardando curso...</option>';
-            selModulo.disabled = true;
-            selModulo.classList.add('bg-teal-50/50');
-        }
+        // ==========================================
+        // NOVO: LIMPA OS VÍNCULOS DINÂMICOS DA TELA APÓS SALVAR
+        // ==========================================
+        document.getElementById('container-vinculos-docente').innerHTML = '';
+        contadorVinculosDocente = 0;
+        adicionarVinculoDocente(); // Recria um vínculo vazio
 
         loadDocentes();
     } else {
@@ -3008,7 +3007,24 @@ function atualizarModulosDinamicos(selectElement, idLinha, moduloSelecionado = '
         selectModulo.innerHTML += `<option value="${nomeMod}" ${sel}>${nomeMod}</option>`;
     });
 }
+// Adiciona o botão de Limpar para resetar o form do Docente
+document.querySelector('#form-docente button[type="reset"]')?.addEventListener('click', () => {
+    // Tira o formulário do modo de edição
+    const inputEdit = document.getElementById('docente_id_edit');
+    if (inputEdit) inputEdit.value = '';
 
+    // Restaura o botão de salvar
+    const btnSubmit = document.querySelector('#form-docente button[type="submit"]');
+    btnSubmit.innerText = 'Salvar Prestador';
+    btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
+    btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
+
+    // Zera os vínculos da tela
+    document.getElementById('container-vinculos-docente').innerHTML = '';
+    contadorVinculosDocente = 0;
+    setTimeout(() => adicionarVinculoDocente(), 10);
+});
+    
 </script>
 </body>
 </html>
