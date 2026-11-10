@@ -816,10 +816,10 @@
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
                                 <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                    <th class="py-3 px-4">Data de Vencimento</th>
+                                    <th class="py-3 px-4">Matrícula</th>
                                     <th class="py-3 px-4">Nome do Aluno</th>
-                                    <th class="py-3 px-4">Valor</th>
-                                    <th class="py-3 px-4 text-center">Status Pagamento</th>
+                                    <th class="py-3 px-4">Detalhes / Referências do Carnê</th>
+                                    <th class="py-3 px-4 text-center">Status</th>
                                     <th class="py-3 px-4 text-right">Ação</th>
                                 </tr>
                             </thead>
@@ -1394,40 +1394,32 @@ function editarDocente(id_firebase) {
 }
 
 async function loadFinanceiro() {
-    const data = await apiRequest('/financeiro/mensalidades');
+    // Busca os alunos cadastrados para checar as pendências
+    const alunos = await apiRequest('/alunos');
     const tbody = document.getElementById('tabela-financeiro');
-    if (!tbody || !data) return;
+    if (!tbody || !alunos) return;
+
+    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos.dados || []);
+
+    // Filtra apenas os alunos que possuem pendência de carnê cadastrada
+    const inadimplentes = listaAlunos.filter(a => a.possui_pendencia_financeira === "Sim");
 
     tbody.innerHTML = '';
 
-    const listaMensalidades = data.lista || [];
-
-    if(listaMensalidades.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-gray-500">Nenhuma cobrança registrada.</td></tr>`;
+    if(inadimplentes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno com pendência de carnê registrada no momento.</td></tr>`;
         return;
     }
 
-    listaMensalidades.forEach(item => {
-        let statusBadge = `<span class="px-2.5 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold">Pendente</span>`;
-
-        if (item.status === 'Pago') {
-            statusBadge = `<span class="px-2.5 py-1 bg-green-50 text-green-600 rounded text-[10px] uppercase font-bold">Quitado</span>`;
-        } else if (item.status === 'Em Análise') {
-            statusBadge = `<span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded text-[10px] uppercase font-bold">Comprovante Enviado</span>`;
-        }
-
+    inadimplentes.forEach(aluno => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
-                <td class="py-4 px-4 text-gray-500 font-mono text-xs">${item.vencimento || '-'}</td>
-                <td class="py-4 px-4 text-gray-800 font-bold">${item.aluno || 'Aluno'}</td>
-                <td class="py-4 px-4 text-gray-800 font-black">R$ ${item.valor || '0,00'}</td>
-                <td class="py-4 px-4 text-center">${statusBadge}</td>
-                <td class="py-4 px-4 text-right space-x-2">
-                    ${item.status === 'Em Análise' ? `
-                        <button onclick="auditarMensalidade('${item.id}', 'aprovar')" class="bg-green-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-600 transition">Aprovar Quitação</button>
-                    ` : `
-                        <button class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-200 transition">Ver Carnê</button>
-                    `}
+                <td class="py-4 px-4 text-gray-500 font-mono text-xs">${aluno.matricula || '-'}</td>
+                <td class="py-4 px-4 text-gray-800 font-bold">${aluno.nome || 'Aluno'}</td>
+                <td class="py-4 px-4 text-gray-600 text-xs font-medium">${aluno.detalhes_pendencia_financeira || 'Carnê em aberto'}</td>
+                <td class="py-4 px-4 text-center"><span class="px-2.5 py-1 bg-red-50 text-red-600 rounded text-[10px] uppercase font-bold">Pendente / Carnê</span></td>
+                <td class="py-4 px-4 text-right">
+                    <button onclick="mudarTela('alunos')" class="bg-teal-50 text-teal-600 hover:bg-teal-100 px-3 py-1.5 rounded text-xs font-bold transition">Gerenciar no Aluno</button>
                 </td>
             </tr>
         `;
