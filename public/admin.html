@@ -583,44 +583,44 @@
                                 </div>
                             </div>
 
-                            <!-- Bloco 3: Atuação Acadêmica (Destacado) -->
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 bg-teal-50/40 p-5 rounded-xl border border-teal-100">
-                                <div class="md:col-span-2">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Profissional</label>
-                                    <select name="tipo_profissional" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                        <option value="professor">Professor</option>
-                                        <option value="instrutor">Instrutor Técnico</option>
-                                        <option value="coordenador">Coordenador</option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Turno</label>
-                                    <select name="turno_atuacao" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                        <option value="manha">Manhã</option>
-                                        <option value="tarde">Tarde</option>
-                                        <option value="noite">Noite</option>
-                                        <option value="integral">Integral</option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-3">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Especialidade</label>
-                                    <input type="text" name="especialidade" placeholder="Ex: Programação" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Curso Vinculado</label>
-                                    <select name="curso_id" id="select-curso-docente" onchange="carregarModulosDocente(this.value)" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
-                                        <option value="">Selecione...</option>
-                                        <!-- Será preenchido via JavaScript -->
-                                    </select>
-                                </div>
-                                <div class="md:col-span-3">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Módulo / Disciplina</label>
-                                    <select name="modulo_vinculado" id="select-modulo-docente" disabled class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-teal-50/50 focus:outline-teal-500 font-bold text-teal-900">
-                                        <option value="">Aguardando curso...</option>
-                                    </select>
-                                </div>
-                            </div>
+                            <!-- Bloco 3: Atuação Acadêmica (Múltiplos Vínculos) -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-5 bg-teal-50/40 p-5 rounded-xl border border-teal-100">
+    <div class="md:col-span-3">
+        <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Profissional</label>
+        <select name="tipo_profissional" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+            <option value="professor">Professor</option>
+            <option value="instrutor">Instrutor Técnico</option>
+            <option value="coordenador">Coordenador</option>
+        </select>
+    </div>
+    <div class="md:col-span-3">
+        <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Turno</label>
+        <select name="turno_atuacao" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+            <option value="manha">Manhã</option>
+            <option value="tarde">Tarde</option>
+            <option value="noite">Noite</option>
+            <option value="integral">Integral</option>
+        </select>
+    </div>
+    <div class="md:col-span-6">
+        <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Especialidade</label>
+        <input type="text" name="especialidade" placeholder="Ex: Programação, Anatomia..." required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+    </div>
 
+    <!-- MÚLTIPLOS CURSOS/MÓDULOS -->
+    <div class="md:col-span-12 border-t border-teal-100 pt-4 mt-2">
+        <div class="flex items-center justify-between mb-3">
+            <label class="block text-[10px] font-bold text-teal-800 uppercase">Cursos e Módulos Vinculados</label>
+            <button type="button" onclick="adicionarVinculoDocente()" class="bg-teal-100 text-teal-700 hover:bg-teal-200 px-3 py-1.5 rounded text-[10px] font-bold uppercase transition flex items-center shadow-sm">
+                <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Vínculo
+            </button>
+        </div>
+        <!-- Container onde as linhas vão aparecer -->
+        <div id="container-vinculos-docente" class="space-y-3"></div>
+        <!-- Campo oculto que enviará o JSON para o Python -->
+        <input type="hidden" id="vinculos_json" name="vinculos_json">
+    </div>
+</div>
                             <!-- Bloco 4: Dados Bancários -->
                             <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
                                 <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center mb-3">
@@ -1369,11 +1369,17 @@ function verPerfilDocente(id_firebase) {
     alert("Função para visualizar o perfil do docente com ID: " + id_firebase);
 }
 
-function editarDocente(id_firebase) {
-    // Aqui você fará a lógica para puxar os dados do docente
-    // e preencher o form superior de "Cadastrar Prestador" para edição.
-    alert("Função para editar o docente com ID: " + id_firebase);
-}
+// Trata os múltiplos vínculos
+    document.getElementById('container-vinculos-docente').innerHTML = '';
+    let vinculos = [];
+    try {
+        // Verifica se já usa o novo formato JSON ou o formato antigo
+        if(doc.vinculos_json) vinculos = JSON.parse(doc.vinculos_json);
+        else if (doc.curso_id) vinculos = [{ curso_id: doc.curso_id, modulo: doc.modulo_vinculado }];
+    } catch(e){}
+
+    if(vinculos.length === 0) adicionarVinculoDocente();
+    else vinculos.forEach(v => adicionarVinculoDocente(v.curso_id, v.modulo));
 
 // Carrega os alunos reais na aba Financeira
 async function loadFinanceiro() {
@@ -1607,6 +1613,18 @@ document.querySelector('#form-matricula button[type="reset"]')?.addEventListener
 
 document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // CAPTURA DOS MÚLTIPLOS VÍNCULOS
+    const blocosVinculo = document.querySelectorAll('.item-vinculo-docente');
+    let arrayVinculos = [];
+    blocosVinculo.forEach(bloco => {
+        const curso_id = bloco.querySelector('.select-curso-dinamico').value;
+        const modulo = bloco.querySelector('.select-modulo-dinamico').value;
+        if(curso_id) arrayVinculos.push({ curso_id, modulo });
+    });
+
+    // Converte para texto e coloca no campo oculto
+    document.getElementById('vinculos_json').value = JSON.stringify(arrayVinculos);
+    const formData = new FormData(e.target);
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('docente_id_edit')?.value;
 
@@ -2924,7 +2942,78 @@ function fecharModalPendencia() {
         }, 300);
     }
 }
+// ==========================================
+// VÍNCULOS DINÂMICOS DO DOCENTE
+// ==========================================
+let contadorVinculosDocente = 0;
 
+function adicionarVinculoDocente(cursoId = '', moduloSelecionado = '') {
+    contadorVinculosDocente++;
+    const id = contadorVinculosDocente;
+    const container = document.getElementById('container-vinculos-docente');
+
+    // Monta as opções de cursos baseadas na variável cursosGlobais
+    let optionsCursos = '<option value="">Selecione o curso...</option>';
+    cursosGlobais.forEach(c => {
+        const sel = (c.id === cursoId) ? 'selected' : '';
+        optionsCursos += `<option value="${c.id}" ${sel}>${c.nome_curso || c.codigo}</option>`;
+    });
+
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-3 bg-white p-3 rounded-lg border border-teal-100 shadow-sm relative item-vinculo-docente';
+    div.id = `vinculo-docente-${id}`;
+
+    div.innerHTML = `
+        <div class="flex-1">
+            <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Curso</label>
+            <select class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-teal-500 select-curso-dinamico" onchange="atualizarModulosDinamicos(this, ${id})">
+                ${optionsCursos}
+            </select>
+        </div>
+        <div class="flex-1">
+            <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Módulo / Disciplina</label>
+            <select class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-teal-500 select-modulo-dinamico">
+                <option value="">Geral / Todos</option>
+            </select>
+        </div>
+        <div class="pt-4">
+            <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 p-1.5 rounded transition" title="Remover Vínculo">
+                <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(div);
+    feather.replace();
+
+    // Se estiver editando um docente, carrega os módulos automaticamente
+    if (cursoId) {
+        const selectCurso = div.querySelector('.select-curso-dinamico');
+        atualizarModulosDinamicos(selectCurso, id, moduloSelecionado);
+    }
+}
+
+function atualizarModulosDinamicos(selectElement, idLinha, moduloSelecionado = '') {
+    const cursoId = selectElement.value;
+    const selectModulo = document.getElementById(`vinculo-docente-${idLinha}`).querySelector('.select-modulo-dinamico');
+
+    selectModulo.innerHTML = '<option value="Geral">Geral / Todos os Módulos</option>';
+    if (!cursoId) return;
+
+    const curso = cursosGlobais.find(c => c.id == cursoId);
+    if (!curso) return;
+
+    let grade = [];
+    try {
+        const gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
+        grade = typeof gradeRaw === 'string' ? JSON.parse(gradeRaw) : gradeRaw;
+    } catch(e) {}
+
+    grade.forEach((mod, index) => {
+        const nomeMod = mod.nome || `Módulo ${index + 1}`;
+        const sel = (moduloSelecionado === nomeMod) ? 'selected' : '';
+        selectModulo.innerHTML += `<option value="${nomeMod}" ${sel}>${nomeMod}</option>`;
+    });
+}
 
 </script>
 </body>
