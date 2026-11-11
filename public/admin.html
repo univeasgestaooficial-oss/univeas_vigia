@@ -1155,65 +1155,82 @@ async function updateNotificacao(notificacaoId, acao) {
     }
 }
 
-async function loadAlunos() {
-    const alunos = await apiRequest('/alunos');
-    const tbody = document.getElementById('tabela-alunos');
-    if (!tbody || !alunos) return;
+// ==========================================
+// 1. CARREGAMENTO GLOBAL DE CURSOS (COM SYNC)
+// ==========================================
+async function loadCursos() {
+    const resposta = await apiRequest('/cursos');
+    if (!resposta || resposta.detail) return;
 
-    alunosGlobais = Array.isArray(alunos) ? alunos : (alunos.dados || []);
-    tbody.innerHTML = '';
+    cursosGlobais = Array.isArray(resposta) ? resposta : (resposta.cursos || resposta.dados || []);
 
-    alunosGlobais.forEach(aluno => {
-        let statusColor = "bg-gray-50 text-gray-600";
-        if (aluno.status === "Ativo") statusColor = "bg-green-50 text-green-600";
-        else if (aluno.status === "Pendente") statusColor = "bg-yellow-50 text-yellow-600";
-        else if (aluno.status === "Trancado") statusColor = "bg-red-50 text-red-600";
-        else if (aluno.status === "Concluído") statusColor = "bg-blue-50 text-blue-600";
-
-        tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 transition">
-                <td class="py-3 px-4 text-gray-500 font-mono text-xs">${aluno.matricula || '-'}</td>
-                <td class="py-3 px-4 text-gray-800 font-bold text-xs">${aluno.nome || '-'}</td>
-                <td class="py-3 px-4 text-gray-500 text-xs">${aluno.telefone || '-'}</td>
-                <td class="py-3 px-4 text-center">
-                    <span class="px-2 py-1 ${statusColor} rounded text-[10px] font-bold uppercase">${aluno.status || 'Desconhecido'}</span>
-                </td>
-                <td class="py-3 px-4 text-right space-x-1 flex justify-end items-center">
-                    <button onclick="verPerfilAluno('${aluno.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Perfil Completo">
-                        <i data-feather="eye" class="h-4 w-4"></i>
-                    </button>
-                    <button onclick="editarAluno('${aluno.id}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Aluno">
-                        <i data-feather="edit" class="h-4 w-4"></i>
-                    </button>
-                    <button onclick="excluirAluno('${aluno.id}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Excluir Aluno">
-                        <i data-feather="trash-2" class="h-4 w-4"></i>
-                    </button>
-               </td>
-            </tr>
-        `;
+    let optionsHTML = '<option value="">Selecione o curso...</option>';
+    cursosGlobais.forEach(curso => {
+        optionsHTML += `<option value="${curso.id}">${curso.nome_curso || curso.codigo}</option>`;
     });
-    feather.replace();
+
+    // Atualiza selects de alunos sem perder o valor selecionado
+    document.querySelectorAll('.select-curso-aluno-dinamico').forEach(select => {
+        const val = select.value;
+        select.innerHTML = optionsHTML;
+        if (val) select.value = val;
+    });
+
+    // Atualiza selects de docentes
+    document.querySelectorAll('.select-curso-dinamico').forEach(select => {
+        const val = select.value;
+        select.innerHTML = optionsHTML;
+        if (val) select.value = val;
+    });
 }
 
+/// ==========================================
+// 4. EDIÇÃO E VISUALIZAÇÃO DE ALUNOS
 // ==========================================
-// FUNÇÕES DE AÇÃO DO ALUNO (EDITAR E VISUALIZAR)
-// ==========================================
-
 function editarAluno(id_firebase) {
     const aluno = alunosGlobais.find(a => a.id === id_firebase);
     if (!aluno) return alert("Erro ao carregar dados do aluno.");
 
     const form = document.getElementById('form-matricula');
 
-    // Preenche os campos
     form.aluno_id_edit.value = aluno.id;
-    form.matricula.value = aluno.matricula || ''; // Continua disabled, mas visível
+    form.matricula.value = aluno.matricula || '';
     form.cpf.value = aluno.cpf || '';
     form.nome.value = aluno.nome || '';
     form.data_nascimento.value = aluno.data_nascimento || '';
     form.telefone.value = aluno.telefone || '';
     form.email.value = aluno.email || '';
     form.endereco.value = aluno.endereco || '';
+
+    // Reconstrução dos cursos cadastrados
+    const container = document.getElementById('container-cursos-aluno');
+    container.innerHTML = '';
+    let cursosSalvos = [];
+    try {
+        if (aluno.cursos_json) {
+            cursosSalvos = typeof aluno.cursos_json === 'string' ? JSON.parse(aluno.cursos_json) : aluno.cursos_json;
+        } else if (aluno.curso_id || aluno.curso) {
+            cursosSalvos = [{ curso_id: aluno.curso_id || aluno.curso }];
+        }
+    } catch(e) {}
+
+    if (!Array.isArray(cursosSalvos) || cursosSalvos.length === 0) {
+        adicionarCursoAluno();
+    } else {
+        cursosSalvos.forEach(c => adicionarCursoAluno(c.curso_id || c.id || c.curso));
+    }
+
+    form.dia_vencimento.value = aluno.dia_vencimento || '';
+    form.forma_pagamento.value = aluno.forma_pagamento || 'boleto';
+    form.pcd.value = aluno.pcd || 'nao';
+    form.status.value = aluno.status || 'Ativo';
+
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    btnSubmit.innerText = "Atualizar Aluno";
+    btnSubmit.className = "bg-yellow-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase shadow-sm hover:bg-yellow-600 transition tracking-wider";
+
+    document.getElementById('tela-alunos').scrollIntoView({ behavior: 'smooth' });
+}
 
     // ==========================================
     // TRATA OS MÚLTIPLOS CURSOS DO ALUNO
@@ -1600,27 +1617,34 @@ async function auditarMensalidade(mensalidadeId, acao) {
     }
 }
 
+// ==========================================
+// 3. ENVIO / CADASTRO E EDIÇÃO DE ALUNOS
+// ==========================================
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Captura os múltiplos cursos do aluno
     const blocosCursoAluno = document.querySelectorAll('.item-curso-aluno');
     let arrayCursosAluno = [];
     blocosCursoAluno.forEach(bloco => {
-        const curso_id = bloco.querySelector('.select-curso-aluno-dinamico').value;
-        if(curso_id) arrayCursosAluno.push({ curso_id: curso_id });
+        const select = bloco.querySelector('.select-curso-aluno-dinamico');
+        if (select && select.value) {
+            arrayCursosAluno.push({ curso_id: select.value });
+        }
     });
+
+    if (arrayCursosAluno.length === 0) {
+        alert("Selecione pelo menos um curso válido para o aluno.");
+        return;
+    }
+
     document.getElementById('cursos_aluno_json').value = JSON.stringify(arrayCursosAluno);
 
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
 
-    // CORREÇÃO CRÍTICA: Envia o primeiro curso como 'curso_id' para evitar que o backend (Python)
-    // bloqueie o cadastro por falta do campo original obrigatório.
-    if (arrayCursosAluno.length > 0) {
-        formData.append('curso_id', arrayCursosAluno[0].curso_id);
-        formData.append('curso', arrayCursosAluno[0].curso_id);
-    }
+    // Garante compatibilidade retroativa com o backend
+    formData.set('curso_id', arrayCursosAluno[0].curso_id);
+    formData.set('curso', arrayCursosAluno[0].curso_id);
 
     const termosCheck = document.getElementById('termos_aluno');
     if (termosCheck) formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
@@ -1633,32 +1657,46 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     if (idEdit) {
         result = await apiRequest(`/alunos/${idEdit}`, 'PUT', formData);
     } else {
-        // CORREÇÃO CRÍTICA 2: Ajustado de '/alunos/matricular' para '/alunos'
         result = await apiRequest('/alunos', 'POST', formData);
     }
 
     if (result && result.sucesso) {
         alert(idEdit ? "Dados do aluno atualizados com sucesso!" : "Aluno matriculado com sucesso!");
-        e.target.reset();
-
-        // Limpa a lista de múltiplos cursos dinâmicos corretamente
-        document.getElementById('container-cursos-aluno').innerHTML = '';
-        contadorCursosAluno = 0;
-        adicionarCursoAluno();
-
-        if (document.getElementById('aluno_id_edit')) {
-            document.getElementById('aluno_id_edit').value = '';
-        }
-        btnSubmit.innerText = "Salvar / Sair";
-        btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
-        btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
-
+        resetFormMatricula();
         loadAlunos();
     } else {
-        // Agora, se o Python reclamar de algo, o erro exato aparecerá no alerta
-        alert(typeof result?.detail === 'string' ? result.detail : JSON.stringify(result?.detail || "Erro ao salvar."));
+        alert(typeof result?.detail === 'string' ? result.detail : JSON.stringify(result?.detail || "Erro ao salvar o aluno."));
         btnSubmit.innerText = textoOriginal;
     }
+});
+
+// Reset completo do formulário (Limpeza limpa de estado)
+function resetFormMatricula() {
+    const form = document.getElementById('form-matricula');
+    if (!form) return;
+    form.reset();
+
+    if (document.getElementById('aluno_id_edit')) {
+        document.getElementById('aluno_id_edit').value = '';
+    }
+
+    const container = document.getElementById('container-cursos-aluno');
+    if (container) {
+        container.innerHTML = '';
+        contadorCursosAluno = 0;
+        adicionarCursoAluno();
+    }
+
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    if (btnSubmit) {
+        btnSubmit.innerText = "Salvar Aluno";
+        btnSubmit.className = "bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase shadow-sm hover:bg-teal-600 transition tracking-wider";
+    }
+}
+
+document.querySelector('#form-matricula button[type="reset"]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetFormMatricula();
 });
 
 // Adiciona o botão de Limpar para resetar o form de edição
@@ -3108,18 +3146,20 @@ document.querySelector('#form-docente button[type="reset"]')?.addEventListener('
     contadorVinculosDocente = 0;
     setTimeout(() => adicionarVinculoDocente(), 10);
 });
-    // ==========================================
-// MÚLTIPLOS CURSOS DO ALUNO
+ // ==========================================
+// 2. MÚLTIPLOS CURSOS DINÂMICOS DO ALUNO
 // ==========================================
 let contadorCursosAluno = 0;
 
 function adicionarCursoAluno(cursoId = '') {
     contadorCursosAluno++;
     const container = document.getElementById('container-cursos-aluno');
+    if (!container) return;
 
     let optionsCursos = '<option value="">Selecione o curso...</option>';
     cursosGlobais.forEach(c => {
-    const sel = (c.id == cursoId) ? 'selected' : '';
+        // Comparação resiliente convertendo ambos para String
+        const sel = (String(c.id) === String(cursoId)) ? 'selected' : '';
         optionsCursos += `<option value="${c.id}" ${sel}>${c.nome_curso || c.codigo}</option>`;
     });
 
@@ -3133,13 +3173,21 @@ function adicionarCursoAluno(cursoId = '') {
             </select>
         </div>
         <div>
-            <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Remover Curso">
+            <button type="button" onclick="removerCursoAluno(this)" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Remover Curso">
                 <i data-feather="trash-2" class="w-4 h-4"></i>
             </button>
         </div>
     `;
     container.appendChild(div);
     feather.replace();
+}
+
+function removerCursoAluno(btnElement) {
+    const container = document.getElementById('container-cursos-aluno');
+    btnElement.closest('.item-curso-aluno').remove();
+    if (container.querySelectorAll('.item-curso-aluno').length === 0) {
+        adicionarCursoAluno();
+    }
 }
 
 async function abrirModalSistema() {
