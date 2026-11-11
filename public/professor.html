@@ -463,7 +463,6 @@ const API_BASE_URL = "/api/v1";
 document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
 
-    // Inicializa escondendo a sidebar no mobile de forma segura após o DOM carregar
     if(window.innerWidth < 768) {
         const sidebar = document.querySelector('aside');
         if (sidebar) sidebar.classList.add('-translate-x-full', 'absolute');
@@ -473,7 +472,16 @@ document.addEventListener('DOMContentLoaded', () => {
         liberarAcessoDocente();
     }
 
-    // Bind seguro sem uso do "?."
+    // NOVA ADIÇÃO: Captura o nome do arquivo sem usar onchange inline no HTML
+    const inputArquivo = document.getElementById('input-arquivo');
+    if(inputArquivo) {
+        inputArquivo.addEventListener('change', function() {
+            if(this.files.length > 0) {
+                document.getElementById('texto-arquivo').innerText = this.files[0].name;
+            }
+        });
+    }
+
     const formLogin = document.getElementById('form-login');
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
@@ -489,7 +497,8 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('cpf', cpf);
 
             try {
-                const response = await fetch('/api/v1/auth/docente', {
+                // CORREÇÃO AQUI: Usando a constante API_BASE_URL
+                const response = await fetch(`${API_BASE_URL}/auth/docente`, {
                     method: 'POST',
                     body: formData
                 });
@@ -511,7 +520,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Bind seguro sem uso do "?."
     const formUpload = document.getElementById('form-upload-material');
     if (formUpload) {
         formUpload.addEventListener('submit', async (e) => {
@@ -560,7 +568,7 @@ function liberarAcessoDocente() {
 function fazerLogout() {
     localStorage.removeItem('token_siga_docente');
     localStorage.removeItem('nome_docente');
-    location.reload(); 
+    location.reload();
 }
 
 function mudarTela(idTela) {
