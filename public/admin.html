@@ -1615,6 +1615,13 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
 
+    // CORREÇÃO CRÍTICA: Envia o primeiro curso como 'curso_id' para evitar que o backend (Python)
+    // bloqueie o cadastro por falta do campo original obrigatório.
+    if (arrayCursosAluno.length > 0) {
+        formData.append('curso_id', arrayCursosAluno[0].curso_id);
+        formData.append('curso', arrayCursosAluno[0].curso_id);
+    }
+
     const termosCheck = document.getElementById('termos_aluno');
     if (termosCheck) formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
 
@@ -1626,14 +1633,15 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     if (idEdit) {
         result = await apiRequest(`/alunos/${idEdit}`, 'PUT', formData);
     } else {
-        result = await apiRequest('/alunos/matricular', 'POST', formData);
+        // CORREÇÃO CRÍTICA 2: Ajustado de '/alunos/matricular' para '/alunos'
+        result = await apiRequest('/alunos', 'POST', formData);
     }
 
     if (result && result.sucesso) {
         alert(idEdit ? "Dados do aluno atualizados com sucesso!" : "Aluno matriculado com sucesso!");
         e.target.reset();
 
-        // CORREÇÃO: Limpa a lista de múltiplos cursos dinâmicos corretamente
+        // Limpa a lista de múltiplos cursos dinâmicos corretamente
         document.getElementById('container-cursos-aluno').innerHTML = '';
         contadorCursosAluno = 0;
         adicionarCursoAluno();
@@ -1647,7 +1655,8 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
 
         loadAlunos();
     } else {
-        alert(result?.detail || "Erro ao salvar. Tente novamente.");
+        // Agora, se o Python reclamar de algo, o erro exato aparecerá no alerta
+        alert(typeof result?.detail === 'string' ? result.detail : JSON.stringify(result?.detail || "Erro ao salvar."));
         btnSubmit.innerText = textoOriginal;
     }
 });
