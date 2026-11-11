@@ -95,6 +95,9 @@
         <!-- Header Superior -->
         <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
             <div class="flex items-center">
+                <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-teal-600 mr-4">
+                    <i data-feather="menu" class="h-6 w-6"></i>
+                </button>
                 <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Painel Principal</h1>
             </div>
 
@@ -287,25 +290,19 @@
                                     <th class="py-3 px-4 w-24 text-center">Situação</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                                <tr class="hover:bg-gray-50 transition-colors">
+                           <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                                <tr class="hover:bg-gray-50 transition-colors linha-aluno" data-aluno-id="ID_DO_ALUNO_AQUI">
                                     <td class="py-3 px-4 text-gray-400">01</td>
                                     <td class="py-3 px-4">Ana Carolina Silva</td>
                                     <td class="py-3 px-4">
-                                        <input type="number" min="0" value="0" class="w-16 text-center border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:border-teal-500 bg-white font-bold">
+                                        <input type="number" min="0" value="0" class="input-falta w-16 text-center border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:border-teal-500 bg-white font-bold">
                                     </td>
-                                    <td class="py-3 px-4"><input type="number" step="0.1" value="8.5" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
-                                    <td class="py-3 px-4"><input type="number" step="0.1" placeholder="-" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
-                                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold tracking-wider">Em Curso</span></td>
-                                </tr>
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="py-3 px-4 text-gray-400">02</td>
-                                    <td class="py-3 px-4">Marcos André Pereira</td>
                                     <td class="py-3 px-4">
-                                        <input type="number" min="0" value="2" class="w-16 text-center border border-red-300 text-red-600 rounded-md p-1 text-sm focus:outline-none focus:border-teal-500 bg-red-50 font-bold">
+                                        <input type="number" step="0.1" value="8.5" class="input-nota1 w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
                                     </td>
-                                    <td class="py-3 px-4"><input type="number" step="0.1" value="9.0" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
-                                    <td class="py-3 px-4"><input type="number" step="0.1" placeholder="-" class="w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500"></td>
+                                    <td class="py-3 px-4">
+                                        <input type="number" step="0.1" placeholder="-" class="input-nota2 w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                                    </td>
                                     <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold tracking-wider">Em Curso</span></td>
                                 </tr>
                             </tbody>
@@ -349,10 +346,10 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Arquivo (PDF, PPT, DOC)</label>
-                                <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-teal-400 bg-gray-50 cursor-pointer transition">
+                                <div onclick="document.getElementById('input-arquivo').click()" class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-teal-400 bg-gray-50 cursor-pointer transition">
                                     <i data-feather="upload-cloud" class="h-6 w-6 text-teal-500 mx-auto mb-2"></i>
-                                    <span class="text-xs text-gray-500">Clique para selecionar o arquivo</span>
-                                    <input type="file" class="hidden">
+                                    <span id="texto-arquivo" class="text-xs text-gray-500">Clique para selecionar o arquivo</span>
+                                    <input type="file" id="input-arquivo" class="hidden" onchange="document.getElementById('texto-arquivo').innerText = this.files[0].name">
                                 </div>
                             </div>
                             <div class="pt-2 border-t border-gray-100">
@@ -604,22 +601,71 @@ async function loadTurmas() {
     if (turmas) console.log("Turmas listadas:", turmas);
 }
 
-// Envio do Diário Eletrônico
+// ==========================================
+// FUNÇÕES DE UI E MENU MOBILE
+// ==========================================
+function toggleMenuMobile() {
+    const sidebar = document.querySelector('aside');
+    if (sidebar.classList.contains('-translate-x-full')) {
+        sidebar.classList.remove('-translate-x-full', 'absolute');
+        sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+    } else {
+        sidebar.classList.add('-translate-x-full', 'absolute');
+        sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+    }
+}
+
+// Inicializa escondendo a sidebar no mobile
+if(window.innerWidth < 768) {
+    document.querySelector('aside').classList.add('-translate-x-full', 'absolute');
+}
+
+// ==========================================
+// ENVIO REAL DO DIÁRIO ELETRÔNICO (JSON)
+// ==========================================
 async function salvarDiario(btnElement) {
     const textoOriginal = btnElement.innerText;
     btnElement.innerText = "Salvando...";
     btnElement.disabled = true;
 
-    const formData = new FormData();
-    formData.append("turma_id", document.querySelector('#tela-diario select').value);
-    formData.append("data_aula", document.querySelector('#tela-diario input[type="date"]').value || new Date().toISOString().split('T')[0]);
-    formData.append("conteudo", document.querySelector('#tela-diario textarea').value || "Conteúdo não especificado");
+    const turmaId = document.querySelector('#tela-diario select').value;
+    const dataAula = document.querySelector('#tela-diario input[type="date"]').value;
+    const conteudo = document.querySelector('#tela-diario textarea').value;
 
-    // Simulação do payload de notas
-    const notasMock = [{ id: "aluno1", falta: 0, nota1: 8.5 }];
-    formData.append("notas_faltas", JSON.stringify(notasMock));
+    if (!dataAula || !conteudo) {
+        alert("Preencha a data e o conteúdo da aula!");
+        btnElement.innerText = textoOriginal;
+        btnElement.disabled = false;
+        return;
+    }
 
-    const result = await apiRequest('/docente/diario/salvar', 'POST', formData);
+    const arrayAlunos = [];
+    const linhas = document.querySelectorAll('.linha-aluno');
+
+    linhas.forEach(linha => {
+        const alunoId = linha.getAttribute('data-aluno-id');
+        const falta = linha.querySelector('.input-falta').value;
+        const nota1 = linha.querySelector('.input-nota1').value;
+        const nota2 = linha.querySelector('.input-nota2').value;
+
+        if(alunoId) {
+            arrayAlunos.push({
+                aluno_id: alunoId,
+                faltas: parseInt(falta) || 0,
+                nota_1: parseFloat(nota1) || null,
+                nota_2: parseFloat(nota2) || null
+            });
+        }
+    });
+
+    const payload = {
+        turma_id: turmaId,
+        data_aula: dataAula,
+        conteudo_ministrado: conteudo,
+        lancamentos: arrayAlunos
+    };
+
+    const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
         alert("Lançamentos sincronizados com o banco de dados (Firestore)!");
@@ -630,7 +676,6 @@ async function salvarDiario(btnElement) {
     btnElement.innerText = textoOriginal;
     btnElement.disabled = false;
 }
-
 // Upload de Material
 document.querySelector('#tela-material form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -658,6 +703,7 @@ document.querySelector('#tela-material form')?.addEventListener('submit', async 
     }
     btn.innerText = textoOriginal;
 });
+    
 </script>
 </body>
 </html>
