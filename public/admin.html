@@ -1219,11 +1219,21 @@ function editarAluno(id_firebase) {
     // TRATA OS MÚLTIPLOS CURSOS DO ALUNO
     // ==========================================
     document.getElementById('container-cursos-aluno').innerHTML = '';
+
+
     let cursosSalvos = [];
     try {
-        if(aluno.cursos_json) cursosSalvos = JSON.parse(aluno.cursos_json);
-        else if (aluno.curso_id || aluno.curso) cursosSalvos = [{ curso_id: aluno.curso_id || aluno.curso }];
-    } catch(e){}
+        if (aluno.cursos_json) {
+            // Verifica se já veio convertido do banco (Array) ou se precisa converter
+            cursosSalvos = typeof aluno.cursos_json === 'string'
+                            ? JSON.parse(aluno.cursos_json)
+                            : aluno.cursos_json;
+        } else if (aluno.curso_id || aluno.curso) {
+            cursosSalvos = [{ curso_id: aluno.curso_id || aluno.curso }];
+        }
+    } catch(e) {
+        console.error("Erro estrutural ao carregar cursos vinculados:", e);
+    }
 
     if(cursosSalvos.length === 0) {
         adicionarCursoAluno();
@@ -1603,7 +1613,6 @@ async function auditarMensalidade(mensalidadeId, acao) {
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Captura os múltiplos cursos do aluno
     const blocosCursoAluno = document.querySelectorAll('.item-curso-aluno');
     let arrayCursosAluno = [];
     blocosCursoAluno.forEach(bloco => {
@@ -1615,11 +1624,11 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
 
-    // CORREÇÃO CRÍTICA: Envia o primeiro curso como 'curso_id' para evitar que o backend (Python)
-    // bloqueie o cadastro por falta do campo original obrigatório.
+    // CORREÇÃO 1: Garante que curso_id sempre seja enviado para evitar erro 422 no FastAPI
     if (arrayCursosAluno.length > 0) {
         formData.append('curso_id', arrayCursosAluno[0].curso_id);
-        formData.append('curso', arrayCursosAluno[0].curso_id);
+    } else {
+        formData.append('curso_id', '');
     }
 
     const termosCheck = document.getElementById('termos_aluno');
@@ -1633,10 +1642,9 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     if (idEdit) {
         result = await apiRequest(`/alunos/${idEdit}`, 'PUT', formData);
     } else {
-        // CORREÇÃO CRÍTICA 2: Ajustado de '/alunos/matricular' para '/alunos'
-        result = await apiRequest('/alunos', 'POST', formData);
+        // CORREÇÃO 2: Restaurado para a rota correta que existe no Python
+        result = await apiRequest('/alunos/matricular', 'POST', formData);
     }
-
     if (result && result.sucesso) {
         alert(idEdit ? "Dados do aluno atualizados com sucesso!" : "Aluno matriculado com sucesso!");
         e.target.reset();
