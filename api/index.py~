@@ -137,7 +137,7 @@ async def matricular_aluno(
         email: str = Form(...),
         telefone: str = Form(...),
         endereco: str = Form(...),
-        curso_id: str = Form(...),
+        curso_id: str = Form(None),
         cursos_json: str = Form("[]"),
         data_nascimento: str = Form(None),
         dia_vencimento: str = Form(None),
