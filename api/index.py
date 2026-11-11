@@ -138,6 +138,7 @@ async def matricular_aluno(
         telefone: str = Form(...),
         endereco: str = Form(...),
         curso_id: str = Form(...),
+        cursos_json: str = Form("[]"),
         data_nascimento: str = Form(None),
         dia_vencimento: str = Form(None),
         forma_pagamento: str = Form(None),
@@ -147,6 +148,11 @@ async def matricular_aluno(
     checar_db()
     matricula_gerada = f"#{datetime.now().strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
 
+    try:
+        lista_cursos = json.loads(cursos_json)
+    except Exception:
+        lista_cursos = [{"curso_id": curso_id}] if curso_id else []
+
     novo_aluno = {
         "matricula": matricula_gerada,
         "cpf": cpf,
@@ -155,6 +161,7 @@ async def matricular_aluno(
         "telefone": telefone,
         "endereco": endereco,
         "curso": curso_id,
+        "cursos_json": lista_cursos,
         "data_nascimento": data_nascimento,
         "dia_vencimento": dia_vencimento,
         "forma_pagamento": forma_pagamento,
@@ -177,6 +184,7 @@ async def alterar_aluno(
         telefone: str = Form(None),
         endereco: str = Form(None),
         curso_id: str = Form(None),
+        cursos_json: str = Form(None),
         data_nascimento: str = Form(None),
         dia_vencimento: str = Form(None),
         forma_pagamento: str = Form(None),
@@ -189,6 +197,13 @@ async def alterar_aluno(
     if not ref.get().exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado.")
 
+    lista_cursos = None
+    if cursos_json is not None:
+        try:
+            lista_cursos = json.loads(cursos_json)
+        except Exception:
+            lista_cursos = []
+
     dados_atualizados = {
         "nome": nome,
         "cpf": cpf,
@@ -196,6 +211,7 @@ async def alterar_aluno(
         "telefone": telefone,
         "endereco": endereco,
         "curso": curso_id,
+        "cursos_json": lista_cursos,
         "data_nascimento": data_nascimento,
         "dia_vencimento": dia_vencimento,
         "forma_pagamento": forma_pagamento,
@@ -316,7 +332,6 @@ async def atualizar_docente(
 
     ref.update(dados_limpos)
     return {"sucesso": True, "mensagem": "Prestador atualizado com sucesso"}
-
 
 @app.delete("/api/v1/docentes/{docente_id}")
 async def excluir_docente(docente_id: str):
@@ -594,7 +609,6 @@ async def gerar_pdf_curso(curso_id: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
 
-
 # ==========================================
 # 5. MÓDULO FINANCEIRO
 # ==========================================
@@ -656,30 +670,6 @@ async def auditar_e_quitar_mensalidade(
     })
 
     return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
-
-
-# ==========================================
-# GESTÃO DE PENDÊNCIAS FINANCEIRAS NO ALUNO
-# ==========================================
-@app.post("/api/v1/alunos/{aluno_id}/pendencia")
-async def gerenciar_pendencia_aluno(
-        aluno_id: str,
-        possui_pendencia: str = Form(...),
-        detalhes_pendencia: str = Form("")
-):
-    checar_db()
-    ref = db.collection("alunos").document(aluno_id)
-
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-
-    ref.update({
-        "possui_pendencia_financeira": possui_pendencia,
-        "detalhes_pendencia_financeira": detalhes_pendencia if possui_pendencia == "Sim" else ""
-    })
-
-    return {"sucesso": True, "mensagem": "Status de pendência atualizado com sucesso."}
-
 
 # ==========================================
 # 6. MÓDULO DO DOCENTE (PORTAL DO PROFESSOR)
@@ -1154,7 +1144,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         print("--- ERRO AO GERAR PDF DOCENTES ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
-
 
 # ==========================================
 # GERAÇÃO DO PDF DE RELATÓRIO DE ALUNOS
