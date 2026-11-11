@@ -189,7 +189,6 @@ async def alterar_aluno(
     if not ref.get().exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado.")
 
-    # Mapeia todos os campos possíveis de atualização
     dados_atualizados = {
         "nome": nome,
         "cpf": cpf,
@@ -205,7 +204,6 @@ async def alterar_aluno(
         "data_atualizacao": datetime.now().isoformat()
     }
 
-    # Limpa os campos que vierem vazios (None) para não apagar dados existentes
     dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
 
     if dados_limpos:
@@ -242,7 +240,7 @@ async def cadastrar_docente(
         tipo_profissional: str = Form(...),
         turno_atuacao: str = Form(None),
         especialidade: str = Form(None),
-        vinculos_json: str = Form("[]"),  # <- NOVO CAMPO RECEBENDO A LISTA
+        vinculos_json: str = Form("[]"),
         banco: str = Form(None),
         agencia: str = Form(None),
         conta: str = Form(None),
@@ -261,7 +259,7 @@ async def cadastrar_docente(
         "tipo_profissional": tipo_profissional,
         "turno_atuacao": turno_atuacao,
         "especialidade": especialidade,
-        "vinculos_json": vinculos_json,  # <- GRAVANDO A LISTA NO FIREBASE
+        "vinculos_json": vinculos_json,
         "banco": banco,
         "agencia": agencia,
         "conta": conta,
@@ -285,7 +283,7 @@ async def atualizar_docente(
         tipo_profissional: str = Form(None),
         turno_atuacao: str = Form(None),
         especialidade: str = Form(None),
-        vinculos_json: str = Form(None),  # <- NOVO CAMPO RECEBENDO A LISTA
+        vinculos_json: str = Form(None),
         banco: str = Form(None),
         agencia: str = Form(None),
         conta: str = Form(None),
@@ -297,7 +295,6 @@ async def atualizar_docente(
     if not ref.get().exists:
         raise HTTPException(status_code=404, detail="Prestador não encontrado.")
 
-    # Mapeando os novos valores
     dados_atualizados = {
         "nome": nome_prestador,
         "cpf": cpf_prestador,
@@ -307,7 +304,7 @@ async def atualizar_docente(
         "tipo_profissional": tipo_profissional,
         "turno_atuacao": turno_atuacao,
         "especialidade": especialidade,
-        "vinculos_json": vinculos_json,  # <- GRAVANDO A LISTA NO FIREBASE
+        "vinculos_json": vinculos_json,
         "banco": banco,
         "agencia": agencia,
         "conta": conta,
@@ -315,11 +312,11 @@ async def atualizar_docente(
         "data_atualizacao": datetime.now().isoformat()
     }
 
-    # Limpa os campos que vierem vazios (None) para não apagar dados existentes sem querer
     dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
 
     ref.update(dados_limpos)
     return {"sucesso": True, "mensagem": "Prestador atualizado com sucesso"}
+
 
 @app.delete("/api/v1/docentes/{docente_id}")
 async def excluir_docente(docente_id: str):
@@ -330,7 +327,6 @@ async def excluir_docente(docente_id: str):
 
 @app.get("/api/v1/cursos")
 async def listar_cursos():
-    """Lista todos os cursos com tratamento total contra erros de banco ou formato"""
     try:
         checar_db()
         docs = db.collection("cursos").stream()
@@ -617,6 +613,74 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
     return {"sucesso": True, "mensagem": "Baixa realizada."}
 
 
+@app.post("/api/v1/financeiro/enviar-comprovante")
+async def aluno_enviar_comprovante(
+        aluno_id: str = Form(...),
+        mensalidade_id: str = Form(...),
+        referencia_pagamento: str = Form(...),
+        comprovante: UploadFile = File(...)
+):
+    checar_db()
+
+    dados_baixa = {
+        "aluno_id": aluno_id,
+        "mensalidade_id": mensalidade_id,
+        "referencia_pagamento": referencia_pagamento,
+        "nome_arquivo": comprovante.filename,
+        "status": "Em Análise",
+        "data_envio": datetime.now().isoformat()
+    }
+
+    _, doc_ref = db.collection("comprovantes_pagamento").add(dados_baixa)
+
+    db.collection("mensalidades").document(mensalidade_id).update({
+        "status": "Em Análise",
+        "comprovante_id": doc_ref.id
+    })
+
+    return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso. Aguardando validação da secretaria."}
+
+
+@app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
+async def auditar_e_quitar_mensalidade(
+        mensalidade_id: str,
+        acao: str = Form(...)
+):
+    checar_db()
+
+    novo_status = "Pago" if acao == 'aprovar' else "Rejeitado"
+
+    db.collection("mensalidades").document(mensalidade_id).update({
+        "status": novo_status,
+        "data_pagamento": datetime.now().isoformat() if acao == 'aprovar' else None
+    })
+
+    return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
+
+
+# ==========================================
+# GESTÃO DE PENDÊNCIAS FINANCEIRAS NO ALUNO
+# ==========================================
+@app.post("/api/v1/alunos/{aluno_id}/pendencia")
+async def gerenciar_pendencia_aluno(
+        aluno_id: str,
+        possui_pendencia: str = Form(...),
+        detalhes_pendencia: str = Form("")
+):
+    checar_db()
+    ref = db.collection("alunos").document(aluno_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    ref.update({
+        "possui_pendencia_financeira": possui_pendencia,
+        "detalhes_pendencia_financeira": detalhes_pendencia if possui_pendencia == "Sim" else ""
+    })
+
+    return {"sucesso": True, "mensagem": "Status de pendência atualizado com sucesso."}
+
+
 # ==========================================
 # 6. MÓDULO DO DOCENTE (PORTAL DO PROFESSOR)
 # ==========================================
@@ -893,7 +957,6 @@ async def gerar_pdf_documento(documento_id: str):
             except Exception as e:
                 print(f"Aviso: Não foi possível carregar o logo no PDF - {e}")
 
-        # Cabeçalho limpo (renderizado uma única vez corretamente)
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
         elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
 
@@ -973,7 +1036,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
     try:
         checar_db()
 
-        # Puxa os dados da instituição para o cabeçalho
         sys_ref = db.collection("sistema").document("configuracoes").get()
         sys_dados = sys_ref.to_dict() if sys_ref.exists else {
             "nome_instituicao": "UNIVEAS",
@@ -981,11 +1043,9 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
             "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
         }
 
-        # Busca todos os docentes
         docs = db.collection("docentes").stream()
         docentes = [{"id": d.id, **d.to_dict()} for d in docs]
 
-        # Aplica o filtro de pesquisa (se o usuário digitou algo na tela)
         if q:
             q_lower = q.lower()
             docentes = [
@@ -995,7 +1055,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
                    q_lower in str(d.get("cpf", "")).lower()
             ]
 
-        # Preparação do PDF com ReportLab
         buffer = io.BytesIO()
         pdf = SimpleDocTemplate(
             buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40
@@ -1013,7 +1072,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
             fontSize=9, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155')
         )
 
-        # Inserção do Cabeçalho
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
         elements.append(
             Paragraph(f"CNPJ: {sys_dados.get('cnpj', '')} | {sys_dados.get('endereco', '')}", subtitle_style))
@@ -1029,7 +1087,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
                 fontSize=9, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#64748b')
             )))
 
-        # Estruturação dos Dados na Tabela
         table_data = [['REGISTRO', 'NOME DO PRESTADOR', 'TELEFONE', 'TIPO / TURNO', 'MÓDULO VINCULADO']]
 
         for d in docentes:
@@ -1048,7 +1105,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         if len(docentes) == 0:
             table_data.append(['Nenhum docente encontrado para os critérios de busca.', '', '', '', ''])
 
-        # Estilização da Tabela Padrão UNIVEAS
         t_obj = Table(table_data, colWidths=[60, 160, 80, 90, 145])
         t_obj.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
@@ -1058,10 +1114,9 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             ('TOPPADDING', (0, 0), (-1, 0), 8),
-
-            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Registro
-            ('ALIGN', (2, 1), (3, -1), 'CENTER'),  # Telefone e Tipo
-            ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # Vinculo
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+            ('ALIGN', (2, 1), (3, -1), 'CENTER'),
+            ('ALIGN', (4, 1), (4, -1), 'CENTER'),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -1069,13 +1124,11 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
         ]))
 
-        # Ajuste de layout caso a tabela venha vazia
         if len(docentes) == 0:
             t_obj.setStyle(TableStyle([('SPAN', (0, 1), (-1, 1)), ('ALIGN', (0, 1), (-1, 1), 'CENTER')]))
 
         elements.append(t_obj)
 
-        # Rodapé Institucional
         elements.append(Spacer(1, 20))
         elements.append(Paragraph(f"Total de registros encontrados: {len(docentes)}", ParagraphStyle(
             'TotalText', parent=styles['Normal'], fontName='Helvetica-Bold',
@@ -1089,7 +1142,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
             fontSize=8, textColor=colors.gray, alignment=TA_CENTER
         )))
 
-        # Finaliza e expede o Arquivo
         pdf.build(elements)
         buffer.seek(0)
 
@@ -1103,6 +1155,7 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
 
+
 # ==========================================
 # GERAÇÃO DO PDF DE RELATÓRIO DE ALUNOS
 # ==========================================
@@ -1111,7 +1164,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
     try:
         checar_db()
 
-        # Puxa os dados da instituição para o cabeçalho
         sys_ref = db.collection("sistema").document("configuracoes").get()
         sys_dados = sys_ref.to_dict() if sys_ref.exists else {
             "nome_instituicao": "UNIVEAS",
@@ -1119,11 +1171,9 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
             "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
         }
 
-        # Busca todos os alunos
         docs = db.collection("alunos").stream()
         alunos = [{"id": d.id, **d.to_dict()} for d in docs]
 
-        # Aplica o filtro de pesquisa
         if q:
             q_lower = q.lower()
             alunos = [
@@ -1133,7 +1183,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
                    q_lower in str(a.get("cpf", "")).lower()
             ]
 
-        # Preparação do PDF com ReportLab
         buffer = io.BytesIO()
         pdf = SimpleDocTemplate(
             buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40
@@ -1151,7 +1200,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
             fontSize=9, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155')
         )
 
-        # Cabeçalho
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
         elements.append(
             Paragraph(f"CNPJ: {sys_dados.get('cnpj', '')} | {sys_dados.get('endereco', '')}", subtitle_style))
@@ -1167,7 +1215,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
                 fontSize=9, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#64748b')
             )))
 
-        # Dados na Tabela
         table_data = [['MATRÍCULA', 'NOME DO ALUNO', 'CPF', 'TELEFONE', 'STATUS']]
 
         for a in alunos:
@@ -1182,7 +1229,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
         if len(alunos) == 0:
             table_data.append(['Nenhum aluno encontrado para os critérios de busca.', '', '', '', ''])
 
-        # Estilização
         t_obj = Table(table_data, colWidths=[75, 175, 90, 90, 105])
         t_obj.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
@@ -1192,9 +1238,8 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             ('TOPPADDING', (0, 0), (-1, 0), 8),
-
-            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Matrícula
-            ('ALIGN', (2, 1), (4, -1), 'CENTER'),  # CPF, Telefone e Status
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+            ('ALIGN', (2, 1), (4, -1), 'CENTER'),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -1207,7 +1252,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
 
         elements.append(t_obj)
 
-        # Rodapé
         elements.append(Spacer(1, 20))
         elements.append(Paragraph(f"Total de registros encontrados: {len(alunos)}", ParagraphStyle(
             'TotalText', parent=styles['Normal'], fontName='Helvetica-Bold',
@@ -1233,83 +1277,3 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
         print("--- ERRO AO GERAR PDF ALUNOS ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
-
-    # ==========================================
-    # MÓDULO FINANCEIRO (CARNÊS E COMPROVANTES)
-    # ==========================================
-
-    @app.get("/api/v1/financeiro/mensalidades")
-    async def listar_mensalidades():
-        checar_db()
-        docs = db.collection("mensalidades").stream()
-        return {"lista": [{"id": doc.id, **doc.to_dict()} for doc in docs]}
-
-    @app.post("/api/v1/financeiro/enviar-comprovante")
-    async def aluno_enviar_comprovante(
-            aluno_id: str = Form(...),
-            mensalidade_id: str = Form(...),
-            referencia_pagamento: str = Form(...),  # Ex: ID da transação ou identificação do carnê
-            comprovante: UploadFile = File(...)
-    ):
-        checar_db()
-
-        # Opcional: Upload do arquivo para o Firebase Storage se configurado, ou salvar metadados
-        # Aqui salvamos o registro do envio pendente de auditoria da secretaria
-
-        dados_baixa = {
-            "aluno_id": aluno_id,
-            "mensalidade_id": mensalidade_id,
-            "referencia_pagamento": referencia_pagamento,
-            "nome_arquivo": comprovante.filename,
-            "status": "Em Análise",
-            "data_envio": datetime.now().isoformat()
-        }
-
-        _, doc_ref = db.collection("comprovantes_pagamento").add(dados_baixa)
-
-        # Atualiza o status da mensalidade para indicar que o comprovante foi enviado
-        db.collection("mensalidades").document(mensalidade_id).update({
-            "status": "Em Análise",
-            "comprovante_id": doc_ref.id
-        })
-
-        return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso. Aguardando validação da secretaria."}
-
-    @app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
-    async def auditar_e_quitar_mensalidade(
-            mensalidade_id: str,
-            acao: str = Form(...)  # 'aprovar' ou 'rejeitar'
-    ):
-        checar_db()
-
-        novo_status = "Pago" if acao == 'aprovar' else "Rejeitado"
-
-        db.collection("mensalidades").document(mensalidade_id).update({
-            "status": novo_status,
-            "data_pagamento": datetime.now().isoformat() if acao == 'aprovar' else None
-        })
-
-        return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
-
-
-# ==========================================
-# GESTÃO DE PENDÊNCIAS FINANCEIRAS NO ALUNO
-# ==========================================
-@app.post("/api/v1/alunos/{aluno_id}/pendencia")
-async def gerenciar_pendencia_aluno(
-        aluno_id: str,
-        possui_pendencia: str = Form(...),  # "Sim" ou "Não"
-        detalhes_pendencia: str = Form("")  # Ex: Carnê X - Ref a Março/2026
-):
-    checar_db()
-    ref = db.collection("alunos").document(aluno_id)
-
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-
-    ref.update({
-        "possui_pendencia_financeira": possui_pendencia,
-        "detalhes_pendencia_financeira": detalhes_pendencia if possui_pendencia == "Sim" else ""
-    })
-
-    return {"sucesso": True, "mensagem": "Status de pendência atualizado com sucesso."}
