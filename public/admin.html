@@ -2214,34 +2214,29 @@ function fecharModalCursos() {
 
 async function loadCursos() {
     const resposta = await apiRequest('/cursos');
-    if (!resposta) return;
+    if (!resposta || resposta.detail) return;
 
-    if (resposta.detail) {
-        console.error("Erro da API ao buscar cursos:", resposta.detail);
-        return;
-    }
-
-    // Salva na variável global para o carregamento dos módulos do docente funcionar
+    // Salva na variável global
     cursosGlobais = Array.isArray(resposta) ? resposta : (resposta.cursos || resposta.dados || []);
-
-    const selectAluno = document.getElementById('select-curso-aluno');
-    const selectDocente = document.getElementById('select-curso-docente');
 
     let optionsHTML = '<option value="">Selecione o curso...</option>';
     cursosGlobais.forEach(curso => {
         optionsHTML += `<option value="${curso.id}">${curso.nome_curso || curso.codigo}</option>`;
     });
 
-    if (selectAluno) selectAluno.innerHTML = optionsHTML;
-    if (selectDocente) {
-        selectDocente.innerHTML = optionsHTML;
-        const selectModulo = document.getElementById('select-modulo-docente');
-        if (selectModulo) {
-            selectModulo.innerHTML = '<option value="">Aguardando curso...</option>';
-            selectModulo.disabled = true;
-            selectModulo.classList.add('bg-gray-50');
-        }
-    }
+    // Atualiza TODAS as caixas de cursos de alunos que já estiverem abertas na tela
+    document.querySelectorAll('.select-curso-aluno-dinamico').forEach(select => {
+        const valorAtual = select.value; // Salva se já tiver algo selecionado
+        select.innerHTML = optionsHTML;
+        if (valorAtual) select.value = valorAtual;
+    });
+
+    // Atualiza TODAS as caixas de vínculos de docentes que já estiverem abertas na tela
+    document.querySelectorAll('.select-curso-dinamico').forEach(select => {
+        const valorAtual = select.value;
+        select.innerHTML = optionsHTML;
+        if (valorAtual) select.value = valorAtual;
+    });
 }
 
 async function renderizarListaCursos() {
@@ -3037,7 +3032,7 @@ function adicionarVinculoDocente(cursoId = '', moduloSelecionado = '') {
     // Monta as opções de cursos baseadas na variável cursosGlobais
     let optionsCursos = '<option value="">Selecione o curso...</option>';
     cursosGlobais.forEach(c => {
-        const sel = (c.id === cursoId) ? 'selected' : '';
+        const sel = (c.id == cursoId) ? 'selected' : '';
         optionsCursos += `<option value="${c.id}" ${sel}>${c.nome_curso || c.codigo}</option>`;
     });
 
@@ -3124,7 +3119,7 @@ function adicionarCursoAluno(cursoId = '') {
 
     let optionsCursos = '<option value="">Selecione o curso...</option>';
     cursosGlobais.forEach(c => {
-        const sel = (c.id === cursoId) ? 'selected' : '';
+    const sel = (c.id == cursoId) ? 'selected' : '';
         optionsCursos += `<option value="${c.id}" ${sel}>${c.nome_curso || c.codigo}</option>`;
     });
 
