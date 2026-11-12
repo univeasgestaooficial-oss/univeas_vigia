@@ -736,14 +736,16 @@ function toggleMenuMobile() {
     }
 }
 
-// ==========================================
-// FUNÇÕES DO MODAL DE EDIÇÃO DE DISCIPLINA (CORRIGIDAS)
-// ==========================================
+// Variável global para guardar a identidade exata do módulo sendo editado
+let turmaAtualEditando = null;
 
 function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
     const modal = document.getElementById('modal-editar-disciplina');
     const turma = JSON.parse(decodeURIComponent(turmaJsonEncodada));
     const det = turma.detalhes || {};
+
+    // Salva a referência global para o momento do disparo da API
+    turmaAtualEditando = turma;
 
     document.getElementById('modal-titulo-disciplina').innerText = turma.nome_disciplina || 'Disciplina';
     document.getElementById('modal-subtitulo-curso').innerText = turma.curso_pai || 'Curso';
@@ -758,17 +760,13 @@ function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
     document.getElementById('edit-ch-estagio').value = det.ch_estagio || turma.ch_estagio || 0;
     document.getElementById('edit-ch-total').value = turma.carga_horaria || det.ch_total || turma.ch_total || 0;
 
-    // CORREÇÃO: Caça inteligente da hora mapeando todos os nomes possíveis gerados pelo Admin
     const horaInicio = turma.hora_aula_inicio || det.hora_aula_inicio || det.hora_inicio || (det.horarios ? det.horarios.inicio : '') || '';
     const horaFim = turma.hora_aula_fim || det.hora_aula_fim || det.hora_fim || (det.horarios ? det.horarios.fim : '') || '';
 
     document.getElementById('edit-hora-inicio').value = horaInicio;
     document.getElementById('edit-hora-fim').value = horaFim;
-
-    // Limpa a justificativa sempre que abrir
     document.getElementById('edit-justificativa').value = '';
 
-    // CORREÇÃO: Mapeia os dias caso estejam na raiz
     const dias = det.dias_aula || turma.dias_aula || [];
     document.querySelectorAll('.dias-aula-checkbox').forEach(cb => {
         cb.checked = dias.includes(cb.value);
@@ -810,8 +808,13 @@ async function salvarEdicaoDisciplina() {
         });
     });
 
+    const cursoIdExato = turmaAtualEditando.curso_id || turmaAtualEditando.curso || turmaId.split('_')[0] || turmaId;
+    const nomeModuloExato = turmaAtualEditando.nome_disciplina || turmaAtualEditando.modulo || turmaAtualEditando.disciplina || '';
+
     const payload = {
         turma_id: turmaId,
+        curso_id: cursoIdExato,      
+        nome_modulo: nomeModuloExato, 
         data_inicio: document.getElementById('edit-data-inicio').value,
         data_fim: document.getElementById('edit-data-fim').value,
         ementa: document.getElementById('edit-ementa').value,
@@ -820,7 +823,6 @@ async function salvarEdicaoDisciplina() {
         ch_estagio: parseInt(document.getElementById('edit-ch-estagio').value) || 0,
         ch_total: parseInt(document.getElementById('edit-ch-total').value) || 0,
         dias_aula: diasSelecionados,
-        // Envia as chaves duplas para garantir que o Python salve corretamente sem conflitos com o Admin
         hora_inicio: document.getElementById('edit-hora-inicio').value,
         hora_fim: document.getElementById('edit-hora-fim').value,
         hora_aula_inicio: document.getElementById('edit-hora-inicio').value,
@@ -834,14 +836,13 @@ async function salvarEdicaoDisciplina() {
     const textoOriginal = btnSalvar.innerHTML;
     btnSalvar.innerHTML = '<i data-feather="loader" class="w-4 h-4 mr-2 animate-spin"></i> Sincronizando...';
     btnSalvar.disabled = true;
-    feather.replace();
 
     const result = await apiRequest('/docente/turmas/configurar', 'POST', payload);
 
     if (result && result.sucesso) {
         alert(result.mensagem || "Módulo atualizado com sucesso!");
         fecharModalDisciplina();
-        loadTurmas();
+        loadTurmas(); // Recarrega a tela forçando a busca dos dados atualizados
     } else {
         alert("Erro ao salvar: " + (result?.detail || 'Falha na comunicação.'));
     }
