@@ -444,7 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.reset();
                 carregarAcervoDocente();
             } else {
-                // Tratamento blindado para extrair a mensagem do erro sem exibir [object Object]
                 let msgErro = "Tente novamente.";
                 if (result?.detail) {
                     if (typeof result.detail === 'string') {
@@ -461,7 +460,9 @@ document.addEventListener('DOMContentLoaded', () => {
             feather.replace();
         });
     }
+});
 
+// Funções globais organizadas fora do DOMContentLoaded para evitar erros de escopo
 function getIniciais(nome) {
     if(!nome) return '--';
     const partes = nome.trim().split(' ');
@@ -470,8 +471,11 @@ function getIniciais(nome) {
 }
 
 function liberarAcessoDocente() {
-    document.getElementById('tela-login').classList.add('hidden');
-    document.getElementById('app-container').classList.remove('hidden');
+    const telaLogin = document.getElementById('tela-login');
+    const appContainer = document.getElementById('app-container');
+
+    if (telaLogin) telaLogin.classList.add('hidden');
+    if (appContainer) appContainer.classList.remove('hidden');
 
     const nomeReal = localStorage.getItem('nome_docente') || 'Professor';
     const regReal = localStorage.getItem('registro_docente') || 'S/N';
@@ -480,16 +484,24 @@ function liberarAcessoDocente() {
     const iniciais = getIniciais(nomeReal);
 
     // Header superior
-    document.getElementById('nome-docente-header').innerText = nomeReal;
-    document.getElementById('registro-docente-header').innerText = "Reg: " + regReal;
-    document.getElementById('iniciais-header').innerText = iniciais;
+    const elNomeH = document.getElementById('nome-docente-header');
+    const elRegH = document.getElementById('registro-docente-header');
+    const elInitH = document.getElementById('iniciais-header');
+
+    if (elNomeH) elNomeH.innerText = nomeReal;
+    if (elRegH) elRegH.innerText = "Reg: " + regReal;
+    if (elInitH) elInitH.innerText = iniciais;
 
     // Perfil - Cabeçalho
-    document.getElementById('perfil-nome').innerText = nomeReal;
-    document.getElementById('perfil-registro').innerText = "Registro: " + regReal;
-    document.getElementById('perfil-iniciais').innerText = iniciais;
+    const elPerfilNome = document.getElementById('perfil-nome');
+    const elPerfilReg = document.getElementById('perfil-registro');
+    const elPerfilInit = document.getElementById('perfil-iniciais');
 
-    // Perfil - Inputs da Coluna de Contato (Sincronização Real)
+    if (elPerfilNome) elPerfilNome.innerText = nomeReal;
+    if (elPerfilReg) elPerfilReg.innerText = "Registro: " + regReal;
+    if (elPerfilInit) elPerfilInit.innerText = iniciais;
+
+    // Perfil - Inputs da Coluna de Contato
     const inputEmailPerfil = document.getElementById('perfil-email');
     const inputTelefonePerfil = document.getElementById('perfil-telefone');
 
@@ -537,7 +549,8 @@ function mudarTela(idTela) {
         'material': 'Acervo e Material Didático',
         'perfil': 'Meu Perfil'
     };
-    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'UNIVEAS SGA';
+    const elTitulo = document.getElementById('titulo-pagina');
+    if(elTitulo) elTitulo.innerText = titulos[idTela] || 'UNIVEAS SGA';
 }
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
@@ -586,10 +599,7 @@ async function loadTurmas() {
     if (!container) return;
     container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Buscando disciplinas vinculadas no Admin...</p>';
 
-    // Resgata o registro salvo no momento do login (Ex: #PR1731)
     const registroProf = localStorage.getItem('registro_docente');
-
-    // Envia o registro como parâmetro para a API filtrar as turmas corretas
     turmasProfessor = await apiRequest(`/docente/turmas?registro=${encodeURIComponent(registroProf)}`) || [];
 
     if (selectDiario) selectDiario.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
@@ -599,7 +609,6 @@ async function loadTurmas() {
         container.innerHTML = '';
 
         turmasProfessor.forEach(turma => {
-            // Mapeamento flexível para cruzar com os dados do painel Admin
             const nomeCurso = turma.curso_pai || turma.curso || 'Curso Padrão';
             const nomeDisciplina = turma.nome_disciplina || turma.modulo || turma.disciplina || 'Disciplina Não Nomeada';
             const idTurma = turma.id || turma.turma_id || turma.vinculo_id;
@@ -637,7 +646,6 @@ async function loadTurmas() {
         container.innerHTML = `<p class="text-sm font-bold text-red-500 col-span-full">Nenhum vínculo encontrado no Admin para o registro: ${registroProf}.</p>`;
     }
 
-    // Preenche também o painel de perfil do professor com todas as turmas atreladas a ele
     if (containerPerfilTurmas) {
         containerPerfilTurmas.innerHTML = '';
         if (turmasProfessor.length > 0) {
