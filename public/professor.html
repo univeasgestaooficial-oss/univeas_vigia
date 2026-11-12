@@ -235,44 +235,51 @@
             <!-- TELA: MATERIAL DIDÁTICO -->
             <div id="tela-material" class="tela hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Upload -->
+                    <!-- Formulário de Link -->
                     <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
                         <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
                             <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
-                            Compartilhar Material
+                            Compartilhar Link
                         </h4>
                         <form id="form-upload-material" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Turma Destino</label>
-                                <select id="select-turma-material" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                <select id="select-turma-material" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white" required>
                                     <option value="">Selecione uma turma...</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Título do Material</label>
-                                <input type="text" id="titulo-material" placeholder="Ex: Slide Aula 01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                <input type="text" id="titulo-material" placeholder="Ex: Vídeo Aula 01 ou Slides Drive" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Arquivo</label>
-                                <label class="block border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-teal-400 bg-gray-50 cursor-pointer transition">
-                                    <i data-feather="upload-cloud" class="h-6 w-6 text-teal-500 mx-auto mb-2"></i>
-                                    <span id="texto-arquivo" class="text-xs text-gray-500">Clique para selecionar o arquivo</span>
-                                    <input type="file" id="input-arquivo" class="hidden" required>
-                                </label>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Link de Acesso (Drive / YouTube)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                                        <i data-feather="link" class="h-4 w-4"></i>
+                                    </span>
+                                    <input type="url" id="url-material" placeholder="https://youtube.com/... ou https://drive.google.com/..." required class="w-full border border-gray-200 rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                </div>
                             </div>
                             <div class="pt-2 border-t border-gray-100">
-                                <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Publicar na Turma</button>
+                                <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Publicar na Turma</button>
                             </div>
                         </form>
                     </div>
 
-                    <!-- Lista -->
-                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                        <h4 class="text-lg font-bold text-gray-900 flex items-center mb-6 border-b border-gray-50 pb-4">
-                            <i data-feather="folder" class="h-5 w-5 text-gray-400 mr-2"></i> Acervo Compartilhado
-                        </h4>
-                        <div id="lista-materiais-acervo" class="space-y-3 overflow-y-auto flex-1 pr-2">
-                            <p class="text-sm text-gray-400">Nenhum material publicado ainda.</p>
+                    <!-- Lista / Histórico do Acervo -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[400px]">
+                        <div class="flex justify-between items-center mb-6 border-b border-gray-50 pb-4">
+                            <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                                <i data-feather="folder" class="h-5 w-5 text-teal-500 mr-2"></i> Histórico de Materiais Publicados
+                            </h4>
+                            <button onclick="carregarAcervoDocente()" class="text-xs text-teal-600 hover:text-teal-700 font-bold flex items-center bg-teal-50 px-3 py-1.5 rounded-lg transition">
+                                <i data-feather="refresh-cw" class="w-3.5 h-3.5 mr-1.5"></i> Atualizar
+                            </button>
+                        </div>
+
+                        <div id="lista-materiais-acervo" class="space-y-3 overflow-y-auto flex-1 pr-1 max-h-[450px]">
+                            <p class="text-sm text-gray-400 text-center py-8">Carregando histórico de materiais...</p>
                         </div>
                     </div>
                 </div>
@@ -280,53 +287,79 @@
 
             <!-- TELA: PERFIL -->
             <div id="tela-perfil" class="tela hidden">
-                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
-                        Configurações da Conta
-                    </h4>
-                    <div class="flex flex-col sm:flex-row items-center gap-6 mb-8 border-b border-gray-100 pb-8">
-                        <div id="perfil-iniciais" class="h-24 w-24 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-2xl border-2 border-teal-100">
+                <div class="max-w-4xl mx-auto space-y-6">
+
+                    <!-- Cabeçalho do Perfil Docente -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-6">
+                        <div id="perfil-iniciais" class="h-24 w-24 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-black text-3xl border-2 border-teal-100 shadow-inner shrink-0">
                             --
                         </div>
-                        <div class="text-center sm:text-left">
-                            <h2 id="perfil-nome" class="text-xl font-black text-gray-900">Carregando...</h2>
-                            <p id="perfil-registro" class="text-sm text-gray-500 mb-3">Professor</p>
+                        <div class="text-center sm:text-left flex-1">
+                            <h2 id="perfil-nome" class="text-2xl font-black text-gray-900 tracking-tight">Carregando...</h2>
+                            <p id="perfil-registro" class="text-xs text-teal-600 font-bold uppercase tracking-wider mt-1">Registro: #PR...</p>
+                            <div class="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
+                                <span class="bg-teal-50 text-teal-700 border border-teal-100 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Docente Autorizado</span>
+                                <span class="bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase" id="tag-qtd-turmas-docente">0 Disciplinas Alocadas</span>
+                            </div>
                         </div>
                     </div>
 
-                    <form class="space-y-5" onsubmit="event.preventDefault(); alert('Em desenvolvimento');">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail Pessoal</label>
-                                <input type="email" id="perfil-email" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                    <!-- Grid de Informações -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                        <!-- Coluna Esquerda: Dados de Contato e Senha -->
+                        <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                            <h4 class="text-sm font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
+                                <i data-feather="settings" class="h-4 w-4 text-teal-500 mr-2"></i> Configurações
+                            </h4>
+
+                            <form class="space-y-4 flex-1 flex flex-col justify-between" onsubmit="event.preventDefault(); alert('Solicitação de alteração enviada à secretaria.');">
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">E-mail Institucional</label>
+                                        <input type="email" id="perfil-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="professor@univeas.edu.br">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Telefone / WhatsApp</label>
+                                        <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="(91) 90000-0000">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nova Senha de Acesso</label>
+                                        <input type="password" placeholder="Mínimo 6 caracteres" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                    </div>
+                                </div>
+
+                                <div class="pt-4 border-t border-gray-50">
+                                    <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Atualizar Dados</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Coluna Direita: Turmas e Disciplinas Atreladas ao Professor -->
+                        <div class="md:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                            <h4 class="text-sm font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
+                                <i data-feather="database" class="h-4 w-4 text-teal-500 mr-2"></i> Minhas Turmas e Vínculos Ativos
+                            </h4>
+
+                            <div id="container-perfil-turmas-docente" class="space-y-3 overflow-y-auto max-h-[320px] pr-1 flex-1">
+                                <p class="text-xs text-gray-400 text-center py-6">Carregando turmas vinculadas...</p>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
-                                <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+
+                            <div class="mt-6 pt-4 border-t border-gray-50 bg-teal-50/50 p-4 rounded-xl border border-teal-100">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs font-bold text-teal-900">Divergência na alocação de disciplinas?</p>
+                                        <p class="text-[10px] text-teal-700 mt-0.5">A carga horária e os módulos são gerenciados diretamente pelo painel administrativo.</p>
+                                    </div>
+                                    <span class="text-[10px] font-black bg-teal-200 text-teal-800 px-2.5 py-1 rounded-full uppercase tracking-wider">Sincronizado</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="border-t border-gray-100 pt-5">
-                            <p class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4">Alterar Senha</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nova Senha</label>
-                                    <input type="password" placeholder="Mínimo de 6 caracteres" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Confirmar Senha</label>
-                                    <input type="password" placeholder="Repita a senha" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end pt-6">
-                            <button type="submit" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Atualizar Dados</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
+
         </main>
     </div>
 </div>
@@ -348,15 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (localStorage.getItem('token_siga_docente')) {
         liberarAcessoDocente();
-    }
-
-    const inputArquivo = document.getElementById('input-arquivo');
-    if(inputArquivo) {
-        inputArquivo.addEventListener('change', function() {
-            if(this.files.length > 0) {
-                document.getElementById('texto-arquivo').innerText = this.files[0].name;
-            }
-        });
     }
 
     const formLogin = document.getElementById('form-login');
@@ -382,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok && data.sucesso) {
-                    const registroDigitado = document.getElementById('input-registro').value.toUpperCase();
                     localStorage.setItem('token_siga_docente', data.token_siga);
                     localStorage.setItem('nome_docente', data.nome_professor);
                     localStorage.setItem('registro_docente', data.registro);
@@ -404,20 +427,29 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
             const textoOriginal = btn.innerText;
-            btn.innerText = "Enviando...";
+            btn.innerText = "Publicando...";
+            btn.disabled = true;
 
-            const formData = new FormData();
-            formData.append("turma_id", document.getElementById('select-turma-material').value);
-            formData.append("titulo", document.getElementById('titulo-material').value);
-            formData.append("arquivo", document.getElementById('input-arquivo').files[0]);
+            const payload = {
+                turma_id: document.getElementById('select-turma-material').value,
+                titulo: document.getElementById('titulo-material').value,
+                url_arquivo: document.getElementById('url-material').value,
+                data_postagem: new Date().toLocaleDateString('pt-BR')
+            };
 
-            const result = await apiRequest('/docente/material/upload', 'POST', formData);
+            const result = await apiRequest('/docente/material/upload', 'POST', payload);
+
             if (result && result.sucesso) {
-                alert("Material enviado com sucesso!");
+                alert("Link publicado com sucesso para a turma!");
                 e.target.reset();
-                document.getElementById('texto-arquivo').innerText = "Clique para selecionar o arquivo";
+                carregarAcervoDocente();
+            } else {
+                alert("Erro ao publicar link: " + (result?.detail || 'Tente novamente.'));
             }
+
             btn.innerText = textoOriginal;
+            btn.disabled = false;
+            feather.replace();
         });
     }
 });
@@ -437,19 +469,17 @@ function liberarAcessoDocente() {
     const regReal = localStorage.getItem('registro_docente') || 'S/N';
     const iniciais = getIniciais(nomeReal);
 
-    // Header Global
     document.getElementById('nome-docente-header').innerText = nomeReal;
     document.getElementById('registro-docente-header').innerText = "Reg: " + regReal;
     document.getElementById('iniciais-header').innerText = iniciais;
 
-    // Tela de Perfil
     document.getElementById('perfil-nome').innerText = nomeReal;
     document.getElementById('perfil-registro').innerText = "Registro: " + regReal;
     document.getElementById('perfil-iniciais').innerText = iniciais;
 
-    // Inicializa carregando tudo
     loadDashboardDocente();
     loadTurmas();
+    carregarAcervoDocente(); // Carrega o histórico de materiais ao logar
     mudarTela('dashboard');
 }
 
@@ -518,9 +548,6 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     }
 }
 
-// ----------------------------------------------------
-// DADOS DINÂMICOS - DASHBOARD
-// ----------------------------------------------------
 async function loadDashboardDocente() {
     const data = await apiRequest('/docente/dashboard');
     if (data) {
@@ -530,14 +557,12 @@ async function loadDashboardDocente() {
     }
 }
 
-
-// ----------------------------------------------------
-// DADOS DINÂMICOS - TURMAS E SELECTS (Sincronizado)
-// ----------------------------------------------------
 async function loadTurmas() {
     const container = document.getElementById('container-minhas-turmas');
     const selectDiario = document.getElementById('select-turma-diario');
     const selectMaterial = document.getElementById('select-turma-material');
+    const containerPerfilTurmas = document.getElementById('container-perfil-turmas-docente');
+    const tagQtdTurmas = document.getElementById('tag-qtd-turmas-docente');
 
     if (!container) return;
     container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Buscando disciplinas vinculadas no Admin...</p>';
@@ -548,8 +573,8 @@ async function loadTurmas() {
     // Envia o registro como parâmetro para a API filtrar as turmas corretas
     turmasProfessor = await apiRequest(`/docente/turmas?registro=${encodeURIComponent(registroProf)}`) || [];
 
-    selectDiario.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
-    selectMaterial.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
+    if (selectDiario) selectDiario.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
+    if (selectMaterial) selectMaterial.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
 
     if (turmasProfessor.length > 0) {
         container.innerHTML = '';
@@ -585,21 +610,52 @@ async function loadTurmas() {
             container.innerHTML += card;
 
             const option = `<option value="${idTurma}">${nomeCurso} - ${nomeDisciplina}</option>`;
-            selectDiario.innerHTML += option;
-            selectMaterial.innerHTML += option;
+            if (selectDiario) selectDiario.innerHTML += option;
+            if (selectMaterial) selectMaterial.innerHTML += option;
         });
         feather.replace();
     } else {
         container.innerHTML = `<p class="text-sm font-bold text-red-500 col-span-full">Nenhum vínculo encontrado no Admin para o registro: ${registroProf}.</p>`;
     }
+
+    // Preenche também o painel de perfil do professor com todas as turmas atreladas a ele
+    if (containerPerfilTurmas) {
+        containerPerfilTurmas.innerHTML = '';
+        if (turmasProfessor.length > 0) {
+            if (tagQtdTurmas) tagQtdTurmas.innerText = `${turmasProfessor.length} ${turmasProfessor.length === 1 ? 'Disciplina Alocada' : 'Disciplinas Alocadas'}`;
+
+            turmasProfessor.forEach(t => {
+                const nomeCurso = t.curso_pai || t.curso || 'Curso';
+                const nomeMod = t.nome_disciplina || t.modulo || t.disciplina || 'Disciplina';
+                const ch = t.carga_horaria || 40;
+
+                containerPerfilTurmas.innerHTML += `
+                    <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl flex items-center justify-between">
+                        <div>
+                            <h5 class="text-xs font-black text-gray-900 uppercase">${nomeMod}</h5>
+                            <p class="text-[10px] text-gray-500 mt-0.5 uppercase">${nomeCurso}</p>
+                        </div>
+                        <span class="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-1 rounded">${ch}h Carga Horária</span>
+                    </div>
+                `;
+            });
+        } else {
+            if (tagQtdTurmas) tagQtdTurmas.innerText = `0 Disciplinas Alocadas`;
+            containerPerfilTurmas.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Nenhuma turma alocada para este registro de docente.</p>';
+        }
+    }
 }
 
-// ----------------------------------------------------
-// DADOS DINÂMICOS - DIÁRIO (ALUNOS E INTEGRAÇÃO ADMIN)
-// ----------------------------------------------------
 function prepararDiario(idTurma) {
     document.getElementById('select-turma-diario').value = idTurma;
     mudarTela('diario');
+
+    const inputData = document.getElementById('data-aula-diario');
+    if (inputData && !inputData.value) {
+        const hoje = new Date().toISOString().split('T')[0];
+        inputData.value = hoje;
+    }
+
     carregarChamada();
 }
 
@@ -612,28 +668,28 @@ async function carregarChamada() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Buscando alunos matriculados e dados sincronizados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-teal-600 font-bold"><i data-feather="loader" class="w-5 h-5 inline animate-spin mr-2"></i> Buscando alunos matriculados e histórico...</td></tr>';
+    feather.replace();
 
     const cursoId = turmaId.split('_')[0];
 
-    // CORREÇÃO 1: Promise.all para buscar alunos e o que já foi salvo pelo professor
     const [alunos, pautaSalvaResp] = await Promise.all([
         apiRequest('/alunos'),
         apiRequest(`/docente/diario/${turmaId}`)
     ]);
 
-    if(!alunos) return;
+    if (!alunos) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-500 font-bold">Erro ao carregar lista de alunos.</td></tr>';
+        return;
+    }
 
-    // Normaliza a pauta salva caso exista
     const pauta = Array.isArray(pautaSalvaResp) ? pautaSalvaResp : (pautaSalvaResp?.dados || []);
-
     const alunosDaTurma = alunos.filter(a => (String(a.curso) === String(cursoId) || String(a.curso_id) === String(cursoId)) && a.status !== "Cancelado");
 
     if (alunosDaTurma.length > 0) {
         tbody.innerHTML = '';
 
         alunosDaTurma.forEach((aluno, index) => {
-            // CORREÇÃO 2: Mescla os inputs com os dados do banco para evitar sobrescrever com vazio
             const registroAnterior = pauta.find(p => String(p.aluno_id) === String(aluno.id)) || {};
             const faltas = registroAnterior.faltas !== undefined ? registroAnterior.faltas : 0;
             const nota1 = registroAnterior.nota_1 !== undefined && registroAnterior.nota_1 !== null ? registroAnterior.nota_1 : '';
@@ -641,27 +697,27 @@ async function carregarChamada() {
 
             const num = String(index + 1).padStart(2, '0');
             const row = `
-                <tr class="hover:bg-gray-50 transition-colors linha-aluno border-b border-gray-50" data-aluno-id="${aluno.id}">
+                <tr class="hover:bg-teal-50/30 transition-colors linha-aluno border-b border-gray-50" data-aluno-id="${aluno.id}">
                     <td class="py-3 px-4 text-gray-400 font-bold">${num}</td>
                     <td class="py-3 px-4">
                         <p class="font-bold text-gray-800 text-sm">${aluno.nome}</p>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">${aluno.matricula || 'S/N'}</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Mat: ${aluno.matricula || 'S/N'}</p>
                     </td>
                     <td class="py-3 px-4">
-                        <input type="number" min="0" value="${faltas}" class="input-falta w-full text-center border border-gray-300 rounded p-1 text-sm focus:outline-none focus:border-teal-500 font-bold">
+                        <input type="number" min="0" value="${faltas}" class="input-falta w-full text-center border border-gray-300 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 font-bold bg-white">
                     </td>
                     <td class="py-3 px-4">
-                        <input type="number" step="0.1" value="${nota1}" placeholder="Ex: 8.5" class="input-nota1 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                        <input type="number" step="0.1" min="0" max="10" value="${nota1}" placeholder="0.0" class="input-nota1 w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium">
                     </td>
                     <td class="py-3 px-4">
-                        <input type="number" step="0.1" value="${nota2}" placeholder="Ex: 7.0" class="input-nota2 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                        <input type="number" step="0.1" min="0" max="10" value="${nota2}" placeholder="0.0" class="input-nota2 w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium">
                     </td>
                 </tr>
             `;
             tbody.innerHTML += row;
         });
     } else {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">Nenhum aluno matriculado neste curso.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">Nenhum aluno ativo matriculado neste curso.</td></tr>';
     }
 }
 
@@ -692,31 +748,28 @@ async function salvarDiario(btnElement) {
             arrayAlunos.push({
                 aluno_id: alunoId,
                 faltas: parseInt(falta) || 0,
-                // CORREÇÃO 3: Envia null se o input estiver vazio
                 nota_1: nota1 !== '' ? parseFloat(nota1) : null,
                 nota_2: nota2 !== '' ? parseFloat(nota2) : null
             });
         }
     });
 
-    // CORREÇÃO 4: Carimbo de tempo EXATO gerado no clique para o Admin visualizar
     const dataHoraAtual = new Date().toLocaleString('pt-BR');
 
     const payload = {
         turma_id: turmaId,
         data_aula: dataAula,
         conteudo_ministrado: conteudo,
-        data_hora_registro: dataHoraAtual, // Variável que vincula a auditoria do Admin
+        data_hora_registro: dataHoraAtual,
         lancamentos: arrayAlunos
     };
 
     const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert(`Diário sincronizado com sucesso às ${dataHoraAtual}!`);
-        // document.getElementById('conteudo-aula-diario').value = ''; (Mantido comentado para não apagar caso ele queira só corrigir uma nota)
+        alert(`Diário sincronizado com sucesso às ${dataHoraAtual}! As notas já estão disponíveis no Portal do Aluno.`);
     } else {
-        alert("Falha ao salvar. Tente novamente.");
+        alert("Falha ao salvar diário: " + (result?.detail || 'Tente novamente.'));
     }
 
     btnElement.innerText = textoOriginal;
@@ -736,7 +789,6 @@ function toggleMenuMobile() {
     }
 }
 
-// Variável global para guardar a identidade exata do módulo sendo editado
 let turmaAtualEditando = null;
 
 function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
@@ -744,7 +796,6 @@ function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
     const turma = JSON.parse(decodeURIComponent(turmaJsonEncodada));
     const det = turma.detalhes || {};
 
-    // Salva a referência global para o momento do disparo da API
     turmaAtualEditando = turma;
 
     document.getElementById('modal-titulo-disciplina').innerText = turma.nome_disciplina || 'Disciplina';
@@ -760,8 +811,8 @@ function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
     document.getElementById('edit-ch-estagio').value = det.ch_estagio || turma.ch_estagio || 0;
     document.getElementById('edit-ch-total').value = turma.carga_horaria || det.ch_total || turma.ch_total || 0;
 
-    const horaInicio = turma.hora_aula_inicio || det.hora_aula_inicio || det.hora_inicio || (det.horarios ? det.horarios.inicio : '') || '';
-    const horaFim = turma.hora_aula_fim || det.hora_aula_fim || det.hora_fim || (det.horarios ? det.horarios.fim : '') || '';
+    const horaInicio = turma.hora_aula_inicio || turma.hora_inicio || det.hora_aula_inicio || det.hora_inicio || (det.horarios ? det.horarios.inicio : '') || '';
+    const horaFim = turma.hora_aula_fim || turma.hora_fim || det.hora_aula_fim || det.hora_fim || (det.horarios ? det.horarios.fim : '') || '';
 
     document.getElementById('edit-hora-inicio').value = horaInicio;
     document.getElementById('edit-hora-fim').value = horaFim;
@@ -811,10 +862,13 @@ async function salvarEdicaoDisciplina() {
     const cursoIdExato = turmaAtualEditando.curso_id || turmaAtualEditando.curso || turmaId.split('_')[0] || turmaId;
     const nomeModuloExato = turmaAtualEditando.nome_disciplina || turmaAtualEditando.modulo || turmaAtualEditando.disciplina || '';
 
+    const valHoraInicio = document.getElementById('edit-hora-inicio').value;
+    const valHoraFim = document.getElementById('edit-hora-fim').value;
+
     const payload = {
         turma_id: turmaId,
-        curso_id: cursoIdExato,      
-        nome_modulo: nomeModuloExato, 
+        curso_id: cursoIdExato,
+        nome_modulo: nomeModuloExato,
         data_inicio: document.getElementById('edit-data-inicio').value,
         data_fim: document.getElementById('edit-data-fim').value,
         ementa: document.getElementById('edit-ementa').value,
@@ -823,10 +877,10 @@ async function salvarEdicaoDisciplina() {
         ch_estagio: parseInt(document.getElementById('edit-ch-estagio').value) || 0,
         ch_total: parseInt(document.getElementById('edit-ch-total').value) || 0,
         dias_aula: diasSelecionados,
-        hora_inicio: document.getElementById('edit-hora-inicio').value,
-        hora_fim: document.getElementById('edit-hora-fim').value,
-        hora_aula_inicio: document.getElementById('edit-hora-inicio').value,
-        hora_aula_fim: document.getElementById('edit-hora-fim').value,
+        hora_inicio: valHoraInicio,
+        hora_fim: valHoraFim,
+        hora_aula_inicio: valHoraInicio,
+        hora_aula_fim: valHoraFim,
         avaliacoes: avaliacoes,
         justificativa: justificativa
     };
@@ -842,7 +896,7 @@ async function salvarEdicaoDisciplina() {
     if (result && result.sucesso) {
         alert(result.mensagem || "Módulo atualizado com sucesso!");
         fecharModalDisciplina();
-        loadTurmas(); // Recarrega a tela forçando a busca dos dados atualizados
+        loadTurmas();
     } else {
         alert("Erro ao salvar: " + (result?.detail || 'Falha na comunicação.'));
     }
@@ -863,7 +917,6 @@ function calcularCH() {
     document.getElementById('edit-ch-total').value = teoria + pratica + estagio;
 }
 
-// Aceita um objeto 'av' para auto-preencher. Se não passar nada, cria vazio.
 function adicionarLinhaAvaliacao(av = {}) {
     const container = document.getElementById('container-avaliacoes');
     const linha = document.createElement('div');
@@ -890,22 +943,54 @@ function adicionarLinhaAvaliacao(av = {}) {
     feather.replace();
 }
 
+async function carregarAcervoDocente() {
+    const container = document.getElementById('lista-materiais-acervo');
+    if (!container) return;
 
+    container.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Buscando materiais publicados...</p>';
 
+    const data = await apiRequest('/docente/materiais');
+    const lista = Array.isArray(data) ? data : (data?.materiais || []);
 
+    if (lista.length > 0) {
+        container.innerHTML = '';
+        lista.forEach(mat => {
+            container.innerHTML += `
+                <div class="bg-gray-50 border border-gray-200/80 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-teal-300 transition shadow-sm">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${mat.nome_turma || 'Turma'}</span>
+                            <span class="text-[10px] text-gray-400 font-medium">${mat.data_postagem || 'Data recente'}</span>
+                        </div>
+                        <h5 class="text-sm font-bold text-gray-900">${mat.titulo}</h5>
+                        <p class="text-xs text-teal-600 font-mono truncate max-w-md">
+                            <a href="${mat.url_arquivo}" target="_blank" class="hover:underline flex items-center">
+                                <i data-feather="external-link" class="w-3 h-3 mr-1 inline"></i> ${mat.url_arquivo}
+                            </a>
+                        </p>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                        <a href="${mat.url_arquivo}" target="_blank" class="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-600 transition flex items-center shadow-sm">
+                            <i data-feather="eye" class="w-3.5 h-3.5 mr-1"></i> Acessar Link
+                        </a>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Nenhum material publicado até o momento.</p>';
+    }
+    feather.replace();
+}
 </script>
 
 <!-- ==========================================
      MODAL DE EDIÇÃO DA DISCIPLINA
      ========================================== -->
 <div id="modal-editar-disciplina" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
-    <!-- Fundo escuro (Backdrop) -->
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="fecharModalDisciplina()"></div>
 
-    <!-- Conteúdo do Modal -->
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-
-        <!-- Cabeçalho do Modal -->
         <div class="bg-teal-50 px-6 py-4 border-b border-teal-100 flex justify-between items-center shrink-0">
             <div>
                 <h3 class="text-lg font-black text-teal-800 uppercase" id="modal-titulo-disciplina">Nome da Disciplina</h3>
@@ -916,13 +1001,10 @@ function adicionarLinhaAvaliacao(av = {}) {
             </button>
         </div>
 
-        <!-- Corpo Rolável do Modal -->
         <div class="p-6 overflow-y-auto bg-gray-50/50 flex-1">
             <form id="form-editar-disciplina" class="space-y-6">
-                <!-- ID Escondido para saber qual turma atualizar no backend -->
                 <input type="hidden" id="edit-turma-id">
 
-                <!-- Bloco 1: Informações Básicas -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Período de Início</label>
@@ -938,7 +1020,6 @@ function adicionarLinhaAvaliacao(av = {}) {
                     </div>
                 </div>
 
-                <!-- Bloco 2: Carga Horária -->
                 <div class="bg-teal-50/30 p-4 rounded-xl border border-teal-100">
                     <h4 class="text-xs font-bold text-teal-800 uppercase mb-3">Distribuição de Carga Horária</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -961,9 +1042,7 @@ function adicionarLinhaAvaliacao(av = {}) {
                     </div>
                 </div>
 
-                <!-- Bloco 3: Horários e Avaliações -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Dias e Horários -->
                     <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                         <h4 class="text-xs font-bold text-teal-600 uppercase mb-3">Dias e Horários das Aulas</h4>
 
@@ -1000,7 +1079,6 @@ function adicionarLinhaAvaliacao(av = {}) {
                         </div>
                     </div>
 
-                    <!-- Calendário de Avaliações -->
                     <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100 shadow-sm flex flex-col">
                         <div class="flex justify-between items-center mb-3">
                             <h4 class="text-xs font-bold text-orange-600 uppercase">Calendário de Avaliações</h4>
@@ -1009,24 +1087,21 @@ function adicionarLinhaAvaliacao(av = {}) {
                             </button>
                         </div>
 
-                        <div id="container-avaliacoes" class="space-y-2 flex-1 overflow-y-auto pr-1">
-                            <!-- As linhas de avaliação serão injetadas aqui via JS -->
-                        </div>
+                        <div id="container-avaliacoes" class="space-y-2 flex-1 overflow-y-auto pr-1"></div>
                     </div>
-                    <!-- NOVO CAMPO: Justificativa (Obrigatório caso haja alteração de horário) -->
-                <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-200 mt-2">
-                    <label class="block text-xs font-bold text-yellow-800 uppercase mb-1 flex items-center">
-                        <i data-feather="alert-circle" class="w-3.5 h-3.5 mr-1.5"></i>
-                        Justificativa de Alteração (Notificar Alunos)
-                    </label>
-                    <p class="text-[10px] text-yellow-700 mb-2">Se você alterou os horários das aulas ou das avaliações, informe o motivo abaixo. Os alunos do curso serão notificados no portal deles.</p>
-                    <textarea id="edit-justificativa" rows="2" class="w-full border border-yellow-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 bg-white" placeholder="Ex: Mudança de horário da AV1 devido ao feriado nacional..."></textarea>
-                </div>
+
+                    <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-200 mt-2 md:col-span-2">
+                        <label class="block text-xs font-bold text-yellow-800 uppercase mb-1 flex items-center">
+                            <i data-feather="alert-circle" class="w-3.5 h-3.5 mr-1.5"></i>
+                            Justificativa de Alteração (Notificar Alunos)
+                        </label>
+                        <p class="text-[10px] text-yellow-700 mb-2">Se você alterou os horários das aulas ou das avaliações, informe o motivo abaixo. Os alunos do curso serão notificados no portal deles.</p>
+                        <textarea id="edit-justificativa" rows="2" class="w-full border border-yellow-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 bg-white" placeholder="Ex: Mudança de horário da AV1 devido ao feriado nacional..."></textarea>
+                    </div>
                 </div>
             </form>
         </div>
 
-        <!-- Rodapé do Modal (Botões) -->
         <div class="bg-white border-t border-gray-100 p-4 flex justify-end space-x-3 shrink-0">
             <button onclick="fecharModalDisciplina()" type="button" class="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-200 transition">
                 Cancelar
