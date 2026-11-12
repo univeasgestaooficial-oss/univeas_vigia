@@ -169,7 +169,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
                         <h4 class="text-lg font-bold text-gray-800 flex items-center">
                             <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
-                            Disciplinas e Turmas Alocadas
+                            Disciplinas e Turmas Alocadas (Sincronizadas com Admin)
                         </h4>
                     </div>
                     <!-- Grid Dinâmica de Turmas -->
@@ -336,7 +336,7 @@
 // INTEGRAÇÃO API E SEGURANÇA - PROFESSOR
 // ==========================================
 const API_BASE_URL = "/api/v1";
-let turmasProfessor = []; 
+let turmasProfessor = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
@@ -415,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Material enviado com sucesso!");
                 e.target.reset();
                 document.getElementById('texto-arquivo').innerText = "Clique para selecionar o arquivo";
-                // Idealmente, recarregar a lista de materiais aqui
             }
             btn.innerText = textoOriginal;
         });
@@ -449,7 +448,7 @@ function liberarAcessoDocente() {
 
     // Inicializa carregando tudo
     loadDashboardDocente();
-    loadTurmas(); // A função loadTurmas também vai preencher os Selects do Diário e Material
+    loadTurmas();
     mudarTela('dashboard');
 }
 
@@ -531,7 +530,7 @@ async function loadDashboardDocente() {
 }
 
 // ----------------------------------------------------
-// DADOS DINÂMICOS - TURMAS E SELECTS
+// DADOS DINÂMICOS - TURMAS E SELECTS (Sincronizado com Admin)
 // ----------------------------------------------------
 async function loadTurmas() {
     const container = document.getElementById('container-minhas-turmas');
@@ -543,20 +542,18 @@ async function loadTurmas() {
 
     turmasProfessor = await apiRequest('/docente/turmas') || [];
 
-    // Limpa selects
     selectDiario.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
     selectMaterial.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
 
     if (turmasProfessor.length > 0) {
         container.innerHTML = '';
-        
+
         turmasProfessor.forEach(turma => {
-            // Desenha os Cards de Turma
             const card = `
                 <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
                     <div class="flex justify-between items-start mb-4">
                         <div class="bg-teal-100 text-teal-700 p-2 rounded-lg"><i data-feather="database" class="h-5 w-5"></i></div>
-                        <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">${turma.carga_horaria}h</span>
+                        <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">${turma.carga_horaria || 0}h</span>
                     </div>
                     <h3 class="text-lg font-black text-gray-900 mb-1">${turma.nome_disciplina}</h3>
                     <p class="text-sm text-gray-500 mb-4">${turma.curso_pai}</p>
@@ -565,7 +562,6 @@ async function loadTurmas() {
             `;
             container.innerHTML += card;
 
-            // Preenche os selects das outras abas
             const option = `<option value="${turma.id}">${turma.curso_pai} - ${turma.nome_disciplina}</option>`;
             selectDiario.innerHTML += option;
             selectMaterial.innerHTML += option;
@@ -596,18 +592,16 @@ async function carregarChamada() {
 
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Buscando alunos matriculados...</td></tr>';
 
-    // Como o curso é o prefixo do turmaId (ex: ID_DO_CURSO_NomeModulo)
-    const cursoId = turmaId.split('_')[0]; 
-    const alunos = await apiRequest('/alunos'); // Puxa todos do admin
-    
+    const cursoId = turmaId.split('_')[0];
+    const alunos = await apiRequest('/alunos');
+
     if(!alunos) return;
 
-    // Filtra apenas alunos que pertencem ao curso dessa disciplina
-    const alunosDaTurma = alunos.filter(a => a.curso === cursoId && a.status !== "Cancelado");
+    const alunosDaTurma = alunos.filter(a => (a.curso === cursoId || a.curso_id === cursoId) && a.status !== "Cancelado");
 
     if (alunosDaTurma.length > 0) {
         tbody.innerHTML = '';
-        
+
         alunosDaTurma.forEach((aluno, index) => {
             const num = String(index + 1).padStart(2, '0');
             const row = `
@@ -615,7 +609,7 @@ async function carregarChamada() {
                     <td class="py-3 px-4 text-gray-400 font-bold">${num}</td>
                     <td class="py-3 px-4">
                         <p class="font-bold text-gray-800 text-sm">${aluno.nome}</p>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">${aluno.matricula}</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">${aluno.matricula || 'S/N'}</p>
                     </td>
                     <td class="py-3 px-4">
                         <input type="number" min="0" value="0" class="input-falta w-full text-center border border-gray-300 rounded p-1 text-sm focus:outline-none focus:border-teal-500 font-bold">
@@ -679,7 +673,6 @@ async function salvarDiario(btnElement) {
 
     if (result && result.sucesso) {
         alert("Diário enviado e salvo com sucesso no banco de dados!");
-        // Limpa os dados preenchidos
         document.getElementById('conteudo-aula-diario').value = '';
     } else {
         alert("Falha ao salvar. Tente novamente.");
