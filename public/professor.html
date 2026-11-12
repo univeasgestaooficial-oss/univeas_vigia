@@ -43,11 +43,10 @@
 </div>
 
 <!-- ==========================================
-     CONTAINER DO SISTEMA (ESCONDIDO INICIALMENTE)
+     CONTAINER DO SISTEMA
      ========================================== -->
 <div id="app-container" class="hidden h-full w-full flex-1 flex">
 
-    <!-- Sidebar Lateral Clara e Suave -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
@@ -89,10 +88,7 @@
         </div>
     </aside>
 
-    <!-- Área de Conteúdo Principal -->
     <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
-
-        <!-- Header Superior -->
         <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
             <div class="flex items-center">
                 <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-teal-600 mr-4">
@@ -103,27 +99,24 @@
 
             <div class="flex items-center space-x-4">
                 <div class="text-right hidden sm:block">
-                    <p id="nome-docente-header" class="text-sm font-bold text-gray-900">Prof. Nome</p>
-                    <p class="text-xs text-teal-600 font-medium">Desenvolvimento de Sistemas</p>
+                    <p id="nome-docente-header" class="text-sm font-bold text-gray-900">Carregando...</p>
+                    <p class="text-xs text-teal-600 font-medium" id="registro-docente-header">Portal Docente</p>
                 </div>
-                <div class="h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold shadow-sm cursor-pointer hover:bg-teal-100 transition border border-teal-100">
-                    RC
+                <div id="iniciais-header" class="h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold shadow-sm cursor-pointer hover:bg-teal-100 transition border border-teal-100">
+                    --
                 </div>
             </div>
         </header>
 
-        <!-- Container de Telas -->
         <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
 
-            <!-- ========================================== -->
             <!-- TELA: DASHBOARD -->
-            <!-- ========================================== -->
             <div id="tela-dashboard" class="tela block">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Turmas Ativas</p>
-                            <h3 class="text-3xl font-black text-gray-800 mt-1">4</h3>
+                            <h3 id="dash-turmas" class="text-3xl font-black text-gray-800 mt-1">0</h3>
                         </div>
                         <div class="p-4 bg-teal-50 text-teal-500 rounded-xl">
                             <i data-feather="users" class="h-6 w-6"></i>
@@ -132,7 +125,7 @@
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Diários Pendentes</p>
-                            <h3 class="text-3xl font-black text-yellow-500 mt-1">2</h3>
+                            <h3 id="dash-diarios" class="text-3xl font-black text-yellow-500 mt-1">0</h3>
                         </div>
                         <div class="p-4 bg-yellow-50 text-yellow-500 rounded-xl">
                             <i data-feather="alert-circle" class="h-6 w-6"></i>
@@ -141,7 +134,7 @@
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Aulas na Semana</p>
-                            <h3 class="text-3xl font-black text-teal-500 mt-1">12</h3>
+                            <h3 id="dash-aulas" class="text-3xl font-black text-teal-500 mt-1">0</h3>
                         </div>
                         <div class="p-4 bg-teal-50 text-teal-500 rounded-xl">
                             <i data-feather="calendar" class="h-6 w-6"></i>
@@ -154,49 +147,23 @@
                         <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
                             <i data-feather="clock" class="h-5 w-5 text-teal-500 mr-2"></i> Próximas Aulas (Hoje)
                         </h4>
-                        <ul class="space-y-4">
-                            <li class="flex items-start p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                <div class="bg-teal-500 text-white rounded-lg p-2 text-center w-16 shrink-0">
-                                    <p class="text-sm font-black">19:00</p>
-                                </div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-bold text-gray-900">Banco de Dados Relacional</p>
-                                    <p class="text-xs text-gray-500 mt-0.5">TURMA A - 2º Módulo (Presencial)</p>
-                                </div>
-                            </li>
-                            <li class="flex items-start p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                <div class="bg-gray-200 text-gray-600 rounded-lg p-2 text-center w-16 shrink-0">
-                                    <p class="text-sm font-black">20:40</p>
-                                </div>
-                                <div class="ml-4">
-                                    <p class="text-sm font-bold text-gray-900">Lógica de Programação Avançada</p>
-                                    <p class="text-xs text-gray-500 mt-0.5">TURMA B - 1º Módulo (Presencial)</p>
-                                </div>
-                            </li>
+                        <ul id="lista-proximas-aulas" class="space-y-4">
+                            <p class="text-sm text-gray-400">Nenhuma aula programada para hoje.</p>
                         </ul>
                     </div>
 
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
-                            <i data-feather="bell" class="h-5 w-5 text-teal-500 mr-2"></i> Mural de Avisos (Secretaria)
+                            <i data-feather="bell" class="h-5 w-5 text-teal-500 mr-2"></i> Mural de Avisos
                         </h4>
-                        <div class="space-y-4">
-                            <div class="p-4 border-l-4 border-yellow-400 bg-yellow-50 rounded-r-xl">
-                                <p class="text-xs text-yellow-600 font-bold mb-1">Fechamento de Bimestre - Prazo Final</p>
-                                <p class="text-sm text-gray-700">Prezados professores, o sistema de notas do 1º bimestre será bloqueado no dia 20/11. Por favor, regularizem os diários eletrônicos.</p>
-                            </div>
-                            <div class="p-4 border-l-4 border-teal-500 bg-teal-50 rounded-r-xl">
-                                <p class="text-xs text-teal-600 font-bold mb-1">Reunião Pedagógica</p>
-                                <p class="text-sm text-gray-700">Agendada reunião geral de alinhamento para a próxima sexta-feira, às 14h, via Google Meet.</p>
-                            </div>
+                        <div id="lista-avisos" class="space-y-4">
+                             <p class="text-sm text-gray-400">Nenhum aviso da secretaria.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ========================================== -->
             <!-- TELA: MINHAS TURMAS -->
-            <!-- ========================================== -->
             <div id="tela-turmas" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
@@ -204,51 +171,13 @@
                             <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
                             Disciplinas e Turmas Alocadas
                         </h4>
-                        <select class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                            <option>Semestre Atual (2026.2)</option>
-                            <option>Semestre Anterior (2026.1)</option>
-                        </select>
                     </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        <!-- Card Turma -->
-                        <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
-                            <div class="flex justify-between items-start mb-4">
-                                <div class="bg-teal-100 text-teal-700 p-2 rounded-lg"><i data-feather="database" class="h-5 w-5"></i></div>
-                                <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">2º Módulo</span>
-                            </div>
-                            <h3 class="text-lg font-black text-gray-900 mb-1">Banco de Dados Relacional</h3>
-                            <p class="text-sm text-gray-500 mb-4">Curso de Desenvolvimento de Sistemas (Técnico)</p>
-
-                            <div class="flex items-center justify-between text-xs text-gray-500 font-bold bg-white p-3 rounded-xl border border-gray-100">
-                                <span><i data-feather="users" class="h-3 w-3 inline mr-1"></i> 32 Alunos</span>
-                                <span><i data-feather="clock" class="h-3 w-3 inline mr-1"></i> 80h Carga</span>
-                            </div>
-                            <button onclick="mudarTela('diario')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
-                        </div>
-
-                        <!-- Card Turma -->
-                        <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
-                            <div class="flex justify-between items-start mb-4">
-                                <div class="bg-blue-100 text-blue-700 p-2 rounded-lg"><i data-feather="code" class="h-5 w-5"></i></div>
-                                <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">1º Módulo</span>
-                            </div>
-                            <h3 class="text-lg font-black text-gray-900 mb-1">Lógica de Programação</h3>
-                            <p class="text-sm text-gray-500 mb-4">Curso de Desenvolvimento de Sistemas (Técnico)</p>
-
-                            <div class="flex items-center justify-between text-xs text-gray-500 font-bold bg-white p-3 rounded-xl border border-gray-100">
-                                <span><i data-feather="users" class="h-3 w-3 inline mr-1"></i> 45 Alunos</span>
-                                <span><i data-feather="clock" class="h-3 w-3 inline mr-1"></i> 60h Carga</span>
-                            </div>
-                            <button onclick="mudarTela('diario')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
-                        </div>
-                    </div>
+                    <!-- Grid Dinâmica de Turmas -->
+                    <div id="container-minhas-turmas" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
                 </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- TELA: DIÁRIO ELETRÔNICO (Lançamento de Faltas e Notas) -->
-            <!-- ========================================== -->
+            <!-- TELA: DIÁRIO ELETRÔNICO -->
             <div id="tela-diario" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
                     <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
@@ -259,51 +188,38 @@
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                         <div class="lg:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Disciplina / Turma</label>
-                            <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                                <option>Banco de Dados Relacional - TURMA A</option>
-                                <option>Lógica de Programação - TURMA B</option>
+                            <select id="select-turma-diario" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                <option value="">Selecione uma turma...</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data da Aula</label>
-                            <input type="date" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                            <input type="date" id="data-aula-diario" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
                         </div>
                         <div class="flex items-end">
-                            <button class="w-full bg-teal-50 text-teal-700 font-bold py-2 px-4 rounded-lg text-xs uppercase hover:bg-teal-100 border border-teal-200 transition">Listar Chamada</button>
+                            <button onclick="carregarChamada()" class="w-full bg-teal-50 text-teal-700 font-bold py-2 px-4 rounded-lg text-xs uppercase hover:bg-teal-100 border border-teal-200 transition">Listar Chamada</button>
                         </div>
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Conteúdo Ministrado na Aula (Obrigatório)</label>
-                        <textarea rows="2" placeholder="Descreva brevemente o assunto tratado em sala de aula hoje..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white"></textarea>
+                        <textarea id="conteudo-aula-diario" rows="2" placeholder="Descreva brevemente o assunto tratado em sala de aula hoje..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white"></textarea>
                     </div>
 
                     <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
                                 <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                    <th class="py-3 px-4 w-12">Nº</th>
+                                    <th class="py-3 px-4 w-12">Matr.</th>
                                     <th class="py-3 px-4">Nome do Aluno</th>
                                     <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
                                     <th class="py-3 px-4 w-24 text-center">Nota 1</th>
                                     <th class="py-3 px-4 w-24 text-center">Nota 2</th>
-                                    <th class="py-3 px-4 w-24 text-center">Situação</th>
                                 </tr>
                             </thead>
-                           <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                                <tr class="hover:bg-gray-50 transition-colors linha-aluno" data-aluno-id="ID_DO_ALUNO_AQUI">
-                                    <td class="py-3 px-4 text-gray-400">01</td>
-                                    <td class="py-3 px-4">Ana Carolina Silva</td>
-                                    <td class="py-3 px-4">
-                                        <input type="number" min="0" value="0" class="input-falta w-16 text-center border border-gray-300 rounded-md p-1 text-sm focus:outline-none focus:border-teal-500 bg-white font-bold">
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <input type="number" step="0.1" value="8.5" class="input-nota1 w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <input type="number" step="0.1" placeholder="-" class="input-nota2 w-16 text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
-                                    </td>
-                                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] uppercase font-bold tracking-wider">Em Curso</span></td>
+                           <tbody id="tbody-alunos-diario" class="divide-y divide-gray-100 font-medium text-gray-700">
+                                <tr>
+                                    <td colspan="5" class="text-center py-8 text-gray-400">Selecione uma turma e clique em "Listar Chamada".</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -316,12 +232,10 @@
                 </div>
             </div>
 
-            <!-- ========================================== -->
             <!-- TELA: MATERIAL DIDÁTICO -->
-            <!-- ========================================== -->
             <div id="tela-material" class="tela hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Área de Upload -->
+                    <!-- Upload -->
                     <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
                         <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
                             <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
@@ -330,26 +244,20 @@
                         <form id="form-upload-material" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Turma Destino</label>
-                                <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                                    <option>Banco de Dados Relacional - TURMA A</option>
-                                    <option>Lógica de Programação - TURMA B</option>
-                                    <option>Todas as Minhas Turmas</option>
+                                <select id="select-turma-material" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                    <option value="">Selecione uma turma...</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Título do Material</label>
-                                <input type="text" placeholder="Ex: Slide Aula 01 - Modelagem" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                <input type="text" id="titulo-material" placeholder="Ex: Slide Aula 01" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Descrição Breve</label>
-                                <textarea rows="2" placeholder="Leitura recomendada para a próxima aula..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500"></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Arquivo (PDF, PPT, DOC)</label>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Arquivo</label>
                                 <label class="block border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-teal-400 bg-gray-50 cursor-pointer transition">
                                     <i data-feather="upload-cloud" class="h-6 w-6 text-teal-500 mx-auto mb-2"></i>
                                     <span id="texto-arquivo" class="text-xs text-gray-500">Clique para selecionar o arquivo</span>
-                                    <input type="file" id="input-arquivo" class="hidden" onchange="if(this.files.length > 0) { document.getElementById('texto-arquivo').innerText = this.files[0].name; }">
+                                    <input type="file" id="input-arquivo" class="hidden" required>
                                 </label>
                             </div>
                             <div class="pt-2 border-t border-gray-100">
@@ -358,48 +266,19 @@
                         </form>
                     </div>
 
-                    <!-- Lista de Materiais -->
+                    <!-- Lista -->
                     <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
                         <h4 class="text-lg font-bold text-gray-900 flex items-center mb-6 border-b border-gray-50 pb-4">
                             <i data-feather="folder" class="h-5 w-5 text-gray-400 mr-2"></i> Acervo Compartilhado
                         </h4>
-
-                        <div class="space-y-3 overflow-y-auto flex-1 pr-2">
-                            <!-- Arquivo Card -->
-                            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-sm transition group">
-                                <div class="flex items-center">
-                                    <div class="bg-red-50 text-red-500 p-2 rounded-lg mr-4">
-                                        <i data-feather="file-text" class="h-6 w-6"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-bold text-gray-800 text-sm">Apostila Completa - Banco de Dados.pdf</p>
-                                        <p class="text-xs text-gray-400 mt-0.5">Enviado em 01/10/2026 • Turma A</p>
-                                    </div>
-                                </div>
-                                <button class="text-gray-300 hover:text-red-500 transition" title="Excluir"><i data-feather="trash-2" class="h-5 w-5"></i></button>
-                            </div>
-
-                            <!-- Arquivo Card -->
-                            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-sm transition group">
-                                <div class="flex items-center">
-                                    <div class="bg-blue-50 text-blue-500 p-2 rounded-lg mr-4">
-                                        <i data-feather="monitor" class="h-6 w-6"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-bold text-gray-800 text-sm">Slides Aula 01 e 02.pptx</p>
-                                        <p class="text-xs text-gray-400 mt-0.5">Enviado em 15/10/2026 • Turma A</p>
-                                    </div>
-                                </div>
-                                <button class="text-gray-300 hover:text-red-500 transition" title="Excluir"><i data-feather="trash-2" class="h-5 w-5"></i></button>
-                            </div>
+                        <div id="lista-materiais-acervo" class="space-y-3 overflow-y-auto flex-1 pr-2">
+                            <p class="text-sm text-gray-400">Nenhum material publicado ainda.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ========================================== -->
             <!-- TELA: PERFIL -->
-            <!-- ========================================== -->
             <div id="tela-perfil" class="tela hidden">
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
                     <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
@@ -407,30 +286,29 @@
                         Configurações da Conta
                     </h4>
                     <div class="flex flex-col sm:flex-row items-center gap-6 mb-8 border-b border-gray-100 pb-8">
-                        <div class="h-24 w-24 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-2xl border-2 border-teal-100">
-                            RC
+                        <div id="perfil-iniciais" class="h-24 w-24 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-2xl border-2 border-teal-100">
+                            --
                         </div>
                         <div class="text-center sm:text-left">
-                            <h2 class="text-xl font-black text-gray-900">Ricardo Costa Silva</h2>
-                            <p class="text-sm text-gray-500 mb-3">Professor Técnico • Registro: #PR0024</p>
-                            <button class="bg-gray-100 text-gray-700 border border-gray-200 px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-200">Alterar Foto</button>
+                            <h2 id="perfil-nome" class="text-xl font-black text-gray-900">Carregando...</h2>
+                            <p id="perfil-registro" class="text-sm text-gray-500 mb-3">Professor</p>
                         </div>
                     </div>
 
-                    <form class="space-y-5">
+                    <form class="space-y-5" onsubmit="event.preventDefault(); alert('Em desenvolvimento');">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail Institucional</label>
-                                <input type="email" value="ricardo.costa@univeas.com.br" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail Pessoal</label>
+                                <input type="email" id="perfil-email" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp</label>
-                                <input type="text" value="(91) 98322-1144" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                                <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500">
                             </div>
                         </div>
 
                         <div class="border-t border-gray-100 pt-5">
-                            <p class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4">Alterar Senha de Acesso</p>
+                            <p class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4">Alterar Senha</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nova Senha</label>
@@ -444,12 +322,11 @@
                         </div>
 
                         <div class="flex justify-end pt-6">
-                            <button type="button" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Atualizar Dados</button>
+                            <button type="submit" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Atualizar Dados</button>
                         </div>
                     </form>
                 </div>
             </div>
-
         </main>
     </div>
 </div>
@@ -459,6 +336,7 @@
 // INTEGRAÇÃO API E SEGURANÇA - PROFESSOR
 // ==========================================
 const API_BASE_URL = "/api/v1";
+let turmasProfessor = []; 
 
 document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
@@ -472,7 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
         liberarAcessoDocente();
     }
 
-    // NOVA ADIÇÃO: Captura o nome do arquivo sem usar onchange inline no HTML
     const inputArquivo = document.getElementById('input-arquivo');
     if(inputArquivo) {
         inputArquivo.addEventListener('change', function() {
@@ -497,7 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('cpf', cpf);
 
             try {
-                // CORREÇÃO AQUI: Usando a constante API_BASE_URL
                 const response = await fetch(`${API_BASE_URL}/auth/docente`, {
                     method: 'POST',
                     body: formData
@@ -508,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok && data.sucesso) {
                     localStorage.setItem('token_siga_docente', data.token_siga);
                     localStorage.setItem('nome_docente', data.nome_professor);
+                    localStorage.setItem('registro_docente', data.registro);
                     liberarAcessoDocente();
                 } else {
                     alert(data.detail || "Dados incorretos. Verifique com a secretaria.");
@@ -529,45 +406,55 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.innerText = "Enviando...";
 
             const formData = new FormData();
-            formData.append("turma_id", e.target.querySelectorAll('select')[0].value);
-            formData.append("titulo", e.target.querySelectorAll('input[type="text"]')[0].value);
-
-            const fileInput = e.target.querySelector('input[type="file"]');
-            if (fileInput.files.length > 0) {
-                formData.append("arquivo", fileInput.files[0]);
-            } else {
-                alert("Você esqueceu de anexar o arquivo.");
-                btn.innerText = textoOriginal;
-                return;
-            }
+            formData.append("turma_id", document.getElementById('select-turma-material').value);
+            formData.append("titulo", document.getElementById('titulo-material').value);
+            formData.append("arquivo", document.getElementById('input-arquivo').files[0]);
 
             const result = await apiRequest('/docente/material/upload', 'POST', formData);
             if (result && result.sucesso) {
                 alert("Material enviado com sucesso!");
                 e.target.reset();
                 document.getElementById('texto-arquivo').innerText = "Clique para selecionar o arquivo";
+                // Idealmente, recarregar a lista de materiais aqui
             }
             btn.innerText = textoOriginal;
         });
     }
 });
 
+function getIniciais(nome) {
+    if(!nome) return '--';
+    const partes = nome.trim().split(' ');
+    if(partes.length === 1) return partes[0].substring(0,2).toUpperCase();
+    return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+}
+
 function liberarAcessoDocente() {
     document.getElementById('tela-login').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
 
-    const nomeReal = localStorage.getItem('nome_docente');
-    if(nomeReal) {
-        const headerNome = document.getElementById('nome-docente-header');
-        if (headerNome) headerNome.innerText = nomeReal;
-    }
+    const nomeReal = localStorage.getItem('nome_docente') || 'Professor';
+    const regReal = localStorage.getItem('registro_docente') || 'S/N';
+    const iniciais = getIniciais(nomeReal);
 
+    // Header Global
+    document.getElementById('nome-docente-header').innerText = nomeReal;
+    document.getElementById('registro-docente-header').innerText = "Reg: " + regReal;
+    document.getElementById('iniciais-header').innerText = iniciais;
+
+    // Tela de Perfil
+    document.getElementById('perfil-nome').innerText = nomeReal;
+    document.getElementById('perfil-registro').innerText = "Registro: " + regReal;
+    document.getElementById('perfil-iniciais').innerText = iniciais;
+
+    // Inicializa carregando tudo
+    loadDashboardDocente();
+    loadTurmas(); // A função loadTurmas também vai preencher os Selects do Diário e Material
     mudarTela('dashboard');
 }
 
 function fazerLogout() {
-    localStorage.removeItem('token_siga_docente');
-    localStorage.removeItem('nome_docente');
+    localStorage.clear();
     location.reload();
 }
 
@@ -601,11 +488,7 @@ function mudarTela(idTela) {
         'material': 'Acervo e Material Didático',
         'perfil': 'Meu Perfil'
     };
-    const headerTitle = document.getElementById('titulo-pagina');
-    if (headerTitle) headerTitle.innerText = titulos[idTela] || 'UNIVEAS SGA';
-
-    if(idTela === 'dashboard') loadDashboardDocente();
-    if(idTela === 'turmas') loadTurmas();
+    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'UNIVEAS SGA';
 }
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
@@ -630,30 +513,125 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         }
         return await response.json();
     } catch (error) {
-        console.error(`Erro:`, error);
+        console.error(`Erro na API:`, error);
+        return null;
     }
 }
 
+// ----------------------------------------------------
+// DADOS DINÂMICOS - DASHBOARD
+// ----------------------------------------------------
 async function loadDashboardDocente() {
     const data = await apiRequest('/docente/dashboard');
-    if (data) console.log("Dashboard do professor atualizado via API.");
+    if (data) {
+        document.getElementById('dash-turmas').innerText = data.turmas_ativas || 0;
+        document.getElementById('dash-diarios').innerText = data.diarios_pendentes || 0;
+        document.getElementById('dash-aulas').innerText = data.aulas_semana || 0;
+    }
 }
 
+// ----------------------------------------------------
+// DADOS DINÂMICOS - TURMAS E SELECTS
+// ----------------------------------------------------
 async function loadTurmas() {
-    const turmas = await apiRequest('/docente/turmas');
-    if (turmas) console.log("Turmas listadas:", turmas);
+    const container = document.getElementById('container-minhas-turmas');
+    const selectDiario = document.getElementById('select-turma-diario');
+    const selectMaterial = document.getElementById('select-turma-material');
+
+    if (!container) return;
+    container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Buscando disciplinas alocadas para você...</p>';
+
+    turmasProfessor = await apiRequest('/docente/turmas') || [];
+
+    // Limpa selects
+    selectDiario.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
+    selectMaterial.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
+
+    if (turmasProfessor.length > 0) {
+        container.innerHTML = '';
+        
+        turmasProfessor.forEach(turma => {
+            // Desenha os Cards de Turma
+            const card = `
+                <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="bg-teal-100 text-teal-700 p-2 rounded-lg"><i data-feather="database" class="h-5 w-5"></i></div>
+                        <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">${turma.carga_horaria}h</span>
+                    </div>
+                    <h3 class="text-lg font-black text-gray-900 mb-1">${turma.nome_disciplina}</h3>
+                    <p class="text-sm text-gray-500 mb-4">${turma.curso_pai}</p>
+                    <button onclick="prepararDiario('${turma.id}')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
+                </div>
+            `;
+            container.innerHTML += card;
+
+            // Preenche os selects das outras abas
+            const option = `<option value="${turma.id}">${turma.curso_pai} - ${turma.nome_disciplina}</option>`;
+            selectDiario.innerHTML += option;
+            selectMaterial.innerHTML += option;
+        });
+        feather.replace();
+    } else {
+        container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Nenhuma disciplina alocada para você no momento.</p>';
+    }
 }
 
-function toggleMenuMobile() {
-    const sidebar = document.querySelector('aside');
-    if (sidebar) {
-        if (sidebar.classList.contains('-translate-x-full')) {
-            sidebar.classList.remove('-translate-x-full', 'absolute');
-            sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
-        } else {
-            sidebar.classList.add('-translate-x-full', 'absolute');
-            sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
-        }
+// ----------------------------------------------------
+// DADOS DINÂMICOS - DIÁRIO (ALUNOS)
+// ----------------------------------------------------
+function prepararDiario(idTurma) {
+    document.getElementById('select-turma-diario').value = idTurma;
+    mudarTela('diario');
+    carregarChamada();
+}
+
+async function carregarChamada() {
+    const turmaId = document.getElementById('select-turma-diario').value;
+    const tbody = document.getElementById('tbody-alunos-diario');
+
+    if (!turmaId) {
+        alert("Selecione uma turma no campo superior primeiro.");
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Buscando alunos matriculados...</td></tr>';
+
+    // Como o curso é o prefixo do turmaId (ex: ID_DO_CURSO_NomeModulo)
+    const cursoId = turmaId.split('_')[0]; 
+    const alunos = await apiRequest('/alunos'); // Puxa todos do admin
+    
+    if(!alunos) return;
+
+    // Filtra apenas alunos que pertencem ao curso dessa disciplina
+    const alunosDaTurma = alunos.filter(a => a.curso === cursoId && a.status !== "Cancelado");
+
+    if (alunosDaTurma.length > 0) {
+        tbody.innerHTML = '';
+        
+        alunosDaTurma.forEach((aluno, index) => {
+            const num = String(index + 1).padStart(2, '0');
+            const row = `
+                <tr class="hover:bg-gray-50 transition-colors linha-aluno border-b border-gray-50" data-aluno-id="${aluno.id}">
+                    <td class="py-3 px-4 text-gray-400 font-bold">${num}</td>
+                    <td class="py-3 px-4">
+                        <p class="font-bold text-gray-800 text-sm">${aluno.nome}</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">${aluno.matricula}</p>
+                    </td>
+                    <td class="py-3 px-4">
+                        <input type="number" min="0" value="0" class="input-falta w-full text-center border border-gray-300 rounded p-1 text-sm focus:outline-none focus:border-teal-500 font-bold">
+                    </td>
+                    <td class="py-3 px-4">
+                        <input type="number" step="0.1" placeholder="Ex: 8.5" class="input-nota1 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                    </td>
+                    <td class="py-3 px-4">
+                        <input type="number" step="0.1" placeholder="Ex: 7.0" class="input-nota2 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">Nenhum aluno matriculado neste curso.</td></tr>';
     }
 }
 
@@ -662,21 +640,19 @@ async function salvarDiario(btnElement) {
     btnElement.innerText = "Salvando...";
     btnElement.disabled = true;
 
-    const turmaId = document.querySelector('#tela-diario select').value;
-    const dataAula = document.querySelector('#tela-diario input[type="date"]').value;
-    const conteudo = document.querySelector('#tela-diario textarea').value;
+    const turmaId = document.getElementById('select-turma-diario').value;
+    const dataAula = document.getElementById('data-aula-diario').value;
+    const conteudo = document.getElementById('conteudo-aula-diario').value;
 
-    if (!dataAula || !conteudo) {
-        alert("Preencha a data e o conteúdo da aula!");
+    if (!turmaId || !dataAula || !conteudo) {
+        alert("Preencha a Turma, a Data da Aula e o Conteúdo Ministrado!");
         btnElement.innerText = textoOriginal;
         btnElement.disabled = false;
         return;
     }
 
     const arrayAlunos = [];
-    const linhas = document.querySelectorAll('.linha-aluno');
-
-    linhas.forEach(linha => {
+    document.querySelectorAll('.linha-aluno').forEach(linha => {
         const alunoId = linha.getAttribute('data-aluno-id');
         const falta = linha.querySelector('.input-falta').value;
         const nota1 = linha.querySelector('.input-nota1').value;
@@ -686,8 +662,8 @@ async function salvarDiario(btnElement) {
             arrayAlunos.push({
                 aluno_id: alunoId,
                 faltas: parseInt(falta) || 0,
-                nota_1: parseFloat(nota1) || null,
-                nota_2: parseFloat(nota2) || null
+                nota_1: nota1 ? parseFloat(nota1) : null,
+                nota_2: nota2 ? parseFloat(nota2) : null
             });
         }
     });
@@ -702,13 +678,28 @@ async function salvarDiario(btnElement) {
     const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert("Lançamentos sincronizados com o banco de dados (Firestore)!");
+        alert("Diário enviado e salvo com sucesso no banco de dados!");
+        // Limpa os dados preenchidos
+        document.getElementById('conteudo-aula-diario').value = '';
     } else {
-        alert("Falha de conexão. Tente novamente.");
+        alert("Falha ao salvar. Tente novamente.");
     }
 
     btnElement.innerText = textoOriginal;
     btnElement.disabled = false;
+}
+
+function toggleMenuMobile() {
+    const sidebar = document.querySelector('aside');
+    if (sidebar) {
+        if (sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.remove('-translate-x-full', 'absolute');
+            sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+        } else {
+            sidebar.classList.add('-translate-x-full', 'absolute');
+            sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+        }
+    }
 }
 </script>
 </body>
