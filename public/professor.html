@@ -226,7 +226,7 @@
                     </div>
 
                     <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-400 font-medium">As notas salvas são refletidas no portal do aluno em tempo real.</p>
+                        <p class="text-xs text-gray-400 font-medium">As notas salvas são refletidas na administração em tempo real.</p>
                         <button onclick="salvarDiario(this)" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
                     </div>
                 </div>
@@ -573,7 +573,7 @@ async function loadTurmas() {
 }
 
 // ----------------------------------------------------
-// DADOS DINÂMICOS - DIÁRIO (ALUNOS)
+// DADOS DINÂMICOS - DIÁRIO (ALUNOS E INTEGRAÇÃO ADMIN)
 // ----------------------------------------------------
 function prepararDiario(idTurma) {
     document.getElementById('select-turma-diario').value = idTurma;
@@ -590,19 +590,33 @@ async function carregarChamada() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Buscando alunos matriculados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Buscando alunos matriculados e dados sincronizados...</td></tr>';
 
     const cursoId = turmaId.split('_')[0];
-    const alunos = await apiRequest('/alunos');
+    
+    // CORREÇÃO 1: Promise.all para buscar alunos e o que já foi salvo pelo professor
+    const [alunos, pautaSalvaResp] = await Promise.all([
+        apiRequest('/alunos'),
+        apiRequest(`/docente/diario/${turmaId}`)
+    ]);
 
     if(!alunos) return;
 
-    const alunosDaTurma = alunos.filter(a => (a.curso === cursoId || a.curso_id === cursoId) && a.status !== "Cancelado");
+    // Normaliza a pauta salva caso exista
+    const pauta = Array.isArray(pautaSalvaResp) ? pautaSalvaResp : (pautaSalvaResp?.dados || []);
+    
+    const alunosDaTurma = alunos.filter(a => (String(a.curso) === String(cursoId) || String(a.curso_id) === String(cursoId)) && a.status !== "Cancelado");
 
     if (alunosDaTurma.length > 0) {
         tbody.innerHTML = '';
 
         alunosDaTurma.forEach((aluno, index) => {
+            // CORREÇÃO 2: Mescla os inputs com os dados do banco para evitar sobrescrever com vazio
+            const registroAnterior = pauta.find(p => String(p.aluno_id) === String(aluno.id)) || {};
+            const faltas = registroAnterior.faltas !== undefined ? registroAnterior.faltas : 0;
+            const nota1 = registroAnterior.nota_1 !== undefined && registroAnterior.nota_1 !== null ? registroAnterior.nota_1 : '';
+            const nota2 = registroAnterior.nota_2 !== undefined && registroAnterior.nota_2 !== null ? registroAnterior.nota_2 : '';
+
             const num = String(index + 1).padStart(2, '0');
             const row = `
                 <tr class="hover:bg-gray-50 transition-colors linha-aluno border-b border-gray-50" data-aluno-id="${aluno.id}">
@@ -612,13 +626,13 @@ async function carregarChamada() {
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider">${aluno.matricula || 'S/N'}</p>
                     </td>
                     <td class="py-3 px-4">
-                        <input type="number" min="0" value="0" class="input-falta w-full text-center border border-gray-300 rounded p-1 text-sm focus:outline-none focus:border-teal-500 font-bold">
+                        <input type="number" min="0" value="${faltas}" class="input-falta w-full text-center border border-gray-300 rounded p-1 text-sm focus:outline-none focus:border-teal-500 font-bold">
                     </td>
                     <td class="py-3 px-4">
-                        <input type="number" step="0.1" placeholder="Ex: 8.5" class="input-nota1 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                        <input type="number" step="0.1" value="${nota1}" placeholder="Ex: 8.5" class="input-nota1 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
                     </td>
                     <td class="py-3 px-4">
-                        <input type="number" step="0.1" placeholder="Ex: 7.0" class="input-nota2 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
+                        <input type="number" step="0.1" value="${nota2}" placeholder="Ex: 7.0" class="input-nota2 w-full text-center border border-gray-200 rounded p-1 text-sm focus:outline-none focus:border-teal-500">
                     </td>
                 </tr>
             `;
@@ -631,7 +645,7 @@ async function carregarChamada() {
 
 async function salvarDiario(btnElement) {
     const textoOriginal = btnElement.innerText;
-    btnElement.innerText = "Salvando...";
+    btnElement.innerText = "Sincronizando...";
     btnElement.disabled = true;
 
     const turmaId = document.getElementById('select-turma-diario').value;
@@ -656,24 +670,29 @@ async function salvarDiario(btnElement) {
             arrayAlunos.push({
                 aluno_id: alunoId,
                 faltas: parseInt(falta) || 0,
-                nota_1: nota1 ? parseFloat(nota1) : null,
-                nota_2: nota2 ? parseFloat(nota2) : null
+                // CORREÇÃO 3: Envia null se o input estiver vazio
+                nota_1: nota1 !== '' ? parseFloat(nota1) : null,
+                nota_2: nota2 !== '' ? parseFloat(nota2) : null
             });
         }
     });
+
+    // CORREÇÃO 4: Carimbo de tempo EXATO gerado no clique para o Admin visualizar
+    const dataHoraAtual = new Date().toLocaleString('pt-BR');
 
     const payload = {
         turma_id: turmaId,
         data_aula: dataAula,
         conteudo_ministrado: conteudo,
+        data_hora_registro: dataHoraAtual, // Variável que vincula a auditoria do Admin
         lancamentos: arrayAlunos
     };
 
     const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert("Diário enviado e salvo com sucesso no banco de dados!");
-        document.getElementById('conteudo-aula-diario').value = '';
+        alert(`Diário sincronizado com sucesso às ${dataHoraAtual}!`);
+        // document.getElementById('conteudo-aula-diario').value = ''; (Mantido comentado para não apagar caso ele queira só corrigir uma nota)
     } else {
         alert("Falha ao salvar. Tente novamente.");
     }
