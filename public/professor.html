@@ -737,7 +737,7 @@ function toggleMenuMobile() {
 }
 
 // ==========================================
-// FUNÇÕES DO MODAL DE EDIÇÃO DE DISCIPLINA
+// FUNÇÕES DO MODAL DE EDIÇÃO DE DISCIPLINA (CORRIGIDAS)
 // ==========================================
 
 function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
@@ -749,34 +749,36 @@ function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
     document.getElementById('modal-subtitulo-curso').innerText = turma.curso_pai || 'Curso';
     document.getElementById('edit-turma-id').value = idTurma;
 
-    document.getElementById('edit-data-inicio').value = det.data_inicio || '';
-    document.getElementById('edit-data-fim').value = det.data_fim || '';
-    document.getElementById('edit-ementa').value = det.ementa || det.descricao || '';
+    document.getElementById('edit-data-inicio').value = det.data_inicio || turma.data_inicio || '';
+    document.getElementById('edit-data-fim').value = det.data_fim || turma.data_fim || '';
+    document.getElementById('edit-ementa').value = det.ementa || det.descricao || turma.descricao || '';
 
-    document.getElementById('edit-ch-teoria').value = det.ch_teoria || 0;
-    document.getElementById('edit-ch-pratica').value = det.ch_pratica || 0;
-    document.getElementById('edit-ch-estagio').value = det.ch_estagio || 0;
-    document.getElementById('edit-ch-total').value = turma.carga_horaria || 0;
+    document.getElementById('edit-ch-teoria').value = det.ch_teoria || turma.ch_teoria || 0;
+    document.getElementById('edit-ch-pratica').value = det.ch_pratica || turma.ch_pratica || 0;
+    document.getElementById('edit-ch-estagio').value = det.ch_estagio || turma.ch_estagio || 0;
+    document.getElementById('edit-ch-total').value = turma.carga_horaria || det.ch_total || turma.ch_total || 0;
 
-    // MELHORIA: Busca inteligente de horários das aulas
-    // Caça a hora caso o admin tenha salvo como 'hora_inicio' ou dentro de 'horarios.inicio'
-    document.getElementById('edit-hora-inicio').value = det.hora_inicio || (det.horarios ? det.horarios.inicio : '') || '';
-    document.getElementById('edit-hora-fim').value = det.hora_fim || (det.horarios ? det.horarios.fim : '') || '';
+    // CORREÇÃO: Caça inteligente da hora mapeando todos os nomes possíveis gerados pelo Admin
+    const horaInicio = turma.hora_aula_inicio || det.hora_aula_inicio || det.hora_inicio || (det.horarios ? det.horarios.inicio : '') || '';
+    const horaFim = turma.hora_aula_fim || det.hora_aula_fim || det.hora_fim || (det.horarios ? det.horarios.fim : '') || '';
+
+    document.getElementById('edit-hora-inicio').value = horaInicio;
+    document.getElementById('edit-hora-fim').value = horaFim;
 
     // Limpa a justificativa sempre que abrir
     document.getElementById('edit-justificativa').value = '';
 
-    const dias = det.dias_aula || [];
+    // CORREÇÃO: Mapeia os dias caso estejam na raiz
+    const dias = det.dias_aula || turma.dias_aula || [];
     document.querySelectorAll('.dias-aula-checkbox').forEach(cb => {
         cb.checked = dias.includes(cb.value);
     });
 
     const containerAvaliacoes = document.getElementById('container-avaliacoes');
     containerAvaliacoes.innerHTML = '';
-    const avaliacoes = det.avaliacoes || [];
+    const avaliacoes = det.avaliacoes || turma.avaliacoes || [];
 
     if (avaliacoes.length > 0) {
-        // Mapeia inteligentemente os dados da avaliação para não ter erro
         avaliacoes.forEach(av => {
             adicionarLinhaAvaliacao({
                 tipo: av.tipo || '',
@@ -818,10 +820,13 @@ async function salvarEdicaoDisciplina() {
         ch_estagio: parseInt(document.getElementById('edit-ch-estagio').value) || 0,
         ch_total: parseInt(document.getElementById('edit-ch-total').value) || 0,
         dias_aula: diasSelecionados,
+        // Envia as chaves duplas para garantir que o Python salve corretamente sem conflitos com o Admin
         hora_inicio: document.getElementById('edit-hora-inicio').value,
         hora_fim: document.getElementById('edit-hora-fim').value,
+        hora_aula_inicio: document.getElementById('edit-hora-inicio').value,
+        hora_aula_fim: document.getElementById('edit-hora-fim').value,
         avaliacoes: avaliacoes,
-        justificativa: justificativa // Manda a justificativa para a API
+        justificativa: justificativa
     };
 
     const btns = document.querySelectorAll('#modal-editar-disciplina button');
@@ -834,7 +839,7 @@ async function salvarEdicaoDisciplina() {
     const result = await apiRequest('/docente/turmas/configurar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert(result.mensagem); // Vai mostrar se notificou ou não
+        alert(result.mensagem || "Módulo atualizado com sucesso!");
         fecharModalDisciplina();
         loadTurmas();
     } else {
