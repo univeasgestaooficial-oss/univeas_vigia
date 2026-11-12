@@ -382,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok && data.sucesso) {
+                    const registroDigitado = document.getElementById('input-registro').value.toUpperCase();
                     localStorage.setItem('token_siga_docente', data.token_siga);
                     localStorage.setItem('nome_docente', data.nome_professor);
                     localStorage.setItem('registro_docente', data.registro);
@@ -529,8 +530,9 @@ async function loadDashboardDocente() {
     }
 }
 
+
 // ----------------------------------------------------
-// DADOS DINÂMICOS - TURMAS E SELECTS (Sincronizado com Admin)
+// DADOS DINÂMICOS - TURMAS E SELECTS (Sincronizado)
 // ----------------------------------------------------
 async function loadTurmas() {
     const container = document.getElementById('container-minhas-turmas');
@@ -538,9 +540,13 @@ async function loadTurmas() {
     const selectMaterial = document.getElementById('select-turma-material');
 
     if (!container) return;
-    container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Buscando disciplinas alocadas para você...</p>';
+    container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Buscando disciplinas vinculadas no Admin...</p>';
 
-    turmasProfessor = await apiRequest('/docente/turmas') || [];
+    // Resgata o registro salvo no momento do login (Ex: #PR1731)
+    const registroProf = localStorage.getItem('registro_docente');
+
+    // Envia o registro como parâmetro para a API filtrar as turmas corretas
+    turmasProfessor = await apiRequest(`/docente/turmas?registro=${encodeURIComponent(registroProf)}`) || [];
 
     selectDiario.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
     selectMaterial.innerHTML = '<option value="">Selecione a Turma/Disciplina...</option>';
@@ -549,26 +555,31 @@ async function loadTurmas() {
         container.innerHTML = '';
 
         turmasProfessor.forEach(turma => {
+            // Mapeamento flexível para cruzar com os dados do painel Admin
+            const nomeCurso = turma.curso_pai || turma.curso || 'Curso Padrão';
+            const nomeDisciplina = turma.nome_disciplina || turma.modulo || turma.disciplina || 'Disciplina Não Nomeada';
+            const idTurma = turma.id || turma.turma_id || turma.vinculo_id;
+
             const card = `
                 <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50">
                     <div class="flex justify-between items-start mb-4">
                         <div class="bg-teal-100 text-teal-700 p-2 rounded-lg"><i data-feather="database" class="h-5 w-5"></i></div>
-                        <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">${turma.carga_horaria || 0}h</span>
+                        <span class="bg-white border border-gray-200 text-gray-500 text-xs px-2 py-1 rounded-full font-bold">${turma.carga_horaria || 40}h</span>
                     </div>
-                    <h3 class="text-lg font-black text-gray-900 mb-1">${turma.nome_disciplina}</h3>
-                    <p class="text-sm text-gray-500 mb-4">${turma.curso_pai}</p>
-                    <button onclick="prepararDiario('${turma.id}')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
+                    <h3 class="text-lg font-black text-gray-900 mb-1 uppercase">${nomeDisciplina}</h3>
+                    <p class="text-sm text-gray-500 mb-4 font-medium uppercase">${nomeCurso}</p>
+                    <button onclick="prepararDiario('${idTurma}')" class="mt-4 w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-xs uppercase hover:bg-teal-600 transition">Acessar Diário</button>
                 </div>
             `;
             container.innerHTML += card;
 
-            const option = `<option value="${turma.id}">${turma.curso_pai} - ${turma.nome_disciplina}</option>`;
+            const option = `<option value="${idTurma}">${nomeCurso} - ${nomeDisciplina}</option>`;
             selectDiario.innerHTML += option;
             selectMaterial.innerHTML += option;
         });
         feather.replace();
     } else {
-        container.innerHTML = '<p class="text-sm text-gray-500 col-span-full">Nenhuma disciplina alocada para você no momento.</p>';
+        container.innerHTML = `<p class="text-sm font-bold text-red-500 col-span-full">Nenhum vínculo encontrado no Admin para o registro: ${registroProf}.</p>`;
     }
 }
 
@@ -593,7 +604,7 @@ async function carregarChamada() {
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Buscando alunos matriculados e dados sincronizados...</td></tr>';
 
     const cursoId = turmaId.split('_')[0];
-    
+
     // CORREÇÃO 1: Promise.all para buscar alunos e o que já foi salvo pelo professor
     const [alunos, pautaSalvaResp] = await Promise.all([
         apiRequest('/alunos'),
@@ -604,7 +615,7 @@ async function carregarChamada() {
 
     // Normaliza a pauta salva caso exista
     const pauta = Array.isArray(pautaSalvaResp) ? pautaSalvaResp : (pautaSalvaResp?.dados || []);
-    
+
     const alunosDaTurma = alunos.filter(a => (String(a.curso) === String(cursoId) || String(a.curso_id) === String(cursoId)) && a.status !== "Cancelado");
 
     if (alunosDaTurma.length > 0) {
