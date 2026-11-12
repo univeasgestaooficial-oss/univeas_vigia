@@ -444,7 +444,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.reset();
                 carregarAcervoDocente();
             } else {
-                alert("Erro ao publicar link: " + (result?.detail || 'Tente novamente.'));
+                // Tratamento blindado para extrair a mensagem do erro sem exibir [object Object]
+                let msgErro = "Tente novamente.";
+                if (result?.detail) {
+                    if (typeof result.detail === 'string') {
+                        msgErro = result.detail;
+                    } else {
+                        msgErro = JSON.stringify(result.detail);
+                    }
+                }
+                alert("Erro ao publicar link: " + msgErro);
             }
 
             btn.innerText = textoOriginal;
@@ -452,7 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
             feather.replace();
         });
     }
-});
 
 function getIniciais(nome) {
     if(!nome) return '--';
@@ -467,19 +475,30 @@ function liberarAcessoDocente() {
 
     const nomeReal = localStorage.getItem('nome_docente') || 'Professor';
     const regReal = localStorage.getItem('registro_docente') || 'S/N';
+    const emailReal = localStorage.getItem('email_docente') || '';
+    const telefoneReal = localStorage.getItem('telefone_docente') || '';
     const iniciais = getIniciais(nomeReal);
 
+    // Header superior
     document.getElementById('nome-docente-header').innerText = nomeReal;
     document.getElementById('registro-docente-header').innerText = "Reg: " + regReal;
     document.getElementById('iniciais-header').innerText = iniciais;
 
+    // Perfil - Cabeçalho
     document.getElementById('perfil-nome').innerText = nomeReal;
     document.getElementById('perfil-registro').innerText = "Registro: " + regReal;
     document.getElementById('perfil-iniciais').innerText = iniciais;
 
+    // Perfil - Inputs da Coluna de Contato (Sincronização Real)
+    const inputEmailPerfil = document.getElementById('perfil-email');
+    const inputTelefonePerfil = document.getElementById('perfil-telefone');
+
+    if(inputEmailPerfil) inputEmailPerfil.value = emailReal;
+    if(inputTelefonePerfil) inputTelefonePerfil.value = telefoneReal;
+
     loadDashboardDocente();
     loadTurmas();
-    carregarAcervoDocente(); // Carrega o histórico de materiais ao logar
+    carregarAcervoDocente();
     mudarTela('dashboard');
 }
 
