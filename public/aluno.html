@@ -16,25 +16,26 @@
 <body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
 
 <!-- ==========================================
-     TELA DE LOGIN DO ALUNO (SEGURANÇA)
+     TELA DE LOGIN DO ALUNO
      ========================================== -->
-<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop');">
+<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop');">
     <div class="absolute inset-0 bg-slate-900/85 backdrop-blur-sm"></div>
 
-    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-4 border-teal-500">
-        <div class="mx-auto mb-4 bg-teal-50 h-16 w-16 rounded-full flex items-center justify-center border border-teal-100">
-            <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="mx-auto mb-6 h-14 w-auto object-contain">        </div>
+    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-4 border-blue-500">
+        <div class="mx-auto mb-4 bg-blue-50 h-16 w-16 rounded-full flex items-center justify-center border border-blue-100">
+            <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="mx-auto mb-6 h-14 w-auto object-contain">
+        </div>
         <h2 class="text-2xl font-black text-gray-900 mb-1">Portal do Aluno</h2>
-        <p class="text-sm text-gray-500 mb-6 font-medium">Acesso Restrito a Estudantes</p>
+        <p class="text-sm text-gray-500 mb-6 font-medium">Acompanhe sua jornada acadêmica</p>
 
         <form id="form-login" class="space-y-4">
             <div>
-                <input type="text" id="input-matricula" placeholder="Nº da Matrícula (Ex: #2026...)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold uppercase">
+                <input type="text" id="input-matricula" placeholder="Nº de Matrícula (Ex: #GER...)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-center font-bold uppercase">
             </div>
             <div>
-                <input type="password" id="input-cpf" placeholder="CPF (Apenas números)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold tracking-widest">
+                <input type="password" id="input-cpf" placeholder="CPF (Apenas números)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-center font-bold tracking-widest">
             </div>
-            <button type="submit" id="btn-submit-login" class="w-full bg-teal-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md">
+            <button type="submit" id="btn-submit-login" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-700 transition shadow-md">
                 Acessar Portal
             </button>
         </form>
@@ -42,47 +43,42 @@
 </div>
 
 <!-- ==========================================
-     CONTAINER DO SISTEMA (OCULTO ATÉ O LOGIN)
+     CONTAINER DO SISTEMA
      ========================================== -->
 <div id="app-container" class="hidden h-full w-full flex-1 flex">
 
-    <!-- MENU LATERAL -->
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
         </div>
 
         <div class="flex-1 overflow-y-auto no-scrollbar py-4 px-2 space-y-1">
-            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Acadêmico</p>
-            <button onclick="mudarTela('semestre')" id="btn-semestre" class="menu-btn w-full flex items-center px-4 py-2.5 bg-teal-50 text-teal-700 border-l-4 border-teal-500 font-bold rounded-r-lg transition-colors">
-                <i data-feather="book-open" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Meu Semestre</span>
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Visão Geral</p>
+            <button onclick="mudarTela('dashboard')" id="btn-dashboard" class="menu-btn w-full flex items-center px-4 py-2.5 bg-blue-50 text-blue-700 border-l-4 border-blue-500 font-bold rounded-r-lg transition-colors">
+                <i data-feather="grid" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Painel Principal</span>
             </button>
-            <button onclick="mudarTela('notas')" id="btn-notas" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
-                <i data-feather="bar-chart-2" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Notas e Boletim</span>
-            </button>
-            <button onclick="mudarTela('calendario')" id="btn-calendario" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
-                <i data-feather="calendar" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Calendário Letivo</span>
-            </button>
-            <button onclick="mudarTela('curso')" id="btn-curso" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Acadêmico</p>
+            <button onclick="mudarTela('boletim')" id="btn-boletim" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
                 <i data-feather="award" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Meu Curso</span>
+                <span class="text-sm">Notas e Faltas (Boletim)</span>
+            </button>
+            <button onclick="mudarTela('material')" id="btn-material" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="book-open" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Material Didático</span>
             </button>
 
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Secretaria</p>
-            <button onclick="mudarTela('financeiro')" id="btn-financeiro" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+            <button onclick="mudarTela('financeiro')" id="btn-financeiro" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
                 <i data-feather="dollar-sign" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Financeiro</span>
+                <span class="text-sm">Financeiro (Mensalidades)</span>
             </button>
-            <button onclick="mudarTela('documentos')" id="btn-documentos" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
-                <i data-feather="file-text" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Emissão de Docs</span>
-            </button>
-            <button onclick="mudarTela('atendimento')" id="btn-atendimento" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors mt-1">
-                <i data-feather="message-circle" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Atendimento (SAC)</span>
+
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Conta</p>
+            <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="user" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Meu Perfil</span>
             </button>
         </div>
 
@@ -94,556 +90,222 @@
         </div>
     </aside>
 
-    <!-- ÁREA CENTRAL DE CONTEÚDO -->
     <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
-
-        <!-- HEADER -->
         <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
             <div class="flex items-center">
-                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Disciplinas do Semestre</h1>
+                <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-blue-600 mr-4">
+                    <i data-feather="menu" class="h-6 w-6"></i>
+                </button>
+                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Painel Principal</h1>
             </div>
+
             <div class="flex items-center space-x-4">
                 <div class="text-right hidden sm:block">
                     <p id="nome-aluno-header" class="text-sm font-bold text-gray-900">Carregando...</p>
-                    <p id="matricula-aluno-header" class="text-xs text-teal-600 font-medium">Matrícula: ---</p>
+                    <p class="text-xs text-blue-600 font-medium" id="matricula-aluno-header">Portal do Aluno</p>
                 </div>
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop" alt="Aluno" class="h-10 w-10 rounded-full border-2 border-teal-200 object-cover">
+                <div id="iniciais-header" class="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-sm cursor-pointer hover:bg-blue-100 transition border border-blue-100">
+                    --
+                </div>
             </div>
         </header>
 
-        <!-- CONTAINER PRINCIPAL -->
         <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
 
-            <!-- Aviso Financeiro (Regra de Sincronismo) -->
-            <div id="aviso-inadimplencia" class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg hidden">
-                <div class="flex items-center">
-                    <i data-feather="alert-triangle" class="h-5 w-5 text-red-500 mr-3"></i>
-                    <div>
-                        <h3 class="text-sm font-bold text-red-800">Aviso Financeiro</h3>
-                        <p class="text-xs text-red-600 mt-0.5">Consta uma pendência financeira em seu cadastro. Algumas disciplinas podem estar bloqueadas temporariamente.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============================================== -->
-            <!-- 1. SEMESTRE (Disciplinas) -->
-            <!-- ============================================== -->
-            <div id="tela-semestre" class="tela block">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Disciplina Card -->
-                    <div onclick="abrirDisciplina('TEC-DEV01', 'Banco de Dados Relacional')" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group">
-                        <div class="relative h-40 bg-gray-200 overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            <span class="absolute top-3 left-3 bg-teal-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">EAD</span>
-                            <span class="absolute bottom-3 right-3 bg-black/70 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">Em Andamento</span>
+            <!-- ==========================================
+                 TELA: DASHBOARD
+                 ========================================== -->
+            <div id="tela-dashboard" class="tela block">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Média Geral</p>
+                            <h3 id="dash-media" class="text-3xl font-black text-gray-800 mt-1">-</h3>
                         </div>
-                        <div class="p-5">
-                            <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1">Técnico em Dev. de Sistemas</p>
-                            <h3 class="font-bold text-gray-900 text-lg line-clamp-1 group-hover:text-teal-600 transition-colors">Banco de Dados Relacional</h3>
-                            <div class="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                                <span class="text-xs text-gray-500 font-medium">Prof. Ricardo Costa</span>
-                                <span class="text-xs font-bold text-teal-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">Acessar <i data-feather="chevron-right" class="w-4 h-4"></i></span>
-                            </div>
+                        <div class="p-4 bg-blue-50 text-blue-500 rounded-xl">
+                            <i data-feather="award" class="h-6 w-6"></i>
                         </div>
                     </div>
-
-                    <!-- Disciplina Card -->
-                    <div onclick="abrirDisciplina('TEC-DEV02', 'Lógica de Programação Avançada')" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all group">
-                        <div class="relative h-40 bg-gray-200 overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            <span class="absolute top-3 left-3 bg-gray-800 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">Presencial</span>
-                            <span class="absolute bottom-3 right-3 bg-black/70 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">Em Andamento</span>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Faltas Acumuladas</p>
+                            <h3 id="dash-faltas" class="text-3xl font-black text-yellow-500 mt-1">0</h3>
                         </div>
-                        <div class="p-5">
-                            <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1">Técnico em Dev. de Sistemas</p>
-                            <h3 class="font-bold text-gray-900 text-lg line-clamp-1 group-hover:text-teal-600 transition-colors">Lógica de Programação Avançada</h3>
-                            <div class="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                                <span class="text-xs text-gray-500 font-medium">Prof. Guilherme Silva</span>
-                                <span class="text-xs font-bold text-teal-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">Acessar <i data-feather="chevron-right" class="w-4 h-4"></i></span>
-                            </div>
+                        <div class="p-4 bg-yellow-50 text-yellow-500 rounded-xl">
+                            <i data-feather="clock" class="h-6 w-6"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Status Financeiro</p>
+                            <h3 id="dash-financeiro" class="text-xl font-black text-green-500 mt-1">REGULAR</h3>
+                        </div>
+                        <div class="p-4 bg-green-50 text-green-500 rounded-xl">
+                            <i data-feather="check-circle" class="h-6 w-6"></i>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- ============================================== -->
-            <!-- 1.1 TELA INTERNA: DISCIPLINA -->
-            <!-- ============================================== -->
-            <div id="tela-disciplina" class="tela hidden">
-                <button onclick="mudarTela('semestre')" class="mb-6 flex items-center text-sm font-bold text-gray-500 hover:text-teal-600 transition">
-                    <i data-feather="arrow-left" class="h-4 w-4 mr-2"></i> Voltar para o Semestre
-                </button>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Coluna Esquerda: Info e Avaliações -->
-                    <div class="lg:col-span-1 space-y-6">
-                        <!-- Card Principal Curso -->
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div class="h-32 bg-gray-800 relative">
-                                <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop" class="w-full h-full object-cover opacity-50">
-                                <div class="absolute bottom-4 left-4">
-                                    <p class="text-teal-400 text-[10px] font-black uppercase tracking-widest" id="disc-codigo">TEC-DEV01</p>
-                                    <h3 class="text-white font-bold text-lg leading-tight" id="disc-nome">Banco de Dados Relacional</h3>
-                                </div>
-                            </div>
-                            <div class="p-5 grid grid-cols-2 gap-y-4 text-sm">
-                                <div><p class="text-[10px] text-gray-400 font-bold uppercase">Período</p><p class="font-medium text-gray-800">1º Bimestre</p></div>
-                                <div><p class="text-[10px] text-gray-400 font-bold uppercase">Turma</p><p class="font-medium text-gray-800">Turma A</p></div>
-                                <div><p class="text-[10px] text-gray-400 font-bold uppercase">Encontro</p><p class="font-medium text-gray-800">EAD Virtual</p></div>
-                                <div><p class="text-[10px] text-gray-400 font-bold uppercase">Dia / Hora</p><p class="font-medium text-gray-800">Terça, 19:00</p></div>
-                                <div class="col-span-2 pt-3 border-t border-gray-100 flex justify-between items-center">
-                                    <p class="text-[10px] text-gray-400 font-bold uppercase">Média Atual</p>
-                                    <span class="bg-teal-50 text-teal-600 px-3 py-1 rounded font-black text-sm">8.7</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Avaliações -->
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                            <h4 class="font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
-                                <i data-feather="check-square" class="h-4 w-4 text-teal-500 mr-2"></i> Avaliações
-                            </h4>
-                            <ul class="space-y-3">
-                                <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                    <div>
-                                        <p class="text-xs font-bold text-gray-800">Prova Bimestral 1</p>
-                                        <p class="text-[10px] text-gray-500 mt-0.5">25/10/2026</p>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded uppercase">Concluído</span>
-                                </li>
-                                <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                    <div>
-                                        <p class="text-xs font-bold text-gray-800">Trabalho Prático</p>
-                                        <p class="text-[10px] text-gray-500 mt-0.5">15/11/2026</p>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded uppercase">Próxima</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Coluna Direita: Aulas e Materiais -->
-                    <div class="lg:col-span-2 space-y-6">
-                        <!-- Presença de Aula Ao Vivo (Acionado apenas no horário da aula) -->
-                        <div class="bg-gradient-to-r from-teal-600 to-teal-500 rounded-2xl shadow-md p-6 text-white flex flex-col sm:flex-row items-center justify-between">
-                            <div>
-                                <h3 class="font-black text-lg flex items-center"><span class="h-2 w-2 bg-red-400 rounded-full animate-pulse mr-2"></span> Aula Ao Vivo Ocorrendo Agora</h3>
-                                <p class="text-teal-100 text-sm mt-1">Prof. Ricardo Costa • Terça-feira, 19:00h</p>
-                            </div>
-                            <button onclick="abrirModalPresenca()" class="mt-4 sm:mt-0 bg-white text-teal-600 font-black py-2.5 px-6 rounded-xl text-xs uppercase shadow-sm hover:bg-gray-50 transition">
-                                Confirmar Presença
-                            </button>
-                        </div>
-
-                        <!-- Trilha de Aulas -->
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <h4 class="font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
-                                <i data-feather="list" class="h-4 w-4 text-teal-500 mr-2"></i> Cronograma de Aulas
-                            </h4>
-                            <div class="space-y-4">
-                                <div class="flex items-start">
-                                    <div class="bg-green-100 text-green-600 p-2 rounded-full mr-4 shrink-0"><i data-feather="check" class="h-4 w-4"></i></div>
-                                    <div class="flex-1 pb-4 border-b border-gray-50">
-                                        <p class="text-sm font-bold text-gray-800">Aula 01 - Modelagem Lógica</p>
-                                        <p class="text-xs text-gray-500 mt-1">Outubro • Concluída</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="bg-teal-50 border border-teal-200 text-teal-500 p-2 rounded-full mr-4 shrink-0"><i data-feather="play" class="h-4 w-4 ml-0.5"></i></div>
-                                    <div class="flex-1 pb-4 border-b border-gray-50">
-                                        <p class="text-sm font-bold text-gray-800">Aula 02 - Normalização de Dados</p>
-                                        <p class="text-xs text-gray-500 mt-1">Novembro • Próxima Aula (Hoje)</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Materiais Didáticos -->
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <h4 class="font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
-                                <i data-feather="folder" class="h-4 w-4 text-teal-500 mr-2"></i> Materiais e Acervo
-                            </h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div class="border border-gray-200 rounded-xl p-4 flex items-center hover:border-teal-400 transition cursor-pointer group">
-                                    <div class="bg-red-50 text-red-500 p-3 rounded-lg mr-3"><i data-feather="book-open" class="h-5 w-5"></i></div>
-                                    <div>
-                                        <p class="text-sm font-bold text-gray-800 group-hover:text-teal-600">Livro Digital Base</p>
-                                        <p class="text-[10px] text-gray-500 uppercase mt-0.5">PDF • 5MB</p>
-                                    </div>
-                                </div>
-                                <div class="border border-gray-200 rounded-xl p-4 flex items-center hover:border-teal-400 transition cursor-pointer group">
-                                    <div class="bg-blue-50 text-blue-500 p-3 rounded-lg mr-3"><i data-feather="video" class="h-5 w-5"></i></div>
-                                    <div>
-                                        <p class="text-sm font-bold text-gray-800 group-hover:text-teal-600">Gravação Aula 01</p>
-                                        <p class="text-[10px] text-gray-500 uppercase mt-0.5">Vídeo MP4</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============================================== -->
-            <!-- 2. NOTAS (Boletim) -->
-            <!-- ============================================== -->
-            <div id="tela-notas" class="tela hidden">
-                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Boletim de Notas do Semestre
-                    </h4>
-                    <div class="space-y-6">
-                        <!-- Disciplina Notas Acordeão Simulado -->
-                        <div class="border border-gray-200 rounded-xl overflow-hidden">
-                            <div class="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-200">
-                                <div>
-                                    <h5 class="font-bold text-gray-800 text-sm">Banco de Dados Relacional</h5>
-                                    <p class="text-xs text-gray-500 mt-0.5">Prof. Ricardo Costa</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase">Média Final</p>
-                                    <p class="text-lg font-black text-teal-600">8.7</p>
-                                </div>
-                            </div>
-                            <div class="p-4 bg-white">
-                                <table class="w-full text-sm text-left">
-                                    <thead>
-                                        <tr class="text-[10px] font-bold text-gray-400 uppercase border-b border-gray-100">
-                                            <th class="pb-2">Avaliação Individual</th>
-                                            <th class="pb-2">Período</th>
-                                            <th class="pb-2 text-center">Peso</th>
-                                            <th class="pb-2 text-center">Nota</th>
-                                            <th class="pb-2 text-right">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-50 font-medium">
-                                        <tr>
-                                            <td class="py-3 text-gray-800">Prova Bimestral 1</td>
-                                            <td class="py-3 text-gray-500 text-xs">Outubro/2026</td>
-                                            <td class="py-3 text-center text-gray-500">60%</td>
-                                            <td class="py-3 text-center text-gray-800 font-bold">9.0</td>
-                                            <td class="py-3 text-right"><span class="text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded font-bold uppercase">Lançada</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-3 text-gray-800">Trabalho Prático</td>
-                                            <td class="py-3 text-gray-500 text-xs">Novembro/2026</td>
-                                            <td class="py-3 text-center text-gray-500">40%</td>
-                                            <td class="py-3 text-center text-gray-800 font-bold">8.5</td>
-                                            <td class="py-3 text-right"><span class="text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded font-bold uppercase">Lançada</span></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============================================== -->
-            <!-- 3. CALENDÁRIO LETIVO -->
-            <!-- ============================================== -->
-            <div id="tela-calendario" class="tela hidden">
-                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-gray-100 pb-4">
-                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
-                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Calendário e Eventos Acadêmicos
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
+                            <i data-feather="book-open" class="h-5 w-5 text-blue-500 mr-2"></i> Disciplinas em Curso
                         </h4>
-                        <button class="bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition flex items-center">
-                            <i data-feather="download" class="h-4 w-4 mr-2"></i> Baixar Calendário PDF
-                        </button>
+                        <ul id="lista-disciplinas-dash" class="space-y-4">
+                            <p class="text-sm text-gray-400">Carregando grade curricular...</p>
+                        </ul>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Mês Atual (Novembro 2026)</p>
-                            <!-- Calendário Simulado UI -->
-                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-sm text-gray-500 h-48 flex items-center justify-center">
-                                [Visão em Grade do Calendário]
-                            </div>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Próximos Eventos</p>
-                            <ul class="space-y-3">
-                                <li class="bg-white border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm border-y border-r border-gray-100">
-                                    <p class="text-xs font-bold text-red-600 mb-1">15 de Novembro (Feriado)</p>
-                                    <p class="text-sm font-bold text-gray-800">Proclamação da República</p>
-                                    <p class="text-xs text-gray-500 mt-1">Recesso escolar, sem aulas presenciais ou EAD.</p>
-                                </li>
-                                <li class="bg-white border-l-4 border-teal-500 p-4 rounded-r-lg shadow-sm border-y border-r border-gray-100">
-                                    <p class="text-xs font-bold text-teal-600 mb-1">20 de Novembro</p>
-                                    <p class="text-sm font-bold text-gray-800">Data Limite: Fechamento de Diários</p>
-                                    <p class="text-xs text-gray-500 mt-1">Prazo final para professores lançarem as notas da P1.</p>
-                                </li>
-                            </ul>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
+                            <i data-feather="bell" class="h-5 w-5 text-blue-500 mr-2"></i> Avisos da Secretaria
+                        </h4>
+                        <div id="lista-avisos-dash" class="space-y-4">
+                             <p class="text-sm text-gray-400">Nenhum aviso no momento.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 4. MEU CURSO (Evolução e Matriz) -->
-            <!-- ============================================== -->
-            <div id="tela-curso" class="tela hidden">
-                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
-                    <div class="flex flex-col sm:flex-row gap-8 mb-8 border-b border-gray-100 pb-8">
-                        <div class="w-full sm:w-1/3">
-                            <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop" class="w-full h-48 object-cover rounded-xl shadow-sm">
-                        </div>
-                        <div class="w-full sm:w-2/3 space-y-4">
-                            <div>
-                                <span class="bg-teal-50 text-teal-600 border border-teal-100 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Técnico EAD</span>
-                                <h2 class="text-2xl font-black text-gray-900 mt-2">Desenvolvimento de Sistemas</h2>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                <div><p class="text-[10px] font-bold text-gray-400 uppercase">Situação Aluno</p><p class="font-bold text-green-600">Ativo</p></div>
-                                <div><p class="text-[10px] font-bold text-gray-400 uppercase">Turma</p><p class="font-medium text-gray-800">Turma 2026.2 (A)</p></div>
-                                <div class="col-span-2"><p class="text-[10px] font-bold text-gray-400 uppercase">Endereço Cadastrado</p><p class="font-medium text-gray-800">Rua Principal, 113, Centro - Vigia/PA</p></div>
-                            </div>
-                        </div>
+            <!-- ==========================================
+                 TELA: BOLETIM ACADÊMICO
+                 ========================================== -->
+            <div id="tela-boletim" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
+                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
+                            Desempenho Acadêmico
+                        </h4>
+                        <select id="select-curso-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white" onchange="carregarBoletim()">
+                            <option value="">Selecione o Curso...</option>
+                        </select>
                     </div>
 
-                    <div class="mb-8">
-                        <h4 class="text-sm font-bold text-gray-800 uppercase tracking-widest mb-4">Evolução do Curso</h4>
-                        <div class="flex justify-between text-xs font-bold text-gray-500 mb-2"><span>Progresso Total</span><span class="text-teal-600">35%</span></div>
-                        <div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                            <div class="bg-gradient-to-r from-teal-400 to-teal-600 h-full rounded-full" style="width: 35%"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800 uppercase tracking-widest mb-4">Matriz Curricular</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="border border-gray-200 p-4 rounded-xl bg-white shadow-sm border-l-4 border-l-teal-500">
-                                <p class="text-xs font-bold text-teal-600 mb-1 uppercase tracking-wider">Módulo 1 (Atual)</p>
-                                <ul class="text-sm text-gray-600 font-medium space-y-1 list-disc list-inside mt-2">
-                                    <li>Lógica de Programação</li>
-                                    <li>Banco de Dados Relacional</li>
-                                    <li>Arquitetura de Computadores</li>
-                                </ul>
-                            </div>
-                            <div class="border border-gray-200 p-4 rounded-xl bg-gray-50 opacity-70">
-                                <p class="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Módulo 2 (Próximo)</p>
-                                <ul class="text-sm text-gray-500 font-medium space-y-1 list-disc list-inside mt-2">
-                                    <li>Desenvolvimento Web (Front-end)</li>
-                                    <li>Programação Orientada a Objetos</li>
-                                </ul>
-                            </div>
-                        </div>
+                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
+                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Disciplina / Módulo</th>
+                                    <th class="py-3 px-4 text-center">Nota 1</th>
+                                    <th class="py-3 px-4 text-center">Nota 2</th>
+                                    <th class="py-3 px-4 text-center">Média</th>
+                                    <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
+                                    <th class="py-3 px-4 text-center">Situação</th>
+                                </tr>
+                            </thead>
+                           <tbody id="tbody-boletim" class="divide-y divide-gray-100 font-medium text-gray-700">
+                                <tr>
+                                    <td colspan="6" class="text-center py-8 text-gray-400">Selecione o curso acima para carregar suas notas.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 5. ATENDIMENTO (SAC) -->
-            <!-- ============================================== -->
-            <div id="tela-atendimento" class="tela hidden">
-                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Central de Atendimento ao Aluno
-                    </h4>
+            <!-- ==========================================
+                 TELA: MATERIAL DIDÁTICO
+                 ========================================== -->
+            <div id="tela-material" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
+                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
+                            Arquivos e Aulas Compartilhadas
+                        </h4>
+                        <select id="select-curso-material" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white" onchange="carregarMateriais()">
+                            <option value="">Selecione o Curso...</option>
+                        </select>
+                    </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div class="space-y-6">
-                            <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                                <h5 class="font-bold text-gray-900 mb-4">Contatos da Escola</h5>
-                                <div class="space-y-3 text-sm font-medium text-gray-600">
-                                    <p class="flex items-center"><i data-feather="phone" class="h-4 w-4 mr-3 text-teal-500"></i> (91) 98325-2639 (WhatsApp)</p>
-                                    <p class="flex items-center"><i data-feather="mail" class="h-4 w-4 mr-3 text-teal-500"></i> secretaria@univeas.com.br</p>
-                                    <p class="flex items-center"><i data-feather="map-pin" class="h-4 w-4 mr-3 text-teal-500"></i> Av. Lauro Sodré, Centro, Vigia - PA</p>
-                                </div>
-                            </div>
-                            <!-- Mapa Falso -->
-                            <div class="h-48 bg-gray-200 rounded-xl overflow-hidden flex items-center justify-center border border-gray-300 relative">
-                                <i data-feather="map" class="h-10 w-10 text-gray-400 absolute opacity-50"></i>
-                                <span class="text-xs font-bold text-gray-500 uppercase tracking-widest relative z-10 bg-white/80 px-2 py-1 rounded">Mapa do Google Embutido</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <h5 class="font-bold text-gray-900 mb-4">Mande uma mensagem agora</h5>
-                                <form onsubmit="event.preventDefault(); alert('Mensagem enviada à secretaria com sucesso!');" class="space-y-4">
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
-                                        <input type="text" id="form-sac-nome" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Matrícula</label>
-                                        <input type="text" id="form-sac-matricula" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Assunto / Mensagem</label>
-                                        <textarea rows="4" placeholder="Como podemos ajudar?" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500 bg-white"></textarea>
-                                    </div>
-                                    <div class="pt-2">
-                                        <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">
-                                            Enviar Mensagem
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+                    <div id="lista-materiais-aluno" class="space-y-4 overflow-y-auto flex-1 pr-2">
+                        <p class="text-sm text-gray-400 text-center py-8">Selecione um curso para ver os materiais disponíveis.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 6. FINANCEIRO -->
-            <!-- ============================================== -->
+            <!-- ==========================================
+                 TELA: FINANCEIRO
+                 ========================================== -->
             <div id="tela-financeiro" class="tela hidden">
-                <div class="max-w-5xl mx-auto space-y-6">
-                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-                        <div>
-                            <h4 class="text-lg font-bold text-gray-800">Entenda o Cálculo das Mensalidades</h4>
-                            <p class="text-xs text-gray-500 mt-1">Consulte as regras de pagamento, juros e prazos da instituição.</p>
-                        </div>
-                        <button class="bg-gray-100 text-gray-600 hover:bg-teal-50 hover:text-teal-600 border border-gray-200 font-bold py-2 px-4 rounded-lg text-xs uppercase transition flex items-center">
-                            <i data-feather="info" class="h-4 w-4 mr-2"></i> Baixar PDF Info
-                        </button>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center border-b border-gray-100 pb-4">
+                        <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
+                        Minhas Mensalidades
+                    </h4>
+
+                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6">
+                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                            <thead class="bg-gray-50">
+                                <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Ref. / Vencimento</th>
+                                    <th class="py-3 px-4">Valor (R$)</th>
+                                    <th class="py-3 px-4 text-center">Status</th>
+                                    <th class="py-3 px-4 text-right">Ação / Comprovante</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-financeiro" class="divide-y divide-gray-100 font-medium">
+                                <tr>
+                                    <td colspan="4" class="text-center py-8 text-gray-400">Buscando faturas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <!-- Mensalidades Atuais (Cards) -->
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800 uppercase tracking-widest mb-4 ml-2">Próximas Mensalidades</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <!-- Card Pago -->
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-                                <div class="flex justify-between items-center border-b border-gray-50 pb-3 mb-3">
-                                    <span class="text-xs font-bold text-gray-500 uppercase">Mês de Outubro</span>
-                                    <span class="text-[10px] bg-green-50 text-green-600 border border-green-100 px-2 py-1 rounded font-bold uppercase">Pago</span>
-                                </div>
-                                <h3 class="text-2xl font-black text-gray-800 mb-1">R$ 249,90</h3>
-                                <p class="text-xs text-gray-500 font-medium">Parcela 01/18 • Vencimento: 10/10/2026</p>
-                            </div>
-
-                            <!-- Card Pendente (Aberto) -->
-                            <div class="bg-white rounded-xl shadow-md border border-teal-200 p-5 relative overflow-hidden">
-                                <div class="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
-                                <div class="flex justify-between items-center border-b border-gray-50 pb-3 mb-3">
-                                    <span class="text-xs font-bold text-gray-800 uppercase">Mês de Novembro</span>
-                                    <span class="text-[10px] bg-yellow-50 text-yellow-600 border border-yellow-100 px-2 py-1 rounded font-bold uppercase">Aberto</span>
-                                </div>
-                                <h3 class="text-2xl font-black text-gray-800 mb-1">R$ 249,90</h3>
-                                <p class="text-xs text-gray-500 font-medium mb-4">Parcela 02/18 • Vencimento: 10/11/2026</p>
-                                <button class="w-full bg-teal-500 text-white text-xs font-bold py-2 rounded-lg uppercase hover:bg-teal-600 transition">Gerar Boleto / PIX</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Lista Completa Histórico -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
-                        <h4 class="text-sm font-bold text-gray-800 uppercase tracking-widest mb-4">Histórico Completo</h4>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
-                                <thead class="bg-gray-50">
-                                    <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                        <th class="py-3 px-4">ID-Pagamento</th>
-                                        <th class="py-3 px-4">Mês Referência</th>
-                                        <th class="py-3 px-4">Valor Pago</th>
-                                        <th class="py-3 px-4 text-center">Status</th>
-                                        <th class="py-3 px-4 text-right">Nota Fiscal</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 font-medium">
-                                    <tr class="hover:bg-gray-50 transition">
-                                        <td class="py-3 px-4 font-mono text-gray-400 text-xs">#PGT-99882</td>
-                                        <td class="py-3 px-4 text-gray-800">Outubro 2026</td>
-                                        <td class="py-3 px-4 text-gray-800">R$ 249,90</td>
-                                        <td class="py-3 px-4 text-center"><span class="text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded font-bold uppercase">Pago</span></td>
-                                        <td class="py-3 px-4 text-right">
-                                            <button class="text-teal-600 hover:underline text-xs font-bold flex items-center justify-end w-full sm:w-auto ml-auto">
-                                                <i data-feather="download" class="w-3 h-3 mr-1"></i> Baixar NF
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                        <i data-feather="info" class="text-blue-500 shrink-0 mt-0.5"></i>
+                        <p class="text-xs text-blue-800">Para pagamentos via PIX ou Depósito, utilize o botão "Anexar Comprovante" para enviar a foto do recibo à secretaria. O status mudará para "Pago" após a validação.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 7. EMISSÃO DE DOCUMENTOS -->
-            <!-- ============================================== -->
-            <div id="tela-documentos" class="tela hidden">
-                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 max-w-5xl mx-auto">
+            <!-- ==========================================
+                 TELA: PERFIL
+                 ========================================== -->
+            <div id="tela-perfil" class="tela hidden">
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
                     <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Documentos Disponíveis
+                        <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
+                        Meus Dados Cadastrais
                     </h4>
-                    <p class="text-sm text-gray-500 mb-6">Abaixo estão os documentos acadêmicos disponíveis para geração e download imediato, validados digitalmente pelo sistema.</p>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-teal-50 hover:border-teal-200 group transition">
-                            <div class="flex items-center text-left">
-                                <i data-feather="file-text" class="h-5 w-5 text-gray-400 group-hover:text-teal-500 mr-4 transition"></i>
-                                <div>
-                                    <p class="text-sm font-bold text-gray-800 group-hover:text-teal-700 transition">Atestado de Matrícula</p>
-                                    <p class="text-[10px] text-gray-500 uppercase mt-0.5">Comprova vínculo atual</p>
-                                </div>
-                            </div>
-                            <i data-feather="download" class="h-4 w-4 text-gray-400 group-hover:text-teal-500 transition"></i>
-                        </button>
-
-                        <button class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-teal-50 hover:border-teal-200 group transition">
-                            <div class="flex items-center text-left">
-                                <i data-feather="credit-card" class="h-5 w-5 text-gray-400 group-hover:text-teal-500 mr-4 transition"></i>
-                                <div>
-                                    <p class="text-sm font-bold text-gray-800 group-hover:text-teal-700 transition">Cartão de Identificação (Carteirinha)</p>
-                                    <p class="text-[10px] text-gray-500 uppercase mt-0.5">Identidade Estudantil</p>
-                                </div>
-                            </div>
-                            <i data-feather="download" class="h-4 w-4 text-gray-400 group-hover:text-teal-500 transition"></i>
-                        </button>
-
-                        <button class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-teal-50 hover:border-teal-200 group transition">
-                            <div class="flex items-center text-left">
-                                <i data-feather="award" class="h-5 w-5 text-gray-400 group-hover:text-teal-500 mr-4 transition"></i>
-                                <div>
-                                    <p class="text-sm font-bold text-gray-800 group-hover:text-teal-700 transition">Histórico Escolar Parcial</p>
-                                    <p class="text-[10px] text-gray-500 uppercase mt-0.5">Notas e Frequência</p>
-                                </div>
-                            </div>
-                            <i data-feather="download" class="h-4 w-4 text-gray-400 group-hover:text-teal-500 transition"></i>
-                        </button>
-
-                        <button class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-teal-50 hover:border-teal-200 group transition">
-                            <div class="flex items-center text-left">
-                                <i data-feather="check-square" class="h-5 w-5 text-gray-400 group-hover:text-teal-500 mr-4 transition"></i>
-                                <div>
-                                    <p class="text-sm font-bold text-gray-800 group-hover:text-teal-700 transition">Ficha de Frequência</p>
-                                    <p class="text-[10px] text-gray-500 uppercase mt-0.5">Relatório do Diário</p>
-                                </div>
-                            </div>
-                            <i data-feather="download" class="h-4 w-4 text-gray-400 group-hover:text-teal-500 transition"></i>
-                        </button>
+                    <div class="flex flex-col sm:flex-row items-center gap-6 mb-8 border-b border-gray-100 pb-8">
+                        <div id="perfil-iniciais" class="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-2xl border-2 border-blue-100">
+                            --
+                        </div>
+                        <div class="text-center sm:text-left">
+                            <h2 id="perfil-nome" class="text-xl font-black text-gray-900">Carregando...</h2>
+                            <p id="perfil-matricula" class="text-sm text-gray-500 mb-3">Matrícula: --</p>
+                        </div>
                     </div>
+
+                    <form class="space-y-5" onsubmit="event.preventDefault(); alert('Solicitação de alteração enviada à secretaria.');">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">CPF</label>
+                                <input type="text" id="perfil-cpf" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
+                                <input type="email" id="perfil-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                                <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço Completo</label>
+                                <input type="text" id="perfil-endereco" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-6 border-t border-gray-100">
+                            <button type="submit" class="bg-blue-600 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-700 transition shadow-sm">Solicitar Atualização</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
         </main>
-    </div>
-</div>
-
-<!-- ============================================== -->
-<!-- MODAL DE PRESENÇA (DISCIPLINA) -->
-<!-- ============================================== -->
-<div id="modal-presenca" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center transform scale-95 transition-all">
-        <div class="w-16 h-16 bg-teal-100 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i data-feather="check-circle" class="h-8 w-8"></i>
-        </div>
-        <h3 class="text-xl font-black text-gray-900 mb-2">Confirme sua Presença</h3>
-        <p class="text-sm text-gray-500 mb-6 border-b border-gray-100 pb-4">
-            <span class="block font-bold text-gray-800">Banco de Dados Relacional</span>
-            Prof. Ricardo Costa<br>
-            Aula Presencial Virtual
-        </p>
-        <p class="text-xs text-gray-400 font-medium mb-6">Sua frequência será registrada automaticamente no diário do professor e no seu histórico parcial.</p>
-        <div class="flex space-x-3">
-            <button onclick="fecharModalPresenca()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-gray-200 transition">Cancelar</button>
-            <button onclick="confirmarPresenca()" class="flex-1 bg-teal-500 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition">Confirmar</button>
-        </div>
     </div>
 </div>
 
@@ -652,76 +314,89 @@
 // INTEGRAÇÃO API E SEGURANÇA - ALUNO
 // ==========================================
 const API_BASE_URL = "/api/v1";
+let cursosDoAluno = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
 
-    // Simula bloqueio de Inadimplência baseado em regra de negócio
-    const isInadimplente = false;
-    if(isInadimplente) {
-        document.getElementById('aviso-inadimplencia').classList.remove('hidden');
+    if(window.innerWidth < 768) {
+        const sidebar = document.querySelector('aside');
+        if (sidebar) sidebar.classList.add('-translate-x-full', 'absolute');
     }
 
     if (localStorage.getItem('token_siga_aluno')) {
         liberarAcessoAluno();
     }
-});
 
-// Ação de Login do Aluno
-document.getElementById('form-login')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-submit-login');
-    btn.innerText = "Autenticando...";
+    const formLogin = document.getElementById('form-login');
+    if (formLogin) {
+        formLogin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-login');
+            btn.innerText = "Autenticando...";
 
-    const matricula = document.getElementById('input-matricula').value.toUpperCase();
-    const cpf = document.getElementById('input-cpf').value;
+            const matricula = document.getElementById('input-matricula').value.toUpperCase();
+            const cpf = document.getElementById('input-cpf').value;
 
-    const formData = new FormData();
-    formData.append('matricula', matricula);
-    formData.append('cpf', cpf);
+            const formData = new FormData();
+            formData.append('matricula', matricula);
+            formData.append('cpf', cpf);
 
-    try {
-        const response = await fetch('/api/v1/auth/aluno', {
-            method: 'POST',
-            body: formData
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/aluno`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    localStorage.setItem('token_siga_aluno', data.token_siga);
+                    localStorage.setItem('nome_aluno', data.nome_aluno);
+                    localStorage.setItem('matricula_aluno', data.matricula);
+                    liberarAcessoAluno();
+                } else {
+                    alert(data.detail || "Matrícula ou CPF incorretos. Procure a secretaria.");
+                    btn.innerText = "Acessar Portal";
+                }
+            } catch (error) {
+                alert("Erro ao conectar com o servidor.");
+                btn.innerText = "Acessar Portal";
+            }
         });
-
-        const data = await response.json();
-
-        if (response.ok && data.sucesso) {
-            localStorage.setItem('token_siga_aluno', data.token_siga);
-            localStorage.setItem('nome_aluno', data.nome_aluno);
-            localStorage.setItem('matricula_aluno', data.matricula);
-            liberarAcessoAluno();
-        } else {
-            alert(data.detail || "Matrícula ou CPF não localizados.");
-            btn.innerText = "Acessar Portal";
-        }
-    } catch (error) {
-        alert("Erro ao conectar com o servidor da Instituição.");
-        btn.innerText = "Acessar Portal";
     }
 });
+
+function getIniciais(nome) {
+    if(!nome) return '--';
+    const partes = nome.trim().split(' ');
+    if(partes.length === 1) return partes[0].substring(0,2).toUpperCase();
+    return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+}
 
 function liberarAcessoAluno() {
     document.getElementById('tela-login').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
 
-    const nome = localStorage.getItem('nome_aluno');
-    const matricula = localStorage.getItem('matricula_aluno');
+    const nomeReal = localStorage.getItem('nome_aluno') || 'Aluno';
+    const matReal = localStorage.getItem('matricula_aluno') || 'S/N';
+    const iniciais = getIniciais(nomeReal);
 
-    if(nome) {
-        document.getElementById('nome-aluno-header').innerText = nome;
-        const inputSacNome = document.getElementById('form-sac-nome');
-        if (inputSacNome) inputSacNome.value = nome;
-    }
-    if(matricula) {
-        document.getElementById('matricula-aluno-header').innerText = `Matrícula: ${matricula}`;
-        const inputSacMatricula = document.getElementById('form-sac-matricula');
-        if (inputSacMatricula) inputSacMatricula.value = matricula;
-    }
+    // Header Global
+    document.getElementById('nome-aluno-header').innerText = nomeReal;
+    document.getElementById('matricula-aluno-header').innerText = "Matrícula: " + matReal;
+    document.getElementById('iniciais-header').innerText = iniciais;
 
-    mudarTela('semestre');
+    // Tela de Perfil
+    document.getElementById('perfil-nome').innerText = nomeReal;
+    document.getElementById('perfil-matricula').innerText = "Matrícula: " + matReal;
+    document.getElementById('perfil-iniciais').innerText = iniciais;
+
+    loadDashboardAluno();
+    loadCursosAluno(); // Busca os cursos aos quais o aluno está vinculado e preenche os selects
+    loadPerfilFinanceiro(); // Busca os dados do aluno para a tela de Perfil e Financeiro
+
+    mudarTela('dashboard');
 }
 
 function fazerLogout() {
@@ -731,79 +406,298 @@ function fazerLogout() {
     location.reload();
 }
 
-// Navegação Visual do Aluno
 function mudarTela(idTela) {
-    document.querySelectorAll('.tela').forEach(t => {
-        t.classList.add('hidden');
-        t.classList.remove('block');
+    document.querySelectorAll('.tela').forEach(tela => {
+        tela.classList.add('hidden');
+        tela.classList.remove('block');
     });
 
     const telaAtiva = document.getElementById('tela-' + idTela);
-    if(telaAtiva) {
+    if (telaAtiva) {
         telaAtiva.classList.remove('hidden');
         telaAtiva.classList.add('block');
     }
 
     document.querySelectorAll('.menu-btn').forEach(btn => {
-        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
         btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
     });
 
     const btnAtivo = document.getElementById('btn-' + idTela);
     if (btnAtivo) {
         btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
-        btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btnAtivo.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
     }
 
     const titulos = {
-        'semestre': 'Disciplinas do Semestre',
-        'notas': 'Notas e Boletim',
-        'calendario': 'Calendário Letivo',
-        'curso': 'Meu Curso',
+        'dashboard': 'Painel Principal',
+        'boletim': 'Boletim Acadêmico',
+        'material': 'Material Didático',
         'financeiro': 'Situação Financeira',
-        'documentos': 'Emissão de Documentos',
-        'atendimento': 'Atendimento ao Aluno (SAC)',
-        'disciplina': 'Sala de Aula Virtual'
+        'perfil': 'Meu Perfil'
     };
-    const titleEl = document.getElementById('titulo-pagina');
-    if(titleEl && titulos[idTela]) {
-        titleEl.innerText = titulos[idTela];
+    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'Portal do Aluno';
+}
+
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const headers = { 'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}` };
+    const config = { method, headers };
+
+    if (data) {
+        if (data instanceof FormData) {
+            config.body = data;
+        } else {
+            headers['Content-Type'] = 'application/json';
+            config.body = JSON.stringify(data);
+        }
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        if (response.status === 401) {
+            alert("Sua sessão expirou.");
+            fazerLogout();
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Erro na API:`, error);
+        return null;
     }
 }
 
-// Ações Visuais e Interativas
-function abrirDisciplina(codigo, nome) {
-    document.getElementById('disc-codigo').innerText = codigo;
-    document.getElementById('disc-nome').innerText = nome;
-    mudarTela('disciplina');
+// ----------------------------------------------------
+// DADOS DINÂMICOS - ALUNO
+// ----------------------------------------------------
+async function loadDashboardAluno() {
+    const data = await apiRequest('/aluno/dashboard');
+    if (data) {
+        document.getElementById('dash-media').innerText = data.media_geral || '-';
+        document.getElementById('dash-faltas').innerText = data.faltas_totais || '0';
+
+        const statusFin = document.getElementById('dash-financeiro');
+        if (data.status_financeiro === 'Pendente') {
+            statusFin.innerText = 'PENDENTE';
+            statusFin.className = 'text-xl font-black text-red-500 mt-1';
+            statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
+        } else {
+            statusFin.innerText = 'REGULAR';
+            statusFin.className = 'text-xl font-black text-green-500 mt-1';
+            statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
+        }
+
+        const ulDisciplinas = document.getElementById('lista-disciplinas-dash');
+        if (data.disciplinas_atuais && data.disciplinas_atuais.length > 0) {
+            ulDisciplinas.innerHTML = '';
+            data.disciplinas_atuais.forEach(d => {
+                ulDisciplinas.innerHTML += `
+                    <li class="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="bg-blue-100 text-blue-600 rounded-lg p-2 mr-4"><i data-feather="book" class="w-4 h-4"></i></div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">${d.nome}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${d.curso}</p>
+                        </div>
+                    </li>
+                `;
+            });
+        } else {
+            ulDisciplinas.innerHTML = '<p class="text-sm text-gray-400">Nenhuma disciplina em curso.</p>';
+        }
+        feather.replace();
+    }
 }
 
-function abrirModalPresenca() {
-    const modal = document.getElementById('modal-presenca');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modal.querySelector('div').classList.remove('scale-95');
-        modal.querySelector('div').classList.add('scale-100');
-    }, 10);
+async function loadCursosAluno() {
+    const cursos = await apiRequest('/aluno/cursos');
+    if (cursos && cursos.length > 0) {
+        cursosDoAluno = cursos;
+        const selectBoletim = document.getElementById('select-curso-boletim');
+        const selectMaterial = document.getElementById('select-curso-material');
+
+        selectBoletim.innerHTML = '<option value="">Selecione o Curso...</option>';
+        selectMaterial.innerHTML = '<option value="">Selecione o Curso...</option>';
+
+        cursos.forEach(c => {
+            const opt = `<option value="${c.id}">${c.nome_curso}</option>`;
+            selectBoletim.innerHTML += opt;
+            selectMaterial.innerHTML += opt;
+        });
+
+        // Se tiver apenas 1 curso, já auto-seleciona e carrega
+        if (cursos.length === 1) {
+            selectBoletim.value = cursos[0].id;
+            selectMaterial.value = cursos[0].id;
+            carregarBoletim();
+            carregarMateriais();
+        }
+    }
 }
 
-function fecharModalPresenca() {
-    const modal = document.getElementById('modal-presenca');
-    modal.classList.remove('opacity-0');
-    modal.querySelector('div').classList.remove('scale-100');
-    modal.querySelector('div').classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-    }, 200);
+async function carregarBoletim() {
+    const cursoId = document.getElementById('select-curso-boletim').value;
+    const tbody = document.getElementById('tbody-boletim');
+
+    if (!cursoId) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Buscando notas...</td></tr>';
+
+    const notas = await apiRequest(`/aluno/boletim/${cursoId}`);
+    if (notas && notas.length > 0) {
+        tbody.innerHTML = '';
+        notas.forEach(n => {
+            const media = n.media ? parseFloat(n.media).toFixed(1) : '-';
+            const n1 = n.nota_1 ? parseFloat(n.nota_1).toFixed(1) : '-';
+            const n2 = n.nota_2 ? parseFloat(n.nota_2).toFixed(1) : '-';
+
+            let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
+            if (media !== '-' && parseFloat(media) >= 7.0) {
+                badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
+            } else if (media !== '-' && parseFloat(media) < 7.0 && n2 !== '-') {
+                badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Reprovado</span>`;
+            }
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
+                    <td class="py-4 px-4 font-bold text-gray-900">${n.disciplina}</td>
+                    <td class="py-4 px-4 text-center">${n1}</td>
+                    <td class="py-4 px-4 text-center">${n2}</td>
+                    <td class="py-4 px-4 text-center font-black ${media !== '-' && media >= 7 ? 'text-green-600' : 'text-gray-800'}">${media}</td>
+                    <td class="py-4 px-4 text-center text-yellow-600 font-bold">${n.faltas || 0}</td>
+                    <td class="py-4 px-4 text-center">${badge}</td>
+                </tr>
+            `;
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhuma nota lançada para este curso ainda.</td></tr>';
+    }
 }
 
-async function confirmarPresenca() {
-    // Apenas simulação de carregamento da chamada
-    fecharModalPresenca();
-    alert('Presença validada e enviada ao diário do professor com sucesso!');
+async function carregarMateriais() {
+    const cursoId = document.getElementById('select-curso-material').value;
+    const lista = document.getElementById('lista-materiais-aluno');
+
+    if (!cursoId) {
+        lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Selecione um curso para ver os materiais.</p>';
+        return;
+    }
+
+    lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Buscando arquivos...</p>';
+
+    const materiais = await apiRequest(`/aluno/materiais/${cursoId}`);
+    if (materiais && materiais.length > 0) {
+        lista.innerHTML = '';
+        materiais.forEach(m => {
+            lista.innerHTML += `
+                <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-sm transition group">
+                    <div class="flex items-center">
+                        <div class="bg-blue-50 text-blue-500 p-3 rounded-lg mr-4">
+                            <i data-feather="file-text" class="h-5 w-5"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-800 text-sm">${m.titulo}</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Postado em: ${m.data_postagem || 'Recente'} • ${m.disciplina}</p>
+                        </div>
+                    </div>
+                    <a href="${m.url_arquivo}" target="_blank" download class="bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white transition px-4 py-2 rounded-lg text-xs font-bold flex items-center">
+                        <i data-feather="download" class="w-3 h-3 mr-2"></i> Baixar
+                    </a>
+                </div>
+            `;
+        });
+        feather.replace();
+    } else {
+        lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Nenhum material compartilhado pelo professor ainda.</p>';
+    }
+}
+
+async function loadPerfilFinanceiro() {
+    const dados = await apiRequest('/aluno/perfil');
+    if (dados) {
+        // Preenche Perfil
+        document.getElementById('perfil-cpf').value = dados.cpf || '';
+        document.getElementById('perfil-email').value = dados.email || '';
+        document.getElementById('perfil-telefone').value = dados.telefone || '';
+        document.getElementById('perfil-endereco').value = dados.endereco || '';
+
+        // Preenche Financeiro
+        const tbody = document.getElementById('tbody-financeiro');
+        const isPendente = dados.possui_pendencia_financeira === 'Sim';
+        const detalhesPendencia = dados.detalhes_pendencia_financeira || 'Mensalidade Atual';
+        const valorCurso = dados.valor_mensalidade || 0; // Backend deve injetar isso no perfil do aluno baseado no curso ativo
+
+        tbody.innerHTML = '';
+
+        // Cria uma linha representativa para o mês atual
+        const hoje = new Date();
+        const mesRef = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+        const valorFormatado = parseFloat(valorCurso).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+        let statusBadge = '';
+        let acaoBtn = '';
+
+        if (isPendente) {
+            statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Atrasada / Pendente</span><p class="text-[10px] text-gray-400 mt-1">${detalhesPendencia}</p>`;
+            acaoBtn = `
+                <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
+                    <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
+                    <input type="file" class="hidden" onchange="enviarComprovante(this)">
+                </label>
+            `;
+        } else {
+            statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga / Regular</span>`;
+            acaoBtn = `<span class="text-xs text-gray-400 font-bold"><i data-feather="check" class="w-4 h-4 inline text-green-500"></i> Tudo Certo</span>`;
+        }
+
+        tbody.innerHTML = `
+            <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                <td class="py-4 px-4 font-bold text-gray-900 capitalize">${mesRef}<br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Venc. Dia ${dados.dia_vencimento || 10}</span></td>
+                <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
+                <td class="py-4 px-4 text-center">${statusBadge}</td>
+                <td class="py-4 px-4 text-right">${acaoBtn}</td>
+            </tr>
+        `;
+        feather.replace();
+    }
+}
+
+async function enviarComprovante(inputElement) {
+    if (inputElement.files.length === 0) return;
+
+    const file = inputElement.files[0];
+    const formData = new FormData();
+    formData.append('comprovante', file);
+
+    // Altera botão para feedback visual
+    const labelParent = inputElement.parentElement;
+    const textOriginal = labelParent.innerHTML;
+    labelParent.innerHTML = "Enviando...";
+
+    const result = await apiRequest('/aluno/financeiro/comprovante', 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Comprovante enviado com sucesso! A secretaria analisará e dará baixa em breve.");
+        labelParent.innerHTML = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline"></i> Em Análise</span>`;
+        feather.replace();
+    } else {
+        alert("Erro ao enviar comprovante. Tente novamente.");
+        labelParent.innerHTML = textOriginal;
+    }
+}
+
+function toggleMenuMobile() {
+    const sidebar = document.querySelector('aside');
+    if (sidebar) {
+        if (sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.remove('-translate-x-full', 'absolute');
+            sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+        } else {
+            sidebar.classList.add('-translate-x-full', 'absolute');
+            sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+        }
+    }
 }
 </script>
 </body>
