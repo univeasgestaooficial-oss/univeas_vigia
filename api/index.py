@@ -900,11 +900,15 @@ async def salvar_diario_eletronico(
     return {"sucesso": True, "mensagem": "Diário registrado com sucesso!"}
 
 
+class MaterialPayload(BaseModel):
+    turma_id: str
+    titulo: str
+    url_arquivo: str
+    data_postagem: Optional[str] = None
+
 @app.post("/api/v1/docente/material/upload")
 async def upload_material_didatico(
-        turma_id: str = Form(...),
-        titulo: str = Form(...),
-        arquivo: UploadFile = File(...),
+        payload: MaterialPayload,
         authorization: str = Header(None)
 ):
     checar_db()
@@ -912,14 +916,39 @@ async def upload_material_didatico(
 
     registro_material = {
         "docente_id": docente_id,
-        "turma_id": turma_id,
-        "titulo": titulo,
-        "nome_arquivo": arquivo.filename,
+        "turma_id": payload.turma_id,
+        "titulo": payload.titulo,
+        "url_arquivo": payload.url_arquivo,
+        "data_postagem": payload.data_postagem or datetime.now().strftime('%d/%m/%Y'),
         "data_envio": datetime.now().isoformat()
     }
 
     db.collection("materiais_didaticos").add(registro_material)
-    return {"sucesso": True, "mensagem": "Material registrado com sucesso!"}
+    return {"sucesso": True, "mensagem": "Link publicado com sucesso!"}
+
+
+@app.get("/api/v1/docente/materiais")
+async def listar_materiais_docente(authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    docs = db.collection("materiais_didaticos").where("docente_id", "==", docente_id).stream()
+    materiais = []
+
+    for doc in docs:
+        m = doc.to_dict()
+        m["id"] = doc.id
+
+        # Opcional: busca o nome amigável da turma/disciplina se necessário
+        turma_id = m.get("turma_id", "")
+        m["nome_turma"] = "Turma Vinculada"
+        if "_" in turma_id:
+            _, mod_nome = turma_id.split("_", 1)
+            m["nome_turma"] = mod_nome
+
+        materiais.append(m)
+
+    return materiais
 
 
 # ==========================================
