@@ -707,17 +707,32 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
     }
 
 
+# Crie este Schema junto aos outros (lá no topo do arquivo ou antes dessa rota)
+class TurmaConfigPayload(BaseModel):
+    turma_id: str
+    data_inicio: str = None
+    data_fim: str = None
+    ementa: str = None
+    ch_teoria: int = 0
+    ch_pratica: int = 0
+    ch_estagio: int = 0
+    ch_total: int = 0
+    dias_aula: List[str] = []
+    hora_inicio: str = None
+    hora_fim: str = None
+    avaliacoes: List[dict] = []
+
+
 @app.get("/api/v1/docente/turmas")
 async def listar_turmas_docente(authorization: str = Header(None)):
     checar_db()
     docente_id = validar_token_docente(authorization)
-
     doc_prof = db.collection("docentes").document(docente_id).get()
+
     if not doc_prof.exists:
         return []
 
     dados_prof = doc_prof.to_dict()
-    # Lê os vínculos exatamente como o Admin os salva
     vinculos_str = dados_prof.get("vinculos_json", "[]")
 
     try:
@@ -726,40 +741,128 @@ async def listar_turmas_docente(authorization: str = Header(None)):
     except:
         vinculos = []
 
-    if not vinculos:
-        return []
-
     turmas_formatadas = []
     for vinc in vinculos:
         if not isinstance(vinc, dict):
             continue
 
         c_id = vinc.get("curso") or vinc.get("curso_id")
-        mod_nome = vinc.get("modulo") or vinc.get("disciplina") or "Módulo/Disciplina"
-
+        # Pega prioritariamente o nome da DISCIPLINA, senão pega o módulo
+        mod_nome = vinc.get("disciplina") or vinc.get("modulo") or "Módulo/Disciplina"
         nome_curso = "Curso Vinculado"
         ch_total = 40
+        detalhes_modulo = {}
 
-        # Faz a junção (Join) com a coleção de cursos para pegar o Nome real e Carga Horária
         if c_id:
             c_ref = db.collection("cursos").document(c_id).get()
             if c_ref.exists:
                 c_dados = c_ref.to_dict()
                 nome_curso = c_dados.get("nome_curso", "CURSO DESCONHECIDO")
 
+                nome_alvo = str(mod_nome).strip().upper()
+
+                # Busca na grade, navegando pelas sub-disciplinas se existirem
                 for m in c_dados.get("grade_curricular", []):
-                    if isinstance(m, dict) and m.get("nome") == mod_nome:
-                        ch_total = int(m.get("ch_total", 40))
+                    if not isinstance(m, dict): continue
+
+                    # 1. Tenta achar direto no primeiro nível (flat)
+                    m_nome = str(m.get("nome") or m.get("disciplina") or "").strip().upper()
+                    if m_nome == nome_alvo:
+                        detalhes_modulo = m
+                        ch_total = int(m.get("ch_total", m.get("carga_horaria", 40)))
                         break
+
+                    # 2. Tenta achar dentro do array 'disciplinas' (aninhado - Nível 2)
+                    sub_disciplinas = m.get("disciplinas", [])
+                    if isinstance(sub_disciplinas, list):
+                        encontrou = False
+                        for disc in sub_disciplinas:
+                            if not isinstance(disc, dict): continue
+                            d_nome = str(disc.get("nome") or disc.get("disciplina") or "").strip().upper()
+                            if d_nome == nome_alvo:
+                                detalhes_modulo = disc
+                                ch_total = int(disc.get("ch_total", disc.get("carga_horaria", 40)))
+                                encontrou = True
+                                break
+                        if encontrou:
+                            break
 
         turmas_formatadas.append({
             "id": f"{c_id}_{mod_nome}",
             "nome_disciplina": mod_nome,
             "curso_pai": nome_curso,
-            "carga_horaria": ch_total
+            "carga_horaria": ch_total,
+            "detalhes": detalhes_modulo  # Agora enviará o objeto completo com Ementa, Horários, etc.
         })
 
     return turmas_formatadas
+
+
+# ROTA NOVA: Onde o professor atualiza as configurações da disciplina
+@app.post("/api/v1/docente/turmas/configurar")
+async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    try:
+        curso_id, nome_alvo = payload.turma_id.split("_", 1)
+        nome_alvo = nome_alvo.strip().upper()
+    except:
+        raise HTTPException(status_code=400, detail="ID da turma inválido")
+
+    curso_ref = db.collection("cursos").document(curso_id)
+    curso_doc = curso_ref.get()
+
+    if not curso_doc.exists:
+        raise HTTPException(status_code=404, detail="Curso não encontrado")
+
+    curso_dados = curso_doc.to_dict()
+    grade = curso_dados.get("grade_curricular", [])
+
+    modulo_atualizado = False
+
+    # Função interna para aplicar os novos valores no objeto correto
+    def atualizar_obj(obj):
+        obj["data_inicio"] = payload.data_inicio
+        obj["data_fim"] = payload.data_fim
+        obj["ementa"] = payload.ementa
+        obj["ch_teoria"] = payload.ch_teoria
+        obj["ch_pratica"] = payload.ch_pratica
+        obj["ch_estagio"] = payload.ch_estagio
+        obj["ch_total"] = payload.ch_total
+        obj["dias_aula"] = payload.dias_aula
+        obj["hora_inicio"] = payload.hora_inicio
+        obj["hora_fim"] = payload.hora_fim
+        obj["avaliacoes"] = [av for av in payload.avaliacoes]
+
+    for m in grade:
+        if not isinstance(m, dict): continue
+
+        # 1. Testa flat (Nível 1)
+        if str(m.get("nome") or m.get("disciplina") or "").strip().upper() == nome_alvo:
+            atualizar_obj(m)
+            modulo_atualizado = True
+            break
+
+        # 2. Testa nested (Nível 2 - Dentro de 'disciplinas')
+        sub_disciplinas = m.get("disciplinas", [])
+        if isinstance(sub_disciplinas, list):
+            for disc in sub_disciplinas:
+                if not isinstance(disc, dict): continue
+                if str(disc.get("nome") or disc.get("disciplina") or "").strip().upper() == nome_alvo:
+                    atualizar_obj(disc)
+                    modulo_atualizado = True
+                    break
+        if modulo_atualizado:
+            break
+
+    if not modulo_atualizado:
+        raise HTTPException(status_code=404, detail="Disciplina não encontrada na matriz do curso.")
+
+    # Salva de volta no banco
+    curso_ref.update({"grade_curricular": grade})
+
+    return {"sucesso": True, "mensagem": "Configurações sincronizadas com a secretaria!"}
 
 @app.post("/api/v1/docente/diario/salvar")
 async def salvar_diario_eletronico(
