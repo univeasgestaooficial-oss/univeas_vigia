@@ -721,6 +721,7 @@ class TurmaConfigPayload(BaseModel):
     hora_inicio: str = None
     hora_fim: str = None
     avaliacoes: List[dict] = []
+    justificativa: str = None
 
 
 @app.get("/api/v1/docente/turmas")
@@ -821,7 +822,6 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
 
     modulo_atualizado = False
 
-    # Função interna para aplicar os novos valores no objeto correto
     def atualizar_obj(obj):
         obj["data_inicio"] = payload.data_inicio
         obj["data_fim"] = payload.data_fim
@@ -831,20 +831,17 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
         obj["ch_estagio"] = payload.ch_estagio
         obj["ch_total"] = payload.ch_total
         obj["dias_aula"] = payload.dias_aula
-        obj["hora_inicio"] = payload.hora_inicio
-        obj["hora_fim"] = payload.hora_fim
+        obj['hora_aula_inicio'] = payload.hora_inicio
+        obj['hora_aula_fim'] = payload.hora_fim
         obj["avaliacoes"] = [av for av in payload.avaliacoes]
 
     for m in grade:
         if not isinstance(m, dict): continue
-
-        # 1. Testa flat (Nível 1)
         if str(m.get("nome") or m.get("disciplina") or "").strip().upper() == nome_alvo:
             atualizar_obj(m)
             modulo_atualizado = True
             break
 
-        # 2. Testa nested (Nível 2 - Dentro de 'disciplinas')
         sub_disciplinas = m.get("disciplinas", [])
         if isinstance(sub_disciplinas, list):
             for disc in sub_disciplinas:
@@ -859,10 +856,26 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
     if not modulo_atualizado:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada na matriz do curso.")
 
-    # Salva de volta no banco
+    # Salva os dados na grade
     curso_ref.update({"grade_curricular": grade})
 
-    return {"sucesso": True, "mensagem": "Configurações sincronizadas com a secretaria!"}
+    # SISTEMA DE NOTIFICAÇÃO AO ALUNO
+    if payload.justificativa and payload.justificativa.strip():
+        nova_notificacao = {
+            "tipo": "ALTERACAO_CRONOGRAMA",
+            "curso_id": curso_id,
+            "disciplina": nome_alvo,
+            "mensagem": f"Houve uma alteração de cronograma/horário na disciplina de {nome_alvo}. Motivo: {payload.justificativa.strip()}",
+            "data_envio": datetime.now().isoformat(),
+            "remetente": "Portal do Professor",
+            "importante": True
+        }
+        db.collection("notificacoes_alunos").add(nova_notificacao)
+        mensagem_retorno = "Alterações salvas e alunos notificados com sucesso!"
+    else:
+        mensagem_retorno = "Configurações sincronizadas com a secretaria!"
+
+    return {"sucesso": True, "mensagem": mensagem_retorno}
 
 @app.post("/api/v1/docente/diario/salvar")
 async def salvar_diario_eletronico(
