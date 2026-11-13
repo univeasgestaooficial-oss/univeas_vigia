@@ -1454,3 +1454,215 @@ async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization:
     })
 
     return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
+
+
+# ==========================================
+# 10. MÓDULO DO ALUNO (PORTAL DO ESTUDANTE)
+# ==========================================
+def validar_token_aluno(authorization: str):
+    if not authorization or not authorization.startswith("Bearer aluno_"):
+        raise HTTPException(status_code=401, detail="Acesso não autorizado para aluno.")
+    return authorization.replace("Bearer aluno_", "")
+
+
+@app.get("/api/v1/aluno/dashboard")
+async def obter_dashboard_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+
+    if not aluno_doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    aluno_dados = aluno_doc.to_dict()
+    curso_id = aluno_dados.get("curso")
+
+    disciplinas_atuais = []
+    if curso_id:
+        curso_doc = db.collection("cursos").document(curso_id).get()
+        if curso_doc.exists:
+            c_dados = curso_doc.to_dict()
+            nome_curso = c_dados.get("nome_curso", "Curso")
+            for m in c_dados.get("grade_curricular", []):
+                if isinstance(m, dict):
+                    disciplinas_atuais.append({
+                        "nome": m.get("nome") or m.get("disciplina") or "Módulo",
+                        "curso": nome_curso
+                    })
+
+    # Busca diários/notas para calcular média geral e faltas
+    diarios_docs = db.collection("diarios").stream()
+    total_faltas = 0
+    soma_notas = 0
+    qtd_notas = 0
+
+    for doc in diarios_docs:
+        d_data = doc.to_dict()
+        for lanc in d_data.get("avaliacoes", []):
+            if str(lanc.get("aluno_id")) == str(aluno_id):
+                total_faltas += int(lanc.get("faltas", 0))
+                notas_dict = lanc.get("notas", {})
+                for k, v in notas_dict.items():
+                    try:
+                        soma_notas += float(v)
+                        qtd_notas += 1
+                    except:
+                        pass
+
+    media_geral = round(soma_notas / qtd_notas, 1) if qtd_notas > 0 else 0.0
+
+    return {
+        "media_geral": media_geral,
+        "faltas_totais": total_faltas,
+        "status_financeiro": "Regular" if aluno_dados.get("status") == "Ativo" else "Pendente",
+        "disciplinas_atuais": disciplinas_atuais[:3]
+    }
+
+
+@app.get("/api/v1/aluno/cursos")
+async def listar_cursos_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+
+    if not aluno_doc.exists:
+        return []
+
+    aluno_dados = aluno_doc.to_dict()
+    curso_id = aluno_dados.get("curso")
+    cursos_lista = aluno_dados.get("cursos_json", [])
+
+    ids_para_buscar = set()
+    if curso_id:
+        ids_para_buscar.add(curso_id)
+    for c in cursos_lista:
+        if isinstance(c, dict) and c.get("curso_id"):
+            ids_para_buscar.add(c.get("curso_id"))
+
+    resultado = []
+    for c_id in ids_para_buscar:
+        c_doc = db.collection("cursos").document(c_id).get()
+        if c_doc.exists:
+            resultado.append({"id": c_doc.id, **c_doc.to_dict()})
+
+    return resultado
+
+
+@app.get("/api/v1/aluno/boletim/{curso_id}")
+async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+
+    # Busca o curso para listar as disciplinas reais da grade
+    c_doc = db.collection("cursos").document(curso_id).get()
+    if not c_doc.exists:
+        return []
+
+    c_dados = c_doc.to_dict()
+    disciplinas_map = {}
+
+    for m in c_dados.get("grade_curricular", []):
+        if isinstance(m, dict):
+            d_nome = m.get("nome") or m.get("disciplina") or "Módulo"
+            disciplinas_map[d_nome.strip().upper()] = {"disciplina": d_nome, "faltas": 0, "notas": {}}
+
+    # Busca todos os diários salvos pelos professores para este curso/turma
+    diarios_docs = db.collection("diarios").stream()
+    for doc in diarios_docs:
+        d = doc.to_dict()
+        turma_id = d.get("turma_id", "")
+        if curso_id in turma_id:
+            for lanc in d.get("avaliacoes", []):
+                if str(lanc.get("aluno_id")) == str(aluno_id):
+                    # Tenta identificar a disciplina pelo ID ou extração
+                    _, mod_nome = turma_id.split("_", 1) if "_" in turma_id else ("", "Módulo")
+                    mod_key = mod_nome.strip().upper()
+
+                    if mod_key not in disciplinas_map:
+                        disciplinas_map[mod_key] = {"disciplina": mod_nome, "faltas": 0, "notas": {}}
+
+                    disciplinas_map[mod_key]["faltas"] += int(lanc.get("faltas", 0))
+
+                    # Mescla as notas dinâmicas lançadas pelo professor
+                    notas_lancadas = lanc.get("notas", {})
+                    for tipo_av, valor_nota in notas_lancadas.items():
+                        disciplinas_map[mod_key]["notas"][tipo_av] = valor_nota
+
+    # Converte o mapa em lista para o frontend desenhar a tabela e popular o gráfico
+    boletim_final = []
+    for chave, dados in disciplinas_map.items():
+        notas = dados["notas"]
+        media = 0
+        if notas:
+            valores = [float(v) for v in notas.values() if v != "" and v is not None]
+            if valores:
+                media = sum(valores) / len(valores)
+
+        boletim_final.append({
+            "disciplina": dados["disciplina"],
+            "faltas": dados["faltas"],
+            "notas": notas,
+            "media": round(media, 1)
+        })
+
+    return boletim_final
+
+
+@app.get("/api/v1/aluno/materiais/{curso_id}")
+async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+
+    materiais = []
+    docs = db.collection("materiais_didaticos").stream()
+    for doc in docs:
+        m = doc.to_dict()
+        if curso_id in m.get("turma_id", ""):
+            materiais.append({"id": doc.id, **m})
+
+    return materiais
+
+
+@app.get("/api/v1/aluno/perfil")
+async def obter_perfil_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    doc = db.collection("alunos").document(aluno_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    dados = doc.to_dict()
+
+    # Busca dados do curso para pegar o valor da mensalidade
+    valor_mensalidade = 350.0  # Valor padrão caso não encontre
+    curso_id = dados.get("curso")
+    if curso_id:
+        c_doc = db.collection("cursos").document(curso_id).get()
+        if c_doc.exists:
+            valor_mensalidade = c_doc.to_dict().get("valor_mensalidade", 350.0)
+
+    return {
+        "cpf": dados.get("cpf"),
+        "email": dados.get("email"),
+        "telefone": dados.get("telefone"),
+        "endereco": dados.get("endereco"),
+        "dia_vencimento": dados.get("dia_vencimento", 10),
+        "valor_mensalidade": valor_mensalidade,
+        "possui_pendencia_financeira": "Sim" if dados.get("status") == "Pendente" else "Não"
+    }
+
+
+@app.post("/api/v1/aluno/financeiro/comprovante")
+async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+
+    dados_comp = {
+        "aluno_id": aluno_id,
+        "nome_arquivo": comprovante.filename,
+        "status": "Em Análise",
+        "data_envio": datetime.now().isoformat()
+    }
+    db.collection("comprovantes_pagamento").add(dados_comp)
+    return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso!"}
