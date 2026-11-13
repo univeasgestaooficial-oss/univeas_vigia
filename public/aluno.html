@@ -543,20 +543,22 @@ async function loadCursosAluno() {
             selectMaterial.innerHTML += opt;
         });
 
-        if (cursos.length === 1) {
-            selectBoletim.value = cursos[0].id;
-            if (selectDash) selectDash.value = cursos[0].id;
-            selectMaterial.value = cursos[0].id;
-            carregarBoletim();
-            carregarMateriais();
-        } else if (cursos.length > 1) {
-            selectBoletim.value = cursos[0].id;
-            if (selectDash) selectDash.value = cursos[0].id;
-            selectMaterial.value = cursos[0].id;
-            carregarBoletim();
-            carregarMateriais();
-        }
+        // Seleciona o primeiro curso automaticamente e dispara a carga do boletim/dashboard
+        const primeiroId = cursos[0].id;
+        selectBoletim.value = primeiroId;
+        if (selectDash) selectDash.value = primeiroId;
+        selectMaterial.value = primeiroId;
+        
+        await carregarBoletimSilencioso(primeiroId);
+        carregarMateriais();
     }
+}
+
+async function carregarBoletimSilencioso(cursoId) {
+    if (!cursoId) return;
+    const resp = await apiRequest(`/aluno/boletim/${cursoId}`);
+    dadosBoletimAtual = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
+    renderizarDashboardAluno();
 }
 
 async function carregarBoletim() {
@@ -901,14 +903,11 @@ async function renderizarDashboardAluno() {
     const containerDash = document.getElementById('container-semestres-dash');
     if (!containerDash) return;
 
-    const cursoId = document.getElementById('select-curso-boletim')?.value;
-    if (!cursoId) {
-        containerDash.innerHTML = '<p class="text-sm text-gray-400 py-4">Selecione o curso no boletim primeiro.</p>';
+    const boletim = dadosBoletimAtual || [];
+    if (boletim.length === 0) {
+        containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Nenhum módulo encontrado para este curso.</p>';
         return;
     }
-
-    const boletim = dadosBoletimAtual || [];
-    if (boletim.length === 0) return;
 
     const semestres = {};
     let semestreAtivo = null;
@@ -1084,16 +1083,15 @@ async function abrirTelaDisciplina(indexBoletim) {
         });
     }
 
-    // Carrega materiais específicos da disciplina se houver
     const containerMat = document.getElementById('disc-lista-materiais');
     containerMat.innerHTML = '<p class="text-xs text-gray-400">Carregando materiais...</p>';
     const cursoId = document.getElementById('select-curso-boletim').value;
     const mats = await apiRequest(`/aluno/materiais/${cursoId}`);
-
+    
     containerMat.innerHTML = '';
     if (mats && mats.length > 0) {
         let filtrados = mats.filter(m => (m.disciplina || '').trim().toUpperCase() === (d.disciplina || '').trim().toUpperCase());
-        if (filtrados.length === 0) filtrados = mats; // Fallback se o nome não bater exatamente
+        if (filtrados.length === 0) filtrados = mats;
 
         filtrados.forEach(m => {
             containerMat.innerHTML += `
