@@ -578,9 +578,13 @@ function renderizarDisciplinaSelecionada() {
     const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
     const faltas = n.faltas !== undefined ? n.faltas : (n.faltas_totais || 0);
     const notasObj = n.notas || {};
-    const tiposAvaliacoes = Object.keys(notasObj);
 
-    // 1. MONTA O CABEÇALHO SÓ COM AS AVALIAÇÕES DESTA DISCIPLINA
+    // CORREÇÃO 1: Usa as avaliações determinadas pela matriz vindas do backend.
+    // Exemplo do que o backend deve enviar em n.avaliacoes_previstas: ["Nota 1", "Nota 2", "Trabalho Final"]
+    // Se o backend não enviar, fazemos o fallback temporário para as chaves de notas.
+    const tiposAvaliacoes = n.avaliacoes_previstas || Object.keys(notasObj);
+
+    // 1. MONTA O CABEÇALHO COM TODAS AS AVALIAÇÕES DETERMINADAS
     let thHTML = `
         <th class="py-3 px-4">Disciplina / Módulo</th>
         <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
@@ -594,7 +598,7 @@ function renderizarDisciplinaSelecionada() {
     `;
     thead.innerHTML = thHTML;
 
-    // 2. PREENCHE A LINHA ÚNICA DA DISCIPLINA
+    // 2. PREENCHE AS NOTAS, MOSTRANDO "PENDENTE/VAZIO" QUANDO AVALIAÇÃO AINDA NÃO FOI FEITA
     let tdsNotas = '';
     let somaNotas = 0;
     let qtdNotasValidas = 0;
@@ -603,29 +607,50 @@ function renderizarDisciplinaSelecionada() {
 
     tiposAvaliacoes.forEach(tipo => {
         const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== '' ? parseFloat(notasObj[tipo]) : null;
+
         if (valNota !== null && !isNaN(valNota)) {
             somaNotas += valNota;
             qtdNotasValidas++;
             tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
-
-            // Alimenta o gráfico com as notas desta disciplina
             labelsGrafico.push(tipo);
             dadosGrafico.push(valNota);
         } else {
+            // Avaliação exigida, mas nota não lançada
             tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
+            labelsGrafico.push(tipo);
+            dadosGrafico.push(0); // Representação visual de pendência no gráfico
         }
     });
 
-    // 3. LÓGICA CORRIGIDA DA SITUAÇÃO
-    let mediaFinal = qtdNotasValidas > 0 ? (somaNotas / qtdNotasValidas) : null;
-    let mediaStr = mediaFinal !== null ? mediaFinal.toFixed(1) : '-';
+    // CORREÇÃO 2: Puxa a Média e o Status Oficiais diretos do banco.
+    // O backend que consolida o diário do professor deve calcular e enviar n.media_final e n.situacao.
+    let mediaFinal = null;
+    if (n.media_final !== undefined && n.media_final !== null) {
+        mediaFinal = parseFloat(n.media_final);
+    } else if (tiposAvaliacoes.length > 0) {
+        // Fallback: se o backend não enviou, divide pelo total de provas DEFINIDAS (e não apenas pelas feitas)
+        mediaFinal = somaNotas / tiposAvaliacoes.length;
+    }
+
+    let mediaStr = mediaFinal !== null && !isNaN(mediaFinal) ? mediaFinal.toFixed(1) : '-';
     let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
 
-    // Só avalia aprovação/recuperação se tiver alguma nota válida lançada
-    if (qtdNotasValidas > 0 && mediaFinal !== null) {
+    const situacaoOficial = n.situacao || null;
+
+    if (situacaoOficial) {
+        // Situação exata enviada pela secretaria/admin
+        if (situacaoOficial.toLowerCase().includes('aprovado')) {
+            badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+        } else if (situacaoOficial.toLowerCase().includes('reprovado')) {
+            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+        } else {
+            badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+        }
+    } else if (mediaFinal !== null) {
+        // Fallback de situação
         if (mediaFinal >= 7.0) {
             badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
-        } else {
+        } else if (qtdNotasValidas === tiposAvaliacoes.length) {
             badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
         }
     }
@@ -640,7 +665,6 @@ function renderizarDisciplinaSelecionada() {
         </tr>
     `;
 
-    // 4. ATUALIZA O GRÁFICO
     renderizarGraficoDesempenho(labelsGrafico, dadosGrafico);
     if (typeof feather !== 'undefined') feather.replace();
 }
