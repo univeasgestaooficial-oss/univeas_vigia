@@ -38,6 +38,10 @@ class MaterialEdicaoPayload(BaseModel):
     titulo: str
     url_arquivo: str
 
+class PerfilDocentePayload(BaseModel):
+    email: str
+    telefone: str
+
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
 # ==========================================
@@ -1426,3 +1430,23 @@ async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayl
     })
 
     return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
+
+
+@app.put("/api/v1/docente/perfil/atualizar")
+async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("docentes").document(docente_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Docente não encontrado.")
+
+    # Atualiza apenas os dados de contato
+    ref.update({
+        "email": payload.email,
+        "telefone": payload.telefone
+    })
+
+    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
