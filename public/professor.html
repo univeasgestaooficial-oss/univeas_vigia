@@ -151,15 +151,14 @@
     </div>
 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
-                            <i data-feather="clock" class="h-5 w-5 text-teal-500 mr-2"></i> Próximas Aulas (Hoje)
-                        </h4>
-                        <ul id="lista-proximas-aulas" class="space-y-4">
-                            <p class="text-sm text-gray-400">Nenhuma aula programada para hoje.</p>
-                        </ul>
-                    </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[420px]">
+    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4 shrink-0">
+        <i data-feather="calendar" class="h-5 w-5 text-teal-500 mr-2"></i> Cronograma e Avaliações
+    </h4>
+    <div id="lista-cronograma-dashboard" class="space-y-4 overflow-y-auto pr-2 flex-1 no-scrollbar">
+        <p class="text-sm text-gray-400">Carregando cronograma da matriz...</p>
+    </div>
+</div>
 
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
@@ -703,6 +702,7 @@ async function loadTurmas() {
             containerPerfilTurmas.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Nenhuma turma alocada para este registro de docente.</p>';
         }
     }
+    renderizarCronogramaDashboard();
 }
 // =========================================================
 // LÓGICA DO DIÁRIO ELETRÔNICO (DATA AUTOMÁTICA E AVALIAÇÕES)
@@ -1232,6 +1232,61 @@ async function editarMaterial(materialId, tituloAtual, urlAtual) {
     } else {
         alert("Erro ao atualizar: " + (result?.detail || "Tente novamente."));
     }
+}
+    function renderizarCronogramaDashboard() {
+    const container = document.getElementById('lista-cronograma-dashboard');
+    if (!container) return;
+
+    if (!turmasProfessor || turmasProfessor.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400">Nenhuma disciplina alocada para exibir.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    turmasProfessor.forEach(turma => {
+        const det = turma.detalhes || {};
+        const dias = det.dias_aula && det.dias_aula.length > 0 ? det.dias_aula.join(', ') : 'Dias não definidos';
+        const horaIni = det.hora_aula_inicio || det.hora_inicio || '--:--';
+        const horaFim = det.hora_aula_fim || det.hora_fim || '--:--';
+        const avaliacoes = det.avaliacoes || [];
+
+        let htmlAvaliacoes = '';
+        if (avaliacoes.length > 0) {
+            htmlAvaliacoes = '<div class="mt-2 flex flex-wrap gap-2">';
+            avaliacoes.forEach(av => {
+                // Converte a data do formato YYYY-MM-DD para o formato brasileiro DD/MM/YYYY
+                let dataFmt = av.data;
+                if(dataFmt && dataFmt.includes('-')) {
+                    const partes = dataFmt.split('-');
+                    dataFmt = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                }
+                htmlAvaliacoes += `
+                    <span class="bg-orange-50 border border-orange-200 text-orange-700 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm cursor-help" title="Horário: ${av.inicio || '--:--'} às ${av.fim || '--:--'}">
+                        ${av.tipo}: ${dataFmt || 'S/ Data'}
+                    </span>`;
+            });
+            htmlAvaliacoes += '</div>';
+        } else {
+            htmlAvaliacoes = '<p class="text-[10px] text-gray-400 mt-1 italic">Nenhuma avaliação cadastrada pela secretaria.</p>';
+        }
+
+        container.innerHTML += `
+            <div class="bg-gray-50 border border-gray-100 p-4 rounded-xl hover:border-teal-300 hover:shadow-sm transition-all duration-300">
+                <h5 class="text-sm font-black text-gray-800 uppercase leading-tight">${turma.nome_disciplina || 'Disciplina'}</h5>
+                <p class="text-[10px] text-gray-500 font-medium uppercase mt-0.5 mb-2">${turma.curso_pai || 'Curso'}</p>
+
+                <div class="flex items-center text-teal-800 text-xs font-bold mb-3 bg-teal-100/50 px-3 py-2 rounded-lg border border-teal-100 w-fit">
+                    <i data-feather="clock" class="w-3.5 h-3.5 mr-1.5"></i> ${dias} • ${horaIni} às ${horaFim}
+                </div>
+
+                <div class="border-t border-gray-200 pt-3">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Calendário de Avaliações</p>
+                    ${htmlAvaliacoes}
+                </div>
+            </div>
+        `;
+    });
+    feather.replace();
 }
 
 </script>
