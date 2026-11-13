@@ -34,6 +34,9 @@ class DiarioPayload(BaseModel):
     conteudo_ministrado: str
     lancamentos: List[LancamentoAluno]
 
+class MaterialEdicaoPayload(BaseModel):
+    titulo: str
+    url_arquivo: str
 
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
@@ -1381,3 +1384,45 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
                         headers={"Content-Disposition": "attachment; filename=Relatorio_Alunos_UNIVEAS.pdf"})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@app.delete("/api/v1/docente/material/{material_id}")
+async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+
+    # Proteção: Garante que o professor só exclua materiais dele mesmo
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
+
+    ref.delete()
+    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
+
+
+@app.put("/api/v1/docente/material/{material_id}")
+async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+
+    # Proteção: Garante que o professor só edite materiais dele mesmo
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
+
+    ref.update({
+        "titulo": payload.titulo,
+        "url_arquivo": payload.url_arquivo
+    })
+
+    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
