@@ -171,19 +171,26 @@
                 </div>
             </div>
 
-            <!-- ==========================================
+           <!-- ==========================================
                  TELA: BOLETIM ACADÊMICO
                  ========================================== -->
             <div id="tela-boletim" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
-                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
+
+                    <!-- Cabeçalho com os dois filtros (Curso e Disciplina) -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
+                        <h4 class="text-lg font-bold text-gray-800 flex items-center shrink-0">
                             <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
-                            Desempenho Acadêmico e Avaliações
+                            Desempenho Acadêmico
                         </h4>
-                        <select id="select-curso-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white" onchange="carregarBoletim()">
-                            <option value="">Selecione o Curso / Módulo...</option>
-                        </select>
+                        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                            <select id="select-curso-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white w-full sm:w-48" onchange="carregarBoletim()">
+                                <option value="">Selecione o Curso...</option>
+                            </select>
+                            <select id="select-disciplina-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white w-full sm:w-56 hidden" onchange="renderizarDisciplinaSelecionada()">
+                                <option value="">Selecione a Disciplina...</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Tabela Dinâmica do Boletim -->
@@ -193,7 +200,7 @@
                                 <tr id="thead-boletim" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     <th class="py-3 px-4">Disciplina / Módulo</th>
                                     <th class="py-3 px-4 text-center">Faltas</th>
-                                    <th class="py-3 px-4 text-center">Média / Notas</th>
+                                    <th class="py-3 px-4 text-center">Média</th>
                                     <th class="py-3 px-4 text-center">Situação</th>
                                 </tr>
                             </thead>
@@ -209,7 +216,7 @@
                     <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-auto">
                         <div class="flex items-center justify-between mb-3">
                             <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
-                                <i data-feather="bar-chart-2" class="w-4 h-4 text-blue-500 mr-1.5"></i> Evolução de Desempenho por Avaliação / Média
+                                <i data-feather="bar-chart-2" class="w-4 h-4 text-blue-500 mr-1.5"></i> Notas por Avaliação
                             </h5>
                         </div>
                         <div class="relative h-48 w-full">
@@ -516,113 +523,126 @@ async function loadCursosAluno() {
 }
 
 let meuGraficoDesempenho = null;
+let dadosBoletimAtual = []; // Variável global para armazenar os dados do curso
 
 async function carregarBoletim() {
     const cursoId = document.getElementById('select-curso-boletim').value;
+    const selectDisciplina = document.getElementById('select-disciplina-boletim');
     const tbody = document.getElementById('tbody-boletim');
     const thead = document.getElementById('thead-boletim');
 
     if (!cursoId) {
+        selectDisciplina.classList.add('hidden');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
+        renderizarGraficoDesempenho([], []);
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Buscando boletim e avaliações...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Buscando disciplinas e avaliações...</td></tr>';
 
     const resp = await apiRequest(`/aluno/boletim/${cursoId}`);
+    dadosBoletimAtual = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
 
-    // Suporta tanto resposta direta em array quanto objeto contendo dados/avaliacoes
-    const registros = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
-
-    if (registros.length > 0) {
-        // Coleta tipos de avaliações unicas cadastradas nas notas (ex: AV1, AV2, Trabalho, etc.)
-        let tiposAvaliacoesSet = new Set();
-        registros.forEach(r => {
-            if (r.notas && typeof r.notas === 'object') {
-                Object.keys(r.notas).forEach(tipo => tiposAvaliacoesSet.add(tipo));
-            }
-        });
-        const tiposAvaliacoes = Array.from(tiposAvaliacoesSet);
-
-        // 1. MONTA O CABEÇALHO DINAMICAMENTE
-        let thHTML = `
-            <th class="py-3 px-4">Disciplina / Módulo</th>
-            <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
-        `;
-        if (tiposAvaliacoes.length > 0) {
-            tiposAvaliacoes.forEach(tipo => {
-                thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
-            });
-        }
-        thHTML += `
-            <th class="py-3 px-4 text-center">Média</th>
-            <th class="py-3 px-4 text-center">Situação</th>
-        `;
-        thead.innerHTML = thHTML;
-
-        // 2. PREENCHE AS LINHAS DA TABELA
-        tbody.innerHTML = '';
-        let labelsGrafico = [];
-        let dadosGrafico = [];
-
-        registros.forEach(n => {
-            const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
-            const faltas = n.faltas !== undefined ? n.faltas : (n.faltas_totais || 0);
-            const notasObj = n.notas || {};
-
-            let tdsNotas = '';
-            let somaNotas = 0;
-            let qtdNotasValidas = 0;
-
-            if (tiposAvaliacoes.length > 0) {
-                tiposAvaliacoes.forEach(tipo => {
-                    const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== '' ? parseFloat(notasObj[tipo]) : null;
-                    if (valNota !== null) {
-                        somaNotas += valNota;
-                        qtdNotasValidas++;
-                        tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
-                    } else {
-                        tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
-                    }
-                });
-            }
-
-            // Calcula média se houver notas, senão usa a média enviada pelo backend
-            let mediaFinal = qtdNotasValidas > 0 ? (somaNotas / qtdNotasValidas) : (n.media !== undefined ? parseFloat(n.media) : null);
-            let mediaStr = mediaFinal !== null ? mediaFinal.toFixed(1) : '-';
-
-            let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
-            if (mediaFinal !== null) {
-                if (mediaFinal >= 7.0) {
-                    badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
-                } else {
-                    badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
-                }
-            }
-
-            tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
-                    <td class="py-4 px-4 font-bold text-gray-900">${nomeDisc}</td>
-                    <td class="py-4 px-4 text-center text-yellow-600 font-bold">${faltas}</td>
-                    ${tdsNotas}
-                    <td class="py-4 px-4 text-center font-black ${mediaFinal !== null && mediaFinal >= 7 ? 'text-green-600' : 'text-gray-800'}">${mediaStr}</td>
-                    <td class="py-4 px-4 text-center">${badge}</td>
-                </tr>
-            `;
-
-            // Prepara dados para o gráfico
-            labelsGrafico.push(nomeDisc);
-            dadosGrafico.push(mediaFinal !== null ? mediaFinal : 0);
+    if (dadosBoletimAtual.length > 0) {
+        // Popula o select de disciplinas com o que veio do banco
+        selectDisciplina.innerHTML = '<option value="">Selecione a Disciplina...</option>';
+        dadosBoletimAtual.forEach((d, index) => {
+            selectDisciplina.innerHTML += `<option value="${index}">${d.disciplina || d.nome_disciplina}</option>`;
         });
 
-        // 3. RENDERIZA OU ATUALIZA O GRÁFICO CHART.JS
-        renderizarGraficoDesempenho(labelsGrafico, dadosGrafico);
+        selectDisciplina.classList.remove('hidden');
+
+        // Auto-seleciona a primeira disciplina e já desenha a tabela/gráfico dela
+        selectDisciplina.value = "0";
+        renderizarDisciplinaSelecionada();
 
     } else {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum registro de notas encontrado para este curso.</td></tr>';
+        selectDisciplina.classList.add('hidden');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum registro encontrado para este curso.</td></tr>';
         renderizarGraficoDesempenho([], []);
     }
-    feather.replace();
+}
+
+function renderizarDisciplinaSelecionada() {
+    const indexStr = document.getElementById('select-disciplina-boletim').value;
+    const tbody = document.getElementById('tbody-boletim');
+    const thead = document.getElementById('thead-boletim');
+
+    if (indexStr === "") {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione uma disciplina acima.</td></tr>';
+        renderizarGraficoDesempenho([], []);
+        return;
+    }
+
+    const n = dadosBoletimAtual[parseInt(indexStr)];
+    const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
+    const faltas = n.faltas !== undefined ? n.faltas : (n.faltas_totais || 0);
+    const notasObj = n.notas || {};
+    const tiposAvaliacoes = Object.keys(notasObj);
+
+    // 1. MONTA O CABEÇALHO SÓ COM AS AVALIAÇÕES DESTA DISCIPLINA
+    let thHTML = `
+        <th class="py-3 px-4">Disciplina / Módulo</th>
+        <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
+    `;
+    tiposAvaliacoes.forEach(tipo => {
+        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
+    });
+    thHTML += `
+        <th class="py-3 px-4 text-center">Média</th>
+        <th class="py-3 px-4 text-center">Situação</th>
+    `;
+    thead.innerHTML = thHTML;
+
+    // 2. PREENCHE A LINHA ÚNICA DA DISCIPLINA
+    let tdsNotas = '';
+    let somaNotas = 0;
+    let qtdNotasValidas = 0;
+    let labelsGrafico = [];
+    let dadosGrafico = [];
+
+    tiposAvaliacoes.forEach(tipo => {
+        const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== '' ? parseFloat(notasObj[tipo]) : null;
+        if (valNota !== null && !isNaN(valNota)) {
+            somaNotas += valNota;
+            qtdNotasValidas++;
+            tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
+
+            // Alimenta o gráfico com as notas desta disciplina
+            labelsGrafico.push(tipo);
+            dadosGrafico.push(valNota);
+        } else {
+            tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
+        }
+    });
+
+    // 3. LÓGICA CORRIGIDA DA SITUAÇÃO
+    let mediaFinal = qtdNotasValidas > 0 ? (somaNotas / qtdNotasValidas) : null;
+    let mediaStr = mediaFinal !== null ? mediaFinal.toFixed(1) : '-';
+    let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
+
+    // Só avalia aprovação/recuperação se tiver alguma nota válida lançada
+    if (qtdNotasValidas > 0 && mediaFinal !== null) {
+        if (mediaFinal >= 7.0) {
+            badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
+        } else {
+            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
+        }
+    }
+
+    tbody.innerHTML = `
+        <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
+            <td class="py-4 px-4 font-bold text-gray-900">${nomeDisc}</td>
+            <td class="py-4 px-4 text-center text-yellow-600 font-bold">${faltas}</td>
+            ${tdsNotas}
+            <td class="py-4 px-4 text-center font-black ${mediaFinal !== null && mediaFinal >= 7 ? 'text-green-600' : 'text-gray-800'}">${mediaStr}</td>
+            <td class="py-4 px-4 text-center">${badge}</td>
+        </tr>
+    `;
+
+    // 4. ATUALIZA O GRÁFICO
+    renderizarGraficoDesempenho(labelsGrafico, dadosGrafico);
+    if (typeof feather !== 'undefined') feather.replace();
 }
 
 function renderizarGraficoDesempenho(labels, dados) {
@@ -633,13 +653,16 @@ function renderizarGraficoDesempenho(labels, dados) {
         meuGraficoDesempenho.destroy();
     }
 
+    // Só mostra a legenda se tiver dados (notas lançadas)
+    const labelGrafico = labels.length > 0 ? 'Nota Obtida' : 'Aguardando Avaliações';
+
     meuGraficoDesempenho = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labels,
+            labels: labels.length > 0 ? labels : ['Sem Avaliações'],
             datasets: [{
-                label: 'Média por Disciplina',
-                data: dados,
+                label: labelGrafico,
+                data: dados.length > 0 ? dados : [0],
                 backgroundColor: 'rgba(59, 130, 246, 0.7)',
                 borderColor: 'rgb(37, 99, 235)',
                 borderWidth: 1,
