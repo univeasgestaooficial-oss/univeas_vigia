@@ -47,6 +47,7 @@
      ========================================== -->
 <div id="app-container" class="hidden h-full w-full flex-1 flex">
 
+    <div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:hidden" onclick="toggleMenuMobile()"></div>
     <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
@@ -108,7 +109,8 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
+
+        <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 no-scrollbar relative w-full">
 
             <!-- TELA: DASHBOARD -->
             <div id="tela-dashboard" class="tela block">
@@ -812,9 +814,10 @@ async function carregarChamada() {
 
     // 1. CONSTRÓI O CABEÇALHO DINAMICAMENTE COM AS AVALIAÇÕES DA MATRIZ
     let thHTML = `
-        <th class="py-3 px-4 w-12">Matr.</th>
-        <th class="py-3 px-4">Nome do Aluno</th>
-        <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
+        let thHTML = `
+        <th class="py-3 px-4 w-12 whitespace-nowrap">Matr.</th>
+        <th class="py-3 px-4 whitespace-nowrap min-w-[200px]">Nome do Aluno</th>
+        <th class="py-3 px-4 w-24 text-center text-teal-600 whitespace-nowrap">Faltas</th>
     `;
 
     if (avaliacoes.length > 0) {
@@ -938,13 +941,61 @@ async function salvarDiario(btnElement) {
 
 function toggleMenuMobile() {
     const sidebar = document.querySelector('aside');
+    const backdrop = document.getElementById('mobile-backdrop');
+
     if (sidebar) {
         if (sidebar.classList.contains('-translate-x-full')) {
+            // ABRIR MENU
             sidebar.classList.remove('-translate-x-full', 'absolute');
             sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+            if (backdrop) backdrop.classList.remove('hidden');
         } else {
+            // FECHAR MENU
             sidebar.classList.add('-translate-x-full', 'absolute');
             sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+            if (backdrop) backdrop.classList.add('hidden');
+        }
+    }
+}
+
+function mudarTela(idTela) {
+    document.querySelectorAll('.tela').forEach(tela => {
+        tela.classList.add('hidden');
+        tela.classList.remove('block');
+    });
+
+    const telaAtiva = document.getElementById('tela-' + idTela);
+    if (telaAtiva) {
+        telaAtiva.classList.remove('hidden');
+        telaAtiva.classList.add('block');
+    }
+
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+    });
+
+    const btnAtivo = document.getElementById('btn-' + idTela);
+    if (btnAtivo) {
+        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+        btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+    }
+
+    const titulos = {
+        'dashboard': 'Painel Principal',
+        'turmas': 'Minhas Turmas e Disciplinas',
+        'diario': 'Diário Eletrônico',
+        'material': 'Acervo e Material Didático',
+        'perfil': 'Meu Perfil'
+    };
+    const elTitulo = document.getElementById('titulo-pagina');
+    if(elTitulo) elTitulo.innerText = titulos[idTela] || 'UNIVEAS SGA';
+
+    // NOVO: Fecha o menu mobile automaticamente ao clicar numa tela
+    if (window.innerWidth < 768) {
+        const sidebar = document.querySelector('aside');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            toggleMenuMobile();
         }
     }
 }
