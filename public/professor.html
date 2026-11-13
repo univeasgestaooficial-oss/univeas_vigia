@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.innerText = "Autenticando...";
 
             const registro = document.getElementById('input-registro').value.toUpperCase();
-            const cpf = document.getElementById('input-cpf').value;
+            const cpf = document.getElementById('input-cpf').value; // Captura o CPF digitado
 
             const formData = new FormData();
             formData.append('registro', registro);
@@ -415,12 +415,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok && data.sucesso) {
+                    // Guarda os dados básicos
                     localStorage.setItem('token_siga_docente', data.token_siga);
                     localStorage.setItem('nome_docente', data.nome_professor);
                     localStorage.setItem('registro_docente', data.registro);
-                    localStorage.setItem('email_docente', data.email || '');
-                    localStorage.setItem('telefone_docente', data.telefone || '');
-                    localStorage.setItem('cpf_docente', document.getElementById('input-cpf').value);
+
+                    // GUARDA O CPF, E-MAIL E TELEFONE
+                    localStorage.setItem('cpf_docente', cpf); // Salva o CPF que ele acabou de digitar
+                    localStorage.setItem('email_docente', data.email || 'Não cadastrado');
+                    localStorage.setItem('telefone_docente', data.telefone || 'Não cadastrado');
+
                     liberarAcessoDocente();
                 } else {
                     alert(data.detail || "Dados incorretos. Verifique com a secretaria.");
@@ -1079,46 +1083,6 @@ async function editarMaterial(materialId, tituloAtual, urlAtual) {
         alert("Erro ao atualizar: " + (result?.detail || "Tente novamente."));
     }
 }
-
-
-
-
-
-
-
-
-
-    const formPerfil = document.getElementById('form-editar-perfil');
-if (formPerfil) {
-    formPerfil.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = e.target.querySelector('button[type="submit"]');
-        const txtOriginal = btn.innerText;
-        btn.innerHTML = '<i data-feather="loader" class="w-4 h-4 mr-2 inline animate-spin"></i> Salvando...';
-        btn.disabled = true;
-
-        const payload = {
-            email: document.getElementById('perfil-email').value,
-            telefone: document.getElementById('perfil-telefone').value
-        };
-
-        const result = await apiRequest('/docente/perfil/atualizar', 'PUT', payload);
-
-        if (result && result.sucesso) {
-            alert("Contato atualizado com sucesso!");
-            localStorage.setItem('email_docente', payload.email);
-            localStorage.setItem('telefone_docente', payload.telefone);
-        } else {
-            alert("Erro ao atualizar perfil: " + (result?.detail || "Tente novamente."));
-        }
-
-        btn.innerText = txtOriginal;
-        btn.disabled = false;
-        feather.replace();
-    });
-}
-
-
 
 </script>
 
