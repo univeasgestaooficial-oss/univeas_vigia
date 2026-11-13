@@ -1553,7 +1553,7 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
     checar_db()
     aluno_id = validar_token_aluno(authorization)
 
-    # Busca o curso para listar as disciplinas reais da grade
+    # 1. Busca o curso para listar as disciplinas reais e a quantidade de avaliações PREVISTAS
     c_doc = db.collection("cursos").document(curso_id).get()
     if not c_doc.exists:
         return []
@@ -1564,9 +1564,28 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
     for m in c_dados.get("grade_curricular", []):
         if isinstance(m, dict):
             d_nome = m.get("nome") or m.get("disciplina") or "Módulo"
-            disciplinas_map[d_nome.strip().upper()] = {"disciplina": d_nome, "faltas": 0, "notas": {}}
+            mod_key = d_nome.strip().upper()
 
-    # Busca todos os diários salvos pelos professores para este curso/turma
+            # Puxa as avaliações cadastradas pelo Admin na matriz do curso
+            avaliacoes_curso = m.get("avaliacoes", [])
+            tipos_previstos = []
+
+            for aval in avaliacoes_curso:
+                tipo_av = aval.get("tipo", "Avaliação").capitalize()
+                tipos_previstos.append(tipo_av)
+
+            # Se o admin não cadastrou avaliações no curso, assume 1 padrão
+            if not tipos_previstos:
+                tipos_previstos = ["Nota Única"]
+
+            disciplinas_map[mod_key] = {
+                "disciplina": d_nome,
+                "faltas": 0,
+                "notas": {},
+                "avaliacoes_previstas": tipos_previstos
+            }
+
+    # 2. Busca todos os diários salvos pelos professores para este curso/turma
     diarios_docs = db.collection("diarios").stream()
     for doc in diarios_docs:
         d = doc.to_dict()
@@ -1574,39 +1593,53 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
         if curso_id in turma_id:
             for lanc in d.get("avaliacoes", []):
                 if str(lanc.get("aluno_id")) == str(aluno_id):
-                    # Tenta identificar a disciplina pelo ID ou extração
                     _, mod_nome = turma_id.split("_", 1) if "_" in turma_id else ("", "Módulo")
                     mod_key = mod_nome.strip().upper()
 
-                    if mod_key not in disciplinas_map:
-                        disciplinas_map[mod_key] = {"disciplina": mod_nome, "faltas": 0, "notas": {}}
+                    if mod_key in disciplinas_map:
+                        disciplinas_map[mod_key]["faltas"] += int(lanc.get("faltas", 0))
 
-                    disciplinas_map[mod_key]["faltas"] += int(lanc.get("faltas", 0))
+                        notas_lancadas = lanc.get("notas", {})
+                        for tipo_av, valor_nota in notas_lancadas.items():
+                            disciplinas_map[mod_key]["notas"][tipo_av] = valor_nota
 
-                    # Mescla as notas dinâmicas lançadas pelo professor
-                    notas_lancadas = lanc.get("notas", {})
-                    for tipo_av, valor_nota in notas_lancadas.items():
-                        disciplinas_map[mod_key]["notas"][tipo_av] = valor_nota
-
-    # Converte o mapa em lista para o frontend desenhar a tabela e popular o gráfico
+    # 3. Consolida a Média e a Situação do lado do Servidor (Python)
     boletim_final = []
     for chave, dados in disciplinas_map.items():
         notas = dados["notas"]
-        media = 0
-        if notas:
-            valores = [float(v) for v in notas.values() if v != "" and v is not None]
-            if valores:
-                media = sum(valores) / len(valores)
+        previstas = dados["avaliacoes_previstas"]
+
+        soma = 0
+        qtd_lancada = 0
+
+        # Soma as notas já lançadas
+        for val in notas.values():
+            if val != "" and val is not None:
+                try:
+                    soma += float(val)
+                    qtd_lancada += 1
+                except:
+                    pass
+
+        # O segredo do sincronismo: Divide pelo total PREVISTO na matriz
+        qtd_prevista = len(previstas)
+        media_final = (soma / qtd_prevista) if qtd_prevista > 0 else 0
+
+        # O Python decide a situação do aluno
+        situacao = "Cursando"
+        if qtd_lancada > 0 and qtd_lancada == qtd_prevista:
+            situacao = "Aprovado" if media_final >= 7.0 else "Em Recuperação"
 
         boletim_final.append({
             "disciplina": dados["disciplina"],
             "faltas": dados["faltas"],
+            "avaliacoes_previstas": previstas,
             "notas": notas,
-            "media": round(media, 1)
+            "media_final": round(media_final, 1),
+            "situacao": situacao
         })
 
     return boletim_final
-
 
 @app.get("/api/v1/aluno/materiais/{curso_id}")
 async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None)):
