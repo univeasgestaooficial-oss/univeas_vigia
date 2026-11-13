@@ -12,75 +12,76 @@
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
 
 <!-- ==========================================
      TELA DE LOGIN DO ALUNO
      ========================================== -->
-<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop');">
+<div id="tela-login" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=2070&auto=format&fit=crop');">
     <div class="absolute inset-0 bg-slate-900/85 backdrop-blur-sm"></div>
 
-    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-4 border-blue-500">
-        <div class="mx-auto mb-4 bg-blue-50 h-16 w-16 rounded-full flex items-center justify-center border border-blue-100">
+    <div class="relative z-10 bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-4 border-teal-500">
+        <div class="mx-auto mb-4 bg-teal-50 h-16 w-16 rounded-full flex items-center justify-center border border-teal-100">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="mx-auto mb-6 h-14 w-auto object-contain">
         </div>
         <h2 class="text-2xl font-black text-gray-900 mb-1">Portal do Aluno</h2>
-        <p class="text-sm text-gray-500 mb-6 font-medium">Acompanhe sua jornada acadêmica</p>
+        <p class="text-sm text-gray-500 mb-6 font-medium">Acesso Acadêmico e Financeiro</p>
 
-        <form id="form-login" class="space-y-4">
+        <form id="form-login-aluno" class="space-y-4">
             <div>
-                <input type="text" id="input-matricula" placeholder="Nº de Matrícula (Ex: #GER...)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-center font-bold uppercase">
+                <input type="text" id="input-matricula" placeholder="Nº de Matrícula (Ex: #2026...)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold uppercase">
             </div>
             <div>
-                <input type="password" id="input-cpf" placeholder="CPF (Apenas números)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-center font-bold tracking-widest">
+                <input type="password" id="input-cpf-aluno" placeholder="CPF (Apenas números)" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-500 text-center font-bold tracking-widest">
             </div>
-            <button type="submit" id="btn-submit-login" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-700 transition shadow-md">
-                Acessar Portal
+            <button type="submit" id="btn-submit-login" class="w-full bg-teal-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md">
+                Entrar no Portal
             </button>
         </form>
     </div>
 </div>
 
 <!-- ==========================================
-     CONTAINER DO SISTEMA
+     CONTAINER DO SISTEMA DO ALUNO
      ========================================== -->
 <div id="app-container" class="hidden h-full w-full flex-1 flex">
+    <div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:hidden" onclick="toggleMenuMobile()"></div>
 
-
-<div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:hidden" onclick="toggleMenuMobile()"></div>
-
-<aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-50 h-full shrink-0">
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-50 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
         </div>
 
         <div class="flex-1 overflow-y-auto no-scrollbar py-4 px-2 space-y-1">
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Visão Geral</p>
-            <button onclick="mudarTela('dashboard')" id="btn-dashboard" class="menu-btn w-full flex items-center px-4 py-2.5 bg-blue-50 text-blue-700 border-l-4 border-blue-500 font-bold rounded-r-lg transition-colors">
+            <button onclick="mudarTela('dashboard')" id="btn-dashboard" class="menu-btn w-full flex items-center px-4 py-2.5 bg-teal-50 text-teal-700 border-l-4 border-teal-500 font-bold rounded-r-lg transition-colors">
                 <i data-feather="grid" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Painel Principal</span>
+                <span class="text-sm">Painel do Aluno</span>
             </button>
 
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Acadêmico</p>
-            <button onclick="mudarTela('boletim')" id="btn-boletim" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
-                <i data-feather="award" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Notas e Faltas (Boletim)</span>
-            </button>
-            <button onclick="mudarTela('material')" id="btn-material" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
+            <button onclick="mudarTela('cursos')" id="btn-cursos" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
                 <i data-feather="book-open" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Meus Cursos e Grade</span>
+            </button>
+            <button onclick="mudarTela('boletim')" id="btn-boletim" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="award" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Boletim e Notas</span>
+            </button>
+            <button onclick="mudarTela('materiais')" id="btn-materiais" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
+                <i data-feather="folder" class="h-5 w-5 mr-3"></i>
                 <span class="text-sm">Material Didático</span>
             </button>
 
-            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Secretaria</p>
-            <button onclick="mudarTela('financeiro')" id="btn-financeiro" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
+            <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Financeiro</p>
+            <button onclick="mudarTela('financeiro')" id="btn-financeiro" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
                 <i data-feather="dollar-sign" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Financeiro (Mensalidades)</span>
+                <span class="text-sm">Financeiro & Carnê</span>
             </button>
 
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Conta</p>
-            <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
+            <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-teal-600 font-medium rounded-r-lg transition-colors">
                 <i data-feather="user" class="h-5 w-5 mr-3"></i>
                 <span class="text-sm">Meu Perfil</span>
             </button>
@@ -97,1082 +98,389 @@
     <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
         <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
             <div class="flex items-center">
-                <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-blue-600 mr-4">
+                <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-teal-600 mr-4">
                     <i data-feather="menu" class="h-6 w-6"></i>
                 </button>
-                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Painel Principal</h1>
+                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Painel do Aluno</h1>
             </div>
 
             <div class="flex items-center space-x-4">
                 <div class="text-right hidden sm:block">
                     <p id="nome-aluno-header" class="text-sm font-bold text-gray-900">Carregando...</p>
-                    <p class="text-xs text-blue-600 font-medium" id="matricula-aluno-header">Portal do Aluno</p>
+                    <p class="text-xs text-teal-600 font-medium" id="matricula-aluno-header">Estudante</p>
                 </div>
-                <div id="iniciais-header" class="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-sm cursor-pointer hover:bg-blue-100 transition border border-blue-100">
+                <div id="iniciais-header" class="h-10 w-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold shadow-sm cursor-pointer border border-teal-100">
                     --
                 </div>
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 no-scrollbar relative w-full">
 
-            <!-- ==========================================
-                 TELA: DASHBOARD
-                 ========================================== -->
+            <!-- TELA: DASHBOARD -->
             <div id="tela-dashboard" class="tela block">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Média Geral</p>
-                            <h3 id="dash-media" class="text-3xl font-black text-gray-800 mt-1">-</h3>
+                            <h3 id="dash-media" class="text-3xl font-black text-teal-600 mt-1">0.0</h3>
                         </div>
-                        <div class="p-4 bg-blue-50 text-blue-500 rounded-xl">
-                            <i data-feather="award" class="h-6 w-6"></i>
-                        </div>
+                        <div class="p-4 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="award" class="h-6 w-6"></i></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Faltas Acumuladas</p>
-                            <h3 id="dash-faltas" class="text-3xl font-black text-yellow-500 mt-1">0</h3>
+                            <h3 id="dash-faltas" class="text-3xl font-black text-red-500 mt-1">0</h3>
                         </div>
-                        <div class="p-4 bg-yellow-50 text-yellow-500 rounded-xl">
-                            <i data-feather="clock" class="h-6 w-6"></i>
-                        </div>
+                        <div class="p-4 bg-red-50 text-red-500 rounded-xl"><i data-feather="user-x" class="h-6 w-6"></i></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Status Financeiro</p>
-                            <h3 id="dash-financeiro" class="text-xl font-black text-green-500 mt-1">REGULAR</h3>
+                            <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Situação Financeira</p>
+                            <h3 id="dash-financeiro" class="text-3xl font-black text-gray-800 mt-1">-</h3>
                         </div>
-                        <div class="p-4 bg-green-50 text-green-500 rounded-xl">
-                            <i data-feather="check-circle" class="h-6 w-6"></i>
-                        </div>
+                        <div class="p-4 bg-teal-50 text-teal-500 rounded-xl"><i data-feather="dollar-sign" class="h-6 w-6"></i></div>
                     </div>
                 </div>
 
-                <!-- ==========================================
-                     CARROSSÉIS DE DISCIPLINAS POR SEMESTRE
-                     ========================================== -->
-                <div id="container-semestres-dash" class="space-y-8 mt-8">
-                    <!-- O JavaScript injetará os semestres e cards aqui -->
-                    <div class="text-center py-10">
-                        <p class="text-gray-400 text-sm animate-pulse">Carregando matriz curricular...</p>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- ==========================================
-                 TELA: DETALHES DA DISCIPLINA (Ex-disciplina.html)
-                 ========================================== -->
-            <div id="tela-disciplina" class="tela hidden">
-                <!-- Botão Voltar -->
-                <div class="mb-4">
-                    <button onclick="mudarTela('dashboard')" class="text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-lg flex items-center hover:bg-blue-100 transition w-fit">
-                        <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i> Voltar ao Painel
-                    </button>
-                </div>
-
-                <!-- Header da Disciplina (Card + Info) -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 mb-6">
-                    <div id="disc-foto" class="w-full md:w-48 h-48 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200">
-                        <img src="" alt="Capa" class="w-full h-full object-cover hidden">
-                        <div class="w-full h-full flex items-center justify-center text-gray-400"><i data-feather="image" class="w-8 h-8"></i></div>
-                    </div>
-                    <div class="flex-1 flex flex-col justify-between">
-                        <div>
-                            <div class="flex gap-2 mb-2" id="disc-badges">
-                                <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">PRESENCIAL</span>
-                            </div>
-                            <h2 id="disc-nome" class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-1">Nome da Disciplina</h2>
-                            <p id="disc-curso" class="text-sm font-bold text-gray-500 uppercase">Curso - Turma</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100 text-xs">
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Período</span><span id="disc-periodo" class="font-bold text-gray-800">--/-- a --/--</span></div>
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Encontro</span><span id="disc-encontro" class="font-bold text-gray-800">Presencial</span></div>
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Horário</span><span id="disc-horario" class="font-bold text-gray-800">19:00 às 22:00</span></div>
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Média Parcial</span><span id="disc-media" class="font-black text-blue-600 text-sm">-</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Abas de Conteúdo (Aulas, Avaliações, Materiais) -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Coluna Esquerda: Aulas e Materiais -->
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h4 class="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center mb-4 border-b border-gray-50 pb-3">
-                                <i data-feather="calendar" class="mr-2 text-blue-500"></i> Cronograma de Aulas
-                            </h4>
-                            <ul id="disc-lista-aulas" class="space-y-3">
-                                <!-- Preenchido via JS -->
-                            </ul>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h4 class="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center mb-4 border-b border-gray-50 pb-3">
-                                <i data-feather="folder" class="mr-2 text-blue-500"></i> Materiais de Apoio
-                            </h4>
-                            <div id="disc-lista-materiais" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <!-- Preenchido via JS -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Coluna Direita: Avaliações -->
-                    <div class="bg-orange-50/50 p-6 rounded-2xl shadow-sm border border-orange-100 h-fit">
-                        <h4 class="text-sm font-black text-orange-800 uppercase tracking-widest flex items-center mb-4 border-b border-orange-100 pb-3">
-                            <i data-feather="award" class="mr-2 text-orange-500"></i> Avaliações
-                        </h4>
-                        <div id="disc-lista-avaliacoes" class="space-y-3">
-                             <!-- Preenchido via JS -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-           <!-- ==========================================
-                 TELA: BOLETIM ACADÊMICO
-                 ========================================== -->
-            <div id="tela-boletim" class="tela hidden">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
-
-                    <!-- Cabeçalho com os dois filtros (Curso e Disciplina) -->
-                    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
-                        <h4 class="text-lg font-bold text-gray-800 flex items-center shrink-0">
-                            <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
-                            Desempenho Acadêmico
-                        </h4>
-                        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                            <select id="select-curso-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white w-full sm:w-48" onchange="carregarBoletim()">
-                                <option value="">Selecione o Curso...</option>
-                            </select>
-                            <select id="select-disciplina-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white w-full sm:w-56 hidden" onchange="renderizarDisciplinaSelecionada()">
-                                <option value="">Selecione a Disciplina...</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Tabela Dinâmica do Boletim -->
-                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6 flex-1">
-                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
-                            <thead class="bg-gray-50">
-                                <tr id="thead-boletim" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                    <th class="py-3 px-4">Disciplina / Módulo</th>
-                                    <th class="py-3 px-4 text-center">Faltas</th>
-                                    <th class="py-3 px-4 text-center">Média</th>
-                                    <th class="py-3 px-4 text-center">Situação</th>
-                                </tr>
-                            </thead>
-                           <tbody id="tbody-boletim" class="divide-y divide-gray-100 font-medium text-gray-700">
-                                <tr>
-                                    <td colspan="6" class="text-center py-8 text-gray-400">Selecione o curso acima para carregar suas notas.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Gráfico de Desempenho do Aluno -->
-                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-auto">
-                        <div class="flex items-center justify-between mb-3">
-                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
-                                <i data-feather="bar-chart-2" class="w-4 h-4 text-blue-500 mr-1.5"></i> Notas por Avaliação
-                            </h5>
-                        </div>
-                        <div class="relative h-48 w-full">
-                            <canvas id="graficoDesempenhoAluno"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==========================================
-                 TELA: MATERIAL DIDÁTICO
-                 ========================================== -->
-            <div id="tela-material" class="tela hidden">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
-                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
-                            <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
-                            Arquivos e Aulas Compartilhadas
-                        </h4>
-                        <select id="select-curso-material" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white" onchange="carregarMateriais()">
-                            <option value="">Selecione o Curso...</option>
-                        </select>
-                    </div>
-
-                    <div id="lista-materiais-aluno" class="space-y-4 overflow-y-auto flex-1 pr-2">
-                        <p class="text-sm text-gray-400 text-center py-8">Selecione um curso para ver os materiais disponíveis.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==========================================
-                 TELA: FINANCEIRO
-                 ========================================== -->
-            <div id="tela-financeiro" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center border-b border-gray-100 pb-4">
-                        <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
-                        Minhas Mensalidades
+                    <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
+                        <i data-feather="book" class="h-5 w-5 text-teal-500 mr-2"></i> Disciplinas em Andamento
                     </h4>
+                    <div id="lista-disciplinas-dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <p class="text-sm text-gray-400">Carregando dados acadêmicos...</p>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6">
+            <!-- TELA: MEUS CURSOS E GRADE -->
+            <div id="tela-cursos" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center border-b border-gray-50 pb-4">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Meus Cursos Matriculados e Matriz Curricular
+                    </h4>
+                    <div id="container-cursos-aluno" class="space-y-6">
+                        <p class="text-sm text-gray-400">Carregando cursos...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: BOLETIM E NOTAS -->
+            <div id="tela-boletim" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center border-b border-gray-50 pb-4">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Boletim Escolar Consolidado
+                    </h4>
+                    <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
                                 <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                    <th class="py-3 px-4">Ref. / Vencimento</th>
-                                    <th class="py-3 px-4">Valor (R$)</th>
-                                    <th class="py-3 px-4 text-center">Status</th>
-                                    <th class="py-3 px-4 text-right">Ação / Comprovante</th>
+                                    <th class="py-3 px-4">Disciplina / Módulo</th>
+                                    <th class="py-3 px-4 text-center">Faltas</th>
+                                    <th class="py-3 px-4 text-center">Notas Lançadas</th>
+                                    <th class="py-3 px-4 text-center">Média Parcial</th>
+                                    <th class="py-3 px-4 text-center">Situação</th>
                                 </tr>
                             </thead>
-                            <tbody id="tbody-financeiro" class="divide-y divide-gray-100 font-medium">
-                                <tr>
-                                    <td colspan="4" class="text-center py-8 text-gray-400">Buscando faturas...</td>
-                                </tr>
+                            <tbody id="tabela-boletim-aluno" class="divide-y divide-gray-100 font-medium text-gray-700">
+                                <tr><td colspan="5" class="text-center py-6 text-gray-400">Carregando boletim...</td></tr>
                             </tbody>
                         </table>
-                    </div>
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                        <i data-feather="info" class="text-blue-500 shrink-0 mt-0.5"></i>
-                        <p class="text-xs text-blue-800">Para pagamentos via PIX ou Depósito, utilize o botão "Anexar Comprovante" para enviar a foto do recibo à secretaria. O status mudará para "Pago" após a validação.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- ==========================================
-                 TELA: PERFIL
-                 ========================================== -->
-            <div id="tela-perfil" class="tela hidden">
-                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
-                        Meus Dados Cadastrais
+            <!-- TELA: MATERIAL DIDÁTICO -->
+            <div id="tela-materiais" class="tela hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center border-b border-gray-50 pb-4">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Material Didático Disponibilizado pelos Professores
                     </h4>
-                    <div class="flex flex-col sm:flex-row items-center gap-6 mb-8 border-b border-gray-100 pb-8">
-                        <div id="perfil-iniciais" class="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-2xl border-2 border-blue-100">
-                            --
+                    <div id="lista-materiais-aluno" class="space-y-3">
+                        <p class="text-sm text-gray-400">Carregando acervo...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: FINANCEIRO -->
+            <div id="tela-financeiro" class="tela hidden">
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+                    <h4 class="text-lg font-bold text-gray-800 border-b border-gray-50 pb-4 flex items-center">
+                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Situação Financeira & Comprovantes
+                    </h4>
+                    <div class="bg-teal-50/50 p-5 rounded-xl border border-teal-100 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-[10px] font-bold text-teal-700 uppercase">Dia de Vencimento</p>
+                            <p id="fin-vencimento" class="text-lg font-black text-gray-800">Dia --</p>
                         </div>
-                        <div class="text-center sm:text-left">
-                            <h2 id="perfil-nome" class="text-xl font-black text-gray-900">Carregando...</h2>
-                            <p id="perfil-matricula" class="text-sm text-gray-500 mb-3">Matrícula: --</p>
+                        <div>
+                            <p class="text-[10px] font-bold text-teal-700 uppercase">Valor da Mensalidade</p>
+                            <p id="fin-valor" class="text-lg font-black text-gray-800">R$ --</p>
                         </div>
                     </div>
 
-                    <form class="space-y-5" onsubmit="event.preventDefault(); alert('Solicitação de alteração enviada à secretaria.');">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">CPF</label>
-                                <input type="text" id="perfil-cpf" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
-                                <input type="email" id="perfil-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
-                                <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço Completo</label>
-                                <input type="text" id="perfil-endereco" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                            </div>
+                    <form id="form-envio-comprovante" onsubmit="enviarComprovanteAluno(event)" class="space-y-4 pt-4 border-t border-gray-100">
+                        <h5 class="text-sm font-bold text-gray-800">Enviar Comprovante de Pagamento (PIX / Depósito)</h5>
+                        <div>
+                            <input type="file" id="arquivo-comprovante" required class="w-full text-xs text-gray-500 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 font-bold cursor-pointer">
                         </div>
-
-                        <div class="flex justify-end pt-6 border-t border-gray-100">
-                            <button type="submit" class="bg-blue-600 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-700 transition shadow-sm">Solicitar Atualização</button>
-                        </div>
+                        <button type="submit" class="w-full bg-teal-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">
+                            Enviar Comprovante para Análise
+                        </button>
                     </form>
                 </div>
             </div>
 
-            <!-- MODAL: CONFIRMAR PRESENÇA -->
-<div id="modal-presenca" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center border-t-4 border-green-500 transform scale-95 transition-all">
-        <div class="mx-auto mb-4 bg-green-50 h-16 w-16 rounded-full flex items-center justify-center text-green-500">
-            <i data-feather="map-pin" class="w-8 h-8"></i>
-        </div>
-        <h3 class="text-xl font-black text-gray-900 mb-1 uppercase">Aula em Andamento</h3>
-        <p id="presenca-disciplina" class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Banco de Dados</p>
-
-        <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6 text-left space-y-2">
-            <p class="text-xs text-gray-600"><strong class="text-gray-800">Prof:</strong> <span id="presenca-prof">João Silva</span></p>
-            <p class="text-xs text-gray-600"><strong class="text-gray-800">Data/Hora:</strong> <span id="presenca-data">Hoje, 19:00</span></p>
-        </div>
-
-        <button onclick="confirmarPresencaAluno()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider hover:bg-green-600 transition shadow-md flex items-center justify-center">
-            <i data-feather="check-circle" class="w-4 h-4 mr-2"></i> Confirmar Presença
-        </button>
-        <button onclick="fecharModalPresenca()" class="w-full text-gray-400 font-bold py-3 mt-2 rounded-xl text-[10px] uppercase tracking-wider hover:text-gray-600 transition">
-            Lembrar mais tarde
-        </button>
-    </div>
-</div>
-
-<!-- MODAL: CALENDÁRIO GERAL -->
-<div id="modal-calendario" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 relative border-t-4 border-blue-500">
-        <button onclick="fecharModalCalendario()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500"><i data-feather="x"></i></button>
-        <div class="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
-            <h3 class="text-lg font-black text-gray-900 uppercase"><i data-feather="calendar" class="inline text-blue-500 mr-2"></i> Calendário Acadêmico</h3>
-            <button class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase hover:bg-gray-900 transition flex items-center shadow-sm">
-                <i data-feather="download" class="w-3 h-3 mr-1.5"></i> Baixar PDF
-            </button>
-        </div>
-        <div class="bg-gray-50 rounded-xl border border-gray-100 p-8 text-center">
-            <i data-feather="grid" class="w-10 h-10 text-gray-300 mx-auto mb-3"></i>
-            <p class="text-sm font-bold text-gray-500">Visualização do calendário sendo implementada.</p>
-        </div>
-    </div>
-</div>
-
+            <!-- TELA: PERFIL -->
+            <div id="tela-perfil" class="tela hidden">
+                <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                    <h4 class="text-lg font-bold text-gray-800 border-b border-gray-50 pb-4">Meus Dados Cadastrais</h4>
+                    <div class="space-y-3 text-sm">
+                        <div><strong class="text-gray-400 block text-[10px] uppercase">CPF</strong><span id="perfil-cpf">--</span></div>
+                        <div><strong class="text-gray-400 block text-[10px] uppercase">E-mail</strong><span id="perfil-email">--</span></div>
+                        <div><strong class="text-gray-400 block text-[10px] uppercase">Telefone</strong><span id="perfil-telefone">--</span></div>
+                        <div><strong class="text-gray-400 block text-[10px] uppercase">Endereço</strong><span id="perfil-endereco">--</span></div>
+                    </div>
+                </div>
+            </div>
 
         </main>
     </div>
 </div>
 
 <script>
-// ==========================================
-// INTEGRAÇÃO API E SEGURANÇA - ALUNO
-// ==========================================
 const API_BASE_URL = "/api/v1";
-let cursosDoAluno = [];
-let dadosBoletimAtual = [];
-let meuGraficoDesempenho = null;
+let cursoIdGlobal = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
-
-    if(window.innerWidth < 768) {
-        const sidebar = document.querySelector('aside');
-        if (sidebar) sidebar.classList.add('-translate-x-full', 'absolute');
-    }
-
     if (localStorage.getItem('token_siga_aluno')) {
         liberarAcessoAluno();
     }
 
-    const formLogin = document.getElementById('form-login');
-    if (formLogin) {
-        formLogin.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-login');
-            btn.innerText = "Autenticando...";
+    document.getElementById('form-login-aluno').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-login');
+        btn.innerText = "Autenticando...";
 
-            const matricula = document.getElementById('input-matricula').value.toUpperCase();
-            const cpf = document.getElementById('input-cpf').value;
+        const matricula = document.getElementById('input-matricula').value.trim();
+        const cpf = document.getElementById('input-cpf-aluno').value.trim();
 
-            const formData = new FormData();
-            formData.append('matricula', matricula);
-            formData.append('cpf', cpf);
+        const formData = new FormData();
+        formData.append('matricula', matricula);
+        formData.append('cpf', cpf);
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/auth/aluno`, {
-                    method: 'POST',
-                    body: formData
-                });
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/aluno`, { method: 'POST', body: formData });
+            const data = await response.json();
 
-                const data = await response.json();
-
-                if (response.ok && data.sucesso) {
-                    localStorage.setItem('token_siga_aluno', data.token_siga);
-                    localStorage.setItem('nome_aluno', data.nome_aluno);
-                    localStorage.setItem('matricula_aluno', data.matricula);
-                    liberarAcessoAluno();
-                } else {
-                    alert(data.detail || "Matrícula ou CPF incorretos. Procure a secretaria.");
-                    btn.innerText = "Acessar Portal";
-                }
-            } catch (error) {
-                alert("Erro ao conectar com o servidor.");
-                btn.innerText = "Acessar Portal";
+            if (response.ok && data.sucesso) {
+                localStorage.setItem('token_siga_aluno', data.token_siga);
+                localStorage.setItem('nome_aluno', data.nome_aluno);
+                localStorage.setItem('matricula_aluno', data.matricula);
+                liberarAcessoAluno();
+            } else {
+                alert(data.detail || "Matrícula ou CPF incorretos.");
+                btn.innerText = "Entrar no Portal";
             }
-        });
-    }
+        } catch (error) {
+            alert("Erro de conexão.");
+            btn.innerText = "Entrar no Portal";
+        }
+    });
 });
 
 function getIniciais(nome) {
     if(!nome) return '--';
     const partes = nome.trim().split(' ');
-    if(partes.length === 1) return partes[0].substring(0,2).toUpperCase();
-    return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+    return partes.length === 1 ? partes[0].substring(0,2).toUpperCase() : (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
 }
 
 function liberarAcessoAluno() {
     document.getElementById('tela-login').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
 
-    const nomeReal = localStorage.getItem('nome_aluno') || 'Aluno';
-    const matReal = localStorage.getItem('matricula_aluno') || 'S/N';
-    const iniciais = getIniciais(nomeReal);
+    const nome = localStorage.getItem('nome_aluno') || 'Aluno';
+    const mat = localStorage.getItem('matricula_aluno') || 'S/N';
 
-    // Header Global
-    document.getElementById('nome-aluno-header').innerText = nomeReal;
-    document.getElementById('matricula-aluno-header').innerText = "Matrícula: " + matReal;
-    document.getElementById('iniciais-header').innerText = iniciais;
-
-    // Tela de Perfil
-    document.getElementById('perfil-nome').innerText = nomeReal;
-    document.getElementById('perfil-matricula').innerText = "Matrícula: " + matReal;
-    document.getElementById('perfil-iniciais').innerText = iniciais;
-
-    loadDashboardAluno();
-    loadCursosAluno(); 
-    loadPerfilFinanceiro(); 
+    document.getElementById('nome-aluno-header').innerText = nome;
+    document.getElementById('matricula-aluno-header').innerText = "Matrícula: " + mat;
+    document.getElementById('iniciais-header').innerText = getIniciais(nome);
 
     mudarTela('dashboard');
+    carregarDadosAluno();
 }
 
 function fazerLogout() {
-    localStorage.removeItem('token_siga_aluno');
-    localStorage.removeItem('nome_aluno');
-    localStorage.removeItem('matricula_aluno');
+    localStorage.clear();
     location.reload();
 }
 
-async function apiRequest(endpoint, method = 'GET', data = null) {
-    const headers = { 'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}` };
-    const config = { method, headers };
-
-    if (data) {
-        if (data instanceof FormData) {
-            config.body = data;
-        } else {
-            headers['Content-Type'] = 'application/json';
-            config.body = JSON.stringify(data);
-        }
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-        if (response.status === 401) {
-            alert("Sua sessão expirou.");
-            fazerLogout();
-            return null;
-        }
-        return await response.json();
-    } catch (error) {
-        console.error(`Erro na API:`, error);
-        return null;
-    }
-}
-
-// ----------------------------------------------------
-// DADOS DINÂMICOS - ALUNO
-// ----------------------------------------------------
-async function loadDashboardAluno() {
-    const data = await apiRequest('/aluno/dashboard');
-    if (data) {
-        document.getElementById('dash-media').innerText = data.media_geral || '-';
-        document.getElementById('dash-faltas').innerText = data.faltas_totais || '0';
-
-        const statusFin = document.getElementById('dash-financeiro');
-        if (data.status_financeiro === 'Pendente') {
-            statusFin.innerText = 'PENDENTE';
-            statusFin.className = 'text-xl font-black text-red-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
-        } else {
-            statusFin.innerText = 'REGULAR';
-            statusFin.className = 'text-xl font-black text-green-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
-        }
-        feather.replace();
-    }
-}
-
-async function loadCursosAluno() {
-    const cursos = await apiRequest('/aluno/cursos');
-    if (cursos && cursos.length > 0) {
-        cursosDoAluno = cursos;
-        const selectBoletim = document.getElementById('select-curso-boletim');
-        const selectMaterial = document.getElementById('select-curso-material');
-
-        selectBoletim.innerHTML = '<option value="">Selecione o Curso...</option>';
-        selectMaterial.innerHTML = '<option value="">Selecione o Curso...</option>';
-
-        cursos.forEach(c => {
-            const opt = `<option value="${c.id}">${c.nome_curso}</option>`;
-            selectBoletim.innerHTML += opt;
-            selectMaterial.innerHTML += opt;
-        });
-
-        if (cursos.length === 1) {
-            selectBoletim.value = cursos[0].id;
-            selectMaterial.value = cursos[0].id;
-            carregarBoletim();
-            carregarMateriais();
-        }
-    }
-}
-
-async function carregarBoletim() {
-    const cursoId = document.getElementById('select-curso-boletim').value;
-    const selectDisciplina = document.getElementById('select-disciplina-boletim');
-    const tbody = document.getElementById('tbody-boletim');
-    const containerDash = document.getElementById('container-semestres-dash');
-
-    if (!cursoId) {
-        selectDisciplina.classList.add('hidden');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
-        renderizarGraficoDesempenho([], []);
-        if(containerDash) containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Aguardando seleção do curso...</p>';
-        return;
-    }
-
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Buscando disciplinas e avaliações...</td></tr>';
-
-    const resp = await apiRequest(`/aluno/boletim/${cursoId}`);
-    dadosBoletimAtual = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
-
-    if (dadosBoletimAtual.length > 0) {
-        selectDisciplina.innerHTML = '<option value="">Selecione a Disciplina...</option>';
-        dadosBoletimAtual.forEach((d, index) => {
-            selectDisciplina.innerHTML += `<option value="${index}">${d.disciplina || d.nome_disciplina}</option>`;
-        });
-
-        selectDisciplina.classList.remove('hidden');
-        selectDisciplina.value = "0";
-        renderizarDisciplinaSelecionada();
-
-        // Renderiza os cards no painel principal com os dados corretos do backend
-        renderizarDashboardAluno();
-
-    } else {
-        selectDisciplina.classList.add('hidden');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum registro encontrado para este curso.</td></tr>';
-        renderizarGraficoDesempenho([], []);
-
-        if(containerDash) containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Nenhum módulo encontrado para este curso.</p>';
-    }
-}
-
-function renderizarDisciplinaSelecionada() {
-    const indexStr = document.getElementById('select-disciplina-boletim').value;
-    const tbody = document.getElementById('tbody-boletim');
-    const thead = document.getElementById('thead-boletim');
-
-    if (indexStr === "") {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione uma disciplina acima.</td></tr>';
-        renderizarGraficoDesempenho([], []);
-        return;
-    }
-
-    const n = dadosBoletimAtual[parseInt(indexStr)];
-    const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
-    const faltas = n.faltas !== undefined ? n.faltas : (n.faltas_totais || 0);
-    const notasObj = n.notas || {};
-    const tiposAvaliacoes = n.avaliacoes_previstas || Object.keys(notasObj);
-
-    let thHTML = `
-        <th class="py-3 px-4">Disciplina / Módulo</th>
-        <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
-    `;
-    tiposAvaliacoes.forEach(tipo => {
-        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
-    });
-    thHTML += `
-        <th class="py-3 px-4 text-center">Média</th>
-        <th class="py-3 px-4 text-center">Situação</th>
-    `;
-    thead.innerHTML = thHTML;
-
-    let tdsNotas = '';
-    let somaNotas = 0;
-    let qtdNotasValidas = 0;
-    let labelsGrafico = [];
-    let dadosGrafico = [];
-
-    tiposAvaliacoes.forEach(tipo => {
-        const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== '' ? parseFloat(notasObj[tipo]) : null;
-
-        if (valNota !== null && !isNaN(valNota)) {
-            somaNotas += valNota;
-            qtdNotasValidas++;
-            tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
-            labelsGrafico.push(tipo);
-            dadosGrafico.push(valNota);
-        } else {
-            tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
-            labelsGrafico.push(tipo);
-            dadosGrafico.push(0);
-        }
-    });
-
-    let mediaFinal = null;
-    if (n.media_final !== undefined && n.media_final !== null) {
-        mediaFinal = parseFloat(n.media_final);
-    } else if (tiposAvaliacoes.length > 0) {
-        mediaFinal = somaNotas / tiposAvaliacoes.length;
-    }
-
-    let mediaStr = mediaFinal !== null && !isNaN(mediaFinal) ? mediaFinal.toFixed(1) : '-';
-    let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
-
-    const situacaoOficial = n.situacao || null;
-
-    if (situacaoOficial) {
-        if (situacaoOficial.toLowerCase().includes('aprovado')) {
-            badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        } else if (situacaoOficial.toLowerCase().includes('reprovado')) {
-            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        } else {
-            badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        }
-    } else if (mediaFinal !== null) {
-        if (mediaFinal >= 7.0) {
-            badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
-        } else if (qtdNotasValidas === tiposAvaliacoes.length) {
-            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
-        }
-    }
-
-    tbody.innerHTML = `
-        <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
-            <td class="py-4 px-4 font-bold text-gray-900">${nomeDisc}</td>
-            <td class="py-4 px-4 text-center text-yellow-600 font-bold">${faltas}</td>
-            ${tdsNotas}
-            <td class="py-4 px-4 text-center font-black ${mediaFinal !== null && mediaFinal >= 7 ? 'text-green-600' : 'text-gray-800'}">${mediaStr}</td>
-            <td class="py-4 px-4 text-center">${badge}</td>
-        </tr>
-    `;
-
-    renderizarGraficoDesempenho(labelsGrafico, dadosGrafico);
-    if (typeof feather !== 'undefined') feather.replace();
-}
-
-function renderizarGraficoDesempenho(labels, dados) {
-    const ctx = document.getElementById('graficoDesempenhoAluno');
-    if (!ctx) return;
-
-    if (meuGraficoDesempenho) {
-        meuGraficoDesempenho.destroy();
-    }
-
-    const labelGrafico = labels.length > 0 ? 'Nota Obtida' : 'Aguardando Avaliações';
-
-    meuGraficoDesempenho = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels.length > 0 ? labels : ['Sem Avaliações'],
-            datasets: [{
-                label: labelGrafico,
-                data: dados.length > 0 ? dados : [0],
-                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                borderColor: 'rgb(37, 99, 235)',
-                borderWidth: 1,
-                borderRadius: 8,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 10,
-                    ticks: { stepSize: 2 }
-                }
-            },
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
-}
-
-async function carregarMateriais() {
-    const cursoId = document.getElementById('select-curso-material').value;
-    const lista = document.getElementById('lista-materiais-aluno');
-
-    if (!cursoId) {
-        lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Selecione um curso para ver os materiais.</p>';
-        return;
-    }
-
-    lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Buscando arquivos...</p>';
-
-    const materiais = await apiRequest(`/aluno/materiais/${cursoId}`);
-    if (materiais && materiais.length > 0) {
-        lista.innerHTML = '';
-        materiais.forEach(m => {
-            lista.innerHTML += `
-                <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:shadow-sm transition group">
-                    <div class="flex items-center">
-                        <div class="bg-blue-50 text-blue-500 p-3 rounded-lg mr-4">
-                            <i data-feather="file-text" class="h-5 w-5"></i>
-                        </div>
-                        <div>
-                            <p class="font-bold text-gray-800 text-sm">${m.titulo}</p>
-                            <p class="text-xs text-gray-400 mt-0.5">Postado em: ${m.data_postagem || 'Recente'} • ${m.disciplina}</p>
-                        </div>
-                    </div>
-                    <a href="${m.url_arquivo}" target="_blank" download class="bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white transition px-4 py-2 rounded-lg text-xs font-bold flex items-center">
-                        <i data-feather="download" class="w-3 h-3 mr-2"></i> Baixar
-                    </a>
-                </div>
-            `;
-        });
-        feather.replace();
-    } else {
-        lista.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Nenhum material compartilhado pelo professor ainda.</p>';
-    }
-}
-
-async function loadPerfilFinanceiro() {
-    const dados = await apiRequest('/aluno/perfil');
-    if (dados) {
-        document.getElementById('perfil-cpf').value = dados.cpf || '';
-        document.getElementById('perfil-email').value = dados.email || '';
-        document.getElementById('perfil-telefone').value = dados.telefone || '';
-        document.getElementById('perfil-endereco').value = dados.endereco || '';
-
-        const tbody = document.getElementById('tbody-financeiro');
-        const isPendente = dados.possui_pendencia_financeira === 'Sim';
-        const detalhesPendencia = dados.detalhes_pendencia_financeira || 'Mensalidade Atual';
-        const valorCurso = dados.valor_mensalidade || 0; 
-
-        tbody.innerHTML = '';
-
-        const hoje = new Date();
-        const mesRef = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-        const valorFormatado = parseFloat(valorCurso).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
-        let statusBadge = '';
-        let acaoBtn = '';
-
-        if (isPendente) {
-            statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Atrasada / Pendente</span><p class="text-[10px] text-gray-400 mt-1">${detalhesPendencia}</p>`;
-            acaoBtn = `
-                <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
-                    <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
-                    <input type="file" class="hidden" onchange="enviarComprovante(this)">
-                </label>
-            `;
-        } else {
-            statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga / Regular</span>`;
-            acaoBtn = `<span class="text-xs text-gray-400 font-bold"><i data-feather="check" class="w-4 h-4 inline text-green-500"></i> Tudo Certo</span>`;
-        }
-
-        tbody.innerHTML = `
-            <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 font-bold text-gray-900 capitalize">${mesRef}<br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Venc. Dia ${dados.dia_vencimento || 10}</span></td>
-                <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
-                <td class="py-4 px-4 text-center">${statusBadge}</td>
-                <td class="py-4 px-4 text-right">${acaoBtn}</td>
-            </tr>
-        `;
-        feather.replace();
-    }
-}
-
-async function enviarComprovante(inputElement) {
-    if (inputElement.files.length === 0) return;
-
-    const file = inputElement.files[0];
-    const formData = new FormData();
-    formData.append('comprovante', file);
-
-    const labelParent = inputElement.parentElement;
-    const textOriginal = labelParent.innerHTML;
-    labelParent.innerHTML = "Enviando...";
-
-    const result = await apiRequest('/aluno/financeiro/comprovante', 'POST', formData);
-
-    if (result && result.sucesso) {
-        alert("Comprovante enviado com sucesso! A secretaria analisará e dará baixa em breve.");
-        labelParent.innerHTML = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline"></i> Em Análise</span>`;
-        feather.replace();
-    } else {
-        alert("Erro ao enviar comprovante. Tente novamente.");
-        labelParent.innerHTML = textOriginal;
-    }
-}
-
 function mudarTela(idTela) {
-    document.querySelectorAll('.tela').forEach(tela => {
-        tela.classList.add('hidden');
-        tela.classList.remove('block');
-    });
-
-    const telaAtiva = document.getElementById('tela-' + idTela);
-    if (telaAtiva) {
-        telaAtiva.classList.remove('hidden');
-        telaAtiva.classList.add('block');
-    }
+    document.querySelectorAll('.tela').forEach(t => t.classList.add('hidden'));
+    document.getElementById('tela-' + idTela).classList.remove('hidden');
 
     document.querySelectorAll('.menu-btn').forEach(btn => {
-        btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
+        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
         btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
     });
-
     const btnAtivo = document.getElementById('btn-' + idTela);
-    if (btnAtivo) {
-        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
-        btnAtivo.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
-    }
+    if(btnAtivo) btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
 
     const titulos = {
-        'dashboard': 'Painel Principal',
-        'boletim': 'Boletim Acadêmico',
-        'material': 'Material Didático',
+        'dashboard': 'Painel do Aluno',
+        'cursos': 'Meus Cursos e Grade',
+        'boletim': 'Boletim Escolar',
+        'materiais': 'Material Didático',
         'financeiro': 'Situação Financeira',
-        'perfil': 'Meu Perfil',
-        'disciplina': 'Detalhes da Disciplina'
+        'perfil': 'Meu Perfil'
     };
-    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'Portal do Aluno';
+    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'Portal';
+}
 
-    if (window.innerWidth < 768) {
-        const sidebar = document.querySelector('aside');
-        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
-            toggleMenuMobile();
+async function apiRequestAl(endpoint) {
+    try {
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}` }
+        });
+        if(res.status === 401) { fazerLogout(); return null; }
+        return await res.json();
+    } catch(e) { return null; }
+}
+
+async function carregarDadosAluno() {
+    // 1. Dashboard
+    const dash = await apiRequestAl('/aluno/dashboard');
+    if(dash) {
+        document.getElementById('dash-media').innerText = dash.media_geral;
+        document.getElementById('dash-faltas').innerText = dash.faltas_totais;
+        document.getElementById('dash-financeiro').innerText = dash.status_financeiro;
+
+        const dBox = document.getElementById('lista-disciplinas-dashboard');
+        dBox.innerHTML = '';
+        if(dash.disciplinas_atuais.length > 0) {
+            dash.disciplinas_atuais.forEach(d => {
+                dBox.innerHTML += `<div class="bg-gray-50 p-4 rounded-xl border border-gray-100"><h5 class="font-bold text-sm text-gray-800">${d.nome}</h5><p class="text-xs text-teal-600">${d.curso}</p></div>`;
+            });
+        } else {
+            dBox.innerHTML = '<p class="text-xs text-gray-400">Nenhuma disciplina ativa encontrada.</p>';
         }
+    }
+
+    // 2. Cursos e Grade Curricular
+    const cursos = await apiRequestAl('/aluno/cursos');
+    const cContainer = document.getElementById('container-cursos-aluno');
+    cContainer.innerHTML = '';
+    if(cursos && cursos.length > 0) {
+        cursoIdGlobal = cursos[0].id; // Salva o primeiro curso para o boletim
+        cursos.forEach(c => {
+            let gradeHtml = '';
+            (c.grade_curricular || []).forEach(m => {
+                gradeHtml += `<div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2"><p class="text-xs font-bold text-gray-800 uppercase">${m.nome || m.disciplina}</p><span class="text-[10px] text-teal-600 font-bold">${m.ch_total || 40}h Carga Horária</span></div>`;
+            });
+            cContainer.innerHTML += `
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-black text-gray-900 uppercase">${c.nome_curso}</h3>
+                    <p class="text-xs text-gray-500 mb-4">Modalidade: ${c.modalidade || 'Presencial'} | Categoria: ${c.categoria || 'Técnico'}</p>
+                    <h5 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Módulos da Grade</h5>
+                    ${gradeHtml}
+                </div>`;
+        });
+        carregarBoletim(cursoIdGlobal);
+        carregarMateriais(cursoIdGlobal);
+    } else {
+        cContainer.innerHTML = '<p class="text-xs text-gray-400">Nenhum curso vinculado a esta matrícula.</p>';
+    }
+
+    // 3. Perfil e Financeiro
+    const perfil = await apiRequestAl('/aluno/perfil');
+    if(perfil) {
+        document.getElementById('perfil-cpf').innerText = perfil.cpf;
+        document.getElementById('perfil-email').innerText = perfil.email;
+        document.getElementById('perfil-telefone').innerText = perfil.telefone;
+        document.getElementById('perfil-endereco').innerText = perfil.endereco;
+        document.getElementById('fin-vencimento').innerText = "Dia " + perfil.dia_vencimento;
+        document.getElementById('fin-valor').innerText = "R$ " + parseFloat(perfil.valor_mensalidade).toFixed(2);
+    }
+}
+
+async function carregarBoletim(cId) {
+    const tbody = document.getElementById('tabela-boletim-aluno');
+    const boletim = await apiRequestAl(`/aluno/boletim/${cId}`);
+    tbody.innerHTML = '';
+
+    if(boletim && boletim.length > 0) {
+        boletim.forEach(b => {
+            let notasStr = '';
+            for(const [tipo, val] of Object.entries(b.notas)) {
+                notasStr += `<span class="bg-teal-50 text-teal-700 px-2 py-0.5 rounded text-[10px] font-bold mr-1">${tipo}: ${val}</span>`;
+            }
+            if(!notasStr) notasStr = '<span class="text-gray-400 text-xs">Aguardando lançamentos</span>';
+
+            let sitColor = b.situacao === 'Aprovado' ? 'bg-green-50 text-green-700' : (b.situacao === 'Em Recuperação' ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-600');
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                    <td class="py-3 px-4 font-bold text-gray-800">${b.disciplina}</td>
+                    <td class="py-3 px-4 text-center font-bold text-red-500">${b.faltas}</td>
+                    <td class="py-3 px-4 text-center">${notasStr}</td>
+                    <td class="py-3 px-4 text-center font-black text-teal-600">${b.media_final}</td>
+                    <td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${sitColor}">${b.situacao}</span></td>
+                </tr>`;
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400">Nenhum registro de boletim disponível.</td></tr>';
+    }
+}
+
+async function carregarMateriais(cId) {
+    const container = document.getElementById('lista-materiais-aluno');
+    const mats = await apiRequestAl(`/aluno/materiais/${cId}`);
+    container.innerHTML = '';
+    if(mats && mats.length > 0) {
+        mats.forEach(m => {
+            container.innerHTML += `
+                <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded uppercase">${m.data_postagem || 'Recente'}</span>
+                        <h5 class="text-sm font-bold text-gray-900 mt-1">${m.titulo}</h5>
+                    </div>
+                    <a href="${m.url_arquivo}" target="_blank" class="bg-teal-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-teal-600 transition">Acessar Link</a>
+                </div>`;
+        });
+    } else {
+        container.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Nenhum material publicado pelos professores ainda.</p>';
+    }
+}
+
+async function enviarComprovanteAluno(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('arquivo-comprovante');
+    if(fileInput.files.length === 0) return alert("Selecione um arquivo.");
+
+    const formData = new FormData();
+    formData.append('comprovante', fileInput.files[0]);
+
+    const res = await fetch(`${API_BASE_URL}/aluno/financeiro/comprovante`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}` },
+        body: formData
+    });
+    const data = await res.json();
+    if(res.ok && data.sucesso) {
+        alert("Comprovante enviado para análise da tesouraria!");
+        fileInput.value = '';
+    } else {
+        alert("Erro ao enviar comprovante.");
     }
 }
 
 function toggleMenuMobile() {
     const sidebar = document.querySelector('aside');
     const backdrop = document.getElementById('mobile-backdrop');
-
-    if (sidebar) {
-        if (sidebar.classList.contains('-translate-x-full')) {
-            sidebar.classList.remove('-translate-x-full', 'absolute');
-            sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
-            if (backdrop) backdrop.classList.remove('hidden');
-        } else {
-            sidebar.classList.add('-translate-x-full', 'absolute');
-            sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
-            if (backdrop) backdrop.classList.add('hidden');
-        }
-    }
+    sidebar.classList.toggle('-translate-x-full');
+    backdrop.classList.toggle('hidden');
 }
-
-// Agrupa disciplinas e as renderiza no Dashboard com sincronismo de capa e semestre
-async function renderizarDashboardAluno() {
-    const containerDash = document.getElementById('container-semestres-dash');
-    if (!containerDash) return;
-
-    const cursoId = document.getElementById('select-curso-boletim')?.value;
-    if (!cursoId) {
-        containerDash.innerHTML = '<p class="text-sm text-gray-400 py-4">Selecione o curso no boletim primeiro.</p>';
-        return;
-    }
-
-    const boletim = dadosBoletimAtual || [];
-    if (boletim.length === 0) return;
-
-    const semestres = {};
-    let semestreAtivo = null;
-
-    boletim.forEach((disc, index) => {
-        const sem = disc.semestre || 'Semestre Único';
-        if (!semestres[sem]) semestres[sem] = { nome: sem, disciplinas: [], temCursando: false };
-        disc.indexOriginal = index;
-
-        if (disc.situacao && disc.situacao.toLowerCase() === 'cursando') {
-            semestres[sem].temCursando = true;
-            semestreAtivo = sem;
-        }
-        semestres[sem].disciplinas.push(disc);
-    });
-
-    if (!semestreAtivo && Object.keys(semestres).length > 0) {
-        semestreAtivo = Object.keys(semestres)[0];
-    }
-
-    const semestresOrdenados = Object.values(semestres).sort((a, b) => {
-        if (a.nome === semestreAtivo) return -1;
-        if (b.nome === semestreAtivo) return 1;
-        return 0;
-    });
-
-    containerDash.innerHTML = '';
-
-    semestresOrdenados.forEach(semObj => {
-        const isDestaque = semObj.nome === semestreAtivo;
-        let cardsHTML = '';
-
-        semObj.disciplinas.forEach(d => {
-            const foto = (d.foto_modulo && d.foto_modulo.startsWith('http')) 
-                ? d.foto_modulo 
-                : 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
-            
-            let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
-
-            if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
-                badge = '<span class="absolute top-3 right-3 bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Concluído</span>';
-            } else if (d.situacao && d.situacao.toLowerCase() === 'reprovado') {
-                badge = '<span class="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Reprovado</span>';
-            } else if (d.situacao && d.situacao.toLowerCase() === 'cursando') {
-                badge = '<span class="absolute top-3 right-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase animate-pulse">Em Andamento</span>';
-            }
-
-            cardsHTML += `
-                <div onclick="abrirTelaDisciplina(${d.indexOriginal})" class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer min-w-[260px] w-[260px] flex-shrink-0 relative group">
-                    ${badge}
-                    <div class="h-32 bg-gray-100 overflow-hidden">
-                        <img src="${foto}" alt="${d.disciplina || d.nome_disciplina}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none">
-                    </div>
-                    <div class="p-4">
-                        <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">EAD / Presencial</p>
-                        <h4 class="text-sm font-bold text-gray-900 uppercase truncate" title="${d.disciplina || d.nome_disciplina}">${d.disciplina || d.nome_disciplina}</h4>
-                    </div>
-                </div>
-            `;
-        });
-
-        const destaqueClasses = isDestaque
-            ? 'border-2 border-blue-500 bg-blue-50/40 p-5 rounded-2xl shadow-sm relative'
-            : 'pl-2 opacity-80 hover:opacity-100 transition-opacity duration-300';
-
-        const tituloBadge = isDestaque
-            ? '<span class="ml-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-wider">Mês Atual</span>'
-            : '';
-
-        containerDash.innerHTML += `
-            <div class="${destaqueClasses} mb-8">
-                <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest mb-4 flex items-center">
-                    <span class="w-1.5 h-5 ${isDestaque ? 'bg-blue-600' : 'bg-gray-400'} rounded mr-2 inline-block"></span>
-                    ${semObj.nome}
-                    ${tituloBadge}
-                </h3>
-                <div class="carrossel-semestre flex gap-4 overflow-x-auto pb-4 no-scrollbar cursor-ew-resize relative" style="scroll-behavior: auto;">
-                    ${cardsHTML}
-                </div>
-            </div>
-        `;
-    });
-
-    aplicarEfeitoScrollMouse();
-}
-
-// ==========================================
-// FÍSICA DE SCROLL INTERATIVO (HOVER SCROLL)
-// ==========================================
-function aplicarEfeitoScrollMouse() {
-    const carrosseis = document.querySelectorAll('.carrossel-semestre');
-
-    carrosseis.forEach(carrossel => {
-        let scrollAnimation = null;
-        let velocidadeScroll = 0;
-
-        const animarScroll = () => {
-            if (velocidadeScroll !== 0) {
-                carrossel.scrollLeft += velocidadeScroll;
-                scrollAnimation = requestAnimationFrame(animarScroll);
-            }
-        };
-
-        carrossel.addEventListener('mousemove', (e) => {
-            const rect = carrossel.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const largura = rect.width;
-            const zonaAtiva = 150;
-            const velocidadeMaxima = 7;
-
-            if (x < zonaAtiva) {
-                const proporcao = 1 - (x / zonaAtiva);
-                velocidadeScroll = -(velocidadeMaxima * proporcao);
-                if (!scrollAnimation) scrollAnimation = requestAnimationFrame(animarScroll);
-            } else if (x > largura - zonaAtiva) {
-                const proporcao = 1 - ((largura - x) / zonaAtiva);
-                velocidadeScroll = (velocidadeMaxima * proporcao);
-                if (!scrollAnimation) scrollAnimation = requestAnimationFrame(animarScroll);
-            } else {
-                velocidadeScroll = 0;
-                if (scrollAnimation) {
-                    cancelAnimationFrame(scrollAnimation);
-                    scrollAnimation = null;
-                }
-            }
-        });
-
-        carrossel.addEventListener('mouseleave', () => {
-            velocidadeScroll = 0;
-            if (scrollAnimation) {
-                cancelAnimationFrame(scrollAnimation);
-                scrollAnimation = null;
-            }
-        });
-    });
-}
-
-// Transita da Dashboard para os Detalhes da Disciplina
-function abrirTelaDisciplina(indexBoletim) {
-    const d = dadosBoletimAtual[indexBoletim];
-    if(!d) return;
-
-    document.getElementById('disc-nome').innerText = d.disciplina || d.nome_disciplina || 'Módulo';
-    document.getElementById('disc-curso').innerText = document.getElementById('select-curso-boletim').options[document.getElementById('select-curso-boletim').selectedIndex].text;
-    document.getElementById('disc-periodo').innerText = (d.data_inicio && d.data_fim) ? `${d.data_inicio} a ${d.data_fim}` : 'Período Contínuo';
-    document.getElementById('disc-media').innerText = d.media_final !== undefined && d.media_final !== null ? parseFloat(d.media_final).toFixed(1) : '-';
-
-    const divFoto = document.getElementById('disc-foto');
-    if (d.foto_modulo && d.foto_modulo.startsWith('http')) {
-        divFoto.querySelector('img').src = d.foto_modulo;
-        divFoto.querySelector('img').classList.remove('hidden');
-        divFoto.querySelector('div').classList.add('hidden');
-    } else {
-        divFoto.querySelector('img').classList.add('hidden');
-        divFoto.querySelector('div').classList.remove('hidden');
-    }
-
-    const ulAval = document.getElementById('disc-lista-avaliacoes');
-    ulAval.innerHTML = '';
-    const avalPrevistas = d.avaliacoes_previstas || Object.keys(d.notas || {});
-
-    if (avalPrevistas.length === 0) {
-        ulAval.innerHTML = '<p class="text-xs text-orange-400">Nenhuma avaliação configurada.</p>';
-    } else {
-        avalPrevistas.forEach(tipo => {
-            const nota = (d.notas && d.notas[tipo]) ? d.notas[tipo] : 'Pendente';
-            const bgCor = nota === 'Pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-700';
-            ulAval.innerHTML += `
-                <div class="bg-white border border-orange-100 p-3 rounded-xl flex items-center justify-between shadow-sm">
-                    <div>
-                        <p class="text-xs font-bold text-gray-800 uppercase">${tipo}</p>
-                        <p class="text-[9px] text-gray-400 uppercase mt-0.5">Peso 10.0</p>
-                    </div>
-                    <span class="${bgCor} px-2 py-1 rounded text-xs font-black">${nota}</span>
-                </div>
-            `;
-        });
-    }
-
-    mudarTela('disciplina');
-}
-
-// Funções para os Modais Extras
-function abrirModalCalendario() {
-    const modal = document.getElementById('modal-calendario');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    setTimeout(() => modal.classList.remove('opacity-0'), 10);
-}
-function fecharModalCalendario() {
-    const modal = document.getElementById('modal-calendario');
-    modal.classList.add('opacity-0');
-    setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
-}
-
-function abrirModalPresenca() {
-    const modal = document.getElementById('modal-presenca');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    setTimeout(() => modal.classList.remove('opacity-0'), 10);
-}
-function fecharModalPresenca() {
-    const modal = document.getElementById('modal-presenca');
-    modal.classList.add('opacity-0');
-    setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
-}
-function confirmarPresencaAluno() {
-    alert("Sua presença foi confirmada com sucesso!");
-    fecharModalPresenca();
-}
-
 </script>
-
 </body>
 </html>
