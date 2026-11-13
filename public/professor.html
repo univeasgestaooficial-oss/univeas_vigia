@@ -307,51 +307,41 @@
                     <!-- Grid de Informações -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                       <!-- Coluna Esquerda: Dados Cadastrais e Contato -->
+                      <!-- Coluna Esquerda: Dados Cadastrais e Contato (Apenas Leitura) -->
 <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
     <h4 class="text-sm font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
-        <i data-feather="settings" class="h-4 w-4 text-teal-500 mr-2"></i> Meus Dados
+        <i data-feather="user" class="h-4 w-4 text-teal-500 mr-2"></i> Meus Dados
     </h4>
 
-    <form id="form-editar-perfil" class="space-y-4 flex-1 flex flex-col justify-between">
-        <div class="space-y-4">
-
-            <!-- CAIXA DE DADOS FIXOS (Somente Leitura) -->
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 mb-2">
-                <div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase">Nome Completo</p>
-                    <p id="perfil-nome-fixo" class="text-sm font-bold text-gray-800">Carregando...</p>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase">Nº de Registro</p>
-                        <p id="perfil-registro-fixo" class="text-sm font-black text-teal-600">--</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase">CPF</p>
-                        <p id="perfil-cpf-fixo" class="text-sm font-bold text-gray-600">--</p>
-                    </div>
-                </div>
-                <p class="text-[9px] text-gray-400 leading-tight">Para alterar dados cadastrais bloqueados, contate a secretaria acadêmica.</p>
-            </div>
-
-            <!-- DADOS DE CONTATO (Editáveis) -->
+    <!-- Painel de Dados Fixos (Sem formulário, sem inputs) -->
+    <div class="bg-gray-50 p-5 rounded-xl border border-gray-100 flex-1 space-y-4">
+        <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Nome Completo</p>
+            <p id="perfil-nome-fixo" class="text-sm font-bold text-gray-800">Carregando...</p>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">E-mail Institucional / Pessoal</label>
-                <input type="email" id="perfil-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="professor@univeas.edu.br">
+                <p class="text-[10px] font-bold text-gray-400 uppercase">Nº de Registro</p>
+                <p id="perfil-registro-fixo" class="text-sm font-black text-teal-600">--</p>
             </div>
             <div>
-                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Telefone / WhatsApp</label>
-                <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="(91) 90000-0000">
+                <p class="text-[10px] font-bold text-gray-400 uppercase">CPF</p>
+                <p id="perfil-cpf-fixo" class="text-sm font-bold text-gray-600">--</p>
             </div>
         </div>
-
-        <div class="pt-4 border-t border-gray-50 mt-4">
-            <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">
-                Salvar Contato
-            </button>
+        <div class="pt-4 border-t border-gray-200">
+            <p class="text-[10px] font-bold text-gray-400 uppercase">E-mail Institucional</p>
+            <p id="perfil-email-fixo" class="text-sm font-medium text-gray-800 break-words">--</p>
         </div>
-    </form>
+        <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Telefone / WhatsApp</p>
+            <p id="perfil-telefone-fixo" class="text-sm font-medium text-gray-800">--</p>
+        </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <p class="text-[10px] text-gray-400">Dados gerenciados exclusivamente pela secretaria acadêmica.</p>
+    </div>
 </div>
 
                         <!-- Coluna Direita: Turmas e Disciplinas Atreladas ao Professor -->
@@ -499,51 +489,43 @@ function liberarAcessoDocente() {
     if (telaLogin) telaLogin.classList.add('hidden');
     if (appContainer) appContainer.classList.remove('hidden');
 
-    // 1. Resgata os dados do LocalStorage
+    // Puxa os dados salvos no momento do login
     const nomeReal = localStorage.getItem('nome_docente') || 'Professor';
     const regReal = localStorage.getItem('registro_docente') || 'S/N';
-    const emailReal = localStorage.getItem('email_docente') || '';
-    const telefoneReal = localStorage.getItem('telefone_docente') || '';
-    const cpfReal = localStorage.getItem('cpf_docente') || '***.***.***-**'; // <-- NOVO AQUI
+    const emailReal = localStorage.getItem('email_docente') || 'Não cadastrado';
+    const telefoneReal = localStorage.getItem('telefone_docente') || 'Não cadastrado';
+    const cpfReal = localStorage.getItem('cpf_docente') || '***.***.***-**';
     const iniciais = getIniciais(nomeReal);
 
-    // 2. Header superior (Barra de navegação)
+    // Atualiza Headers e Iniciais
     const elNomeH = document.getElementById('nome-docente-header');
     const elRegH = document.getElementById('registro-docente-header');
     const elInitH = document.getElementById('iniciais-header');
-
-    if (elNomeH) elNomeH.innerText = nomeReal;
-    if (elRegH) elRegH.innerText = "Reg: " + regReal;
-    if (elInitH) elInitH.innerText = iniciais;
-
-    // 3. Perfil - Cabeçalho com Iniciais
     const elPerfilNome = document.getElementById('perfil-nome');
     const elPerfilReg = document.getElementById('perfil-registro');
     const elPerfilInit = document.getElementById('perfil-iniciais');
 
+    if (elNomeH) elNomeH.innerText = nomeReal;
+    if (elRegH) elRegH.innerText = "Reg: " + regReal;
+    if (elInitH) elInitH.innerText = iniciais;
     if (elPerfilNome) elPerfilNome.innerText = nomeReal;
     if (elPerfilReg) elPerfilReg.innerText = "Registro: " + regReal;
     if (elPerfilInit) elPerfilInit.innerText = iniciais;
 
-    // ==========================================
-    // 4. PREENCHE A CAIXA DE DADOS FIXOS DO PERFIL
-    // ==========================================
+    // INJETA OS DADOS NO NOVO PAINEL ESTÁTICO DA ESQUERDA
     const elNomeFixo = document.getElementById('perfil-nome-fixo');
     const elRegFixo = document.getElementById('perfil-registro-fixo');
     const elCpfFixo = document.getElementById('perfil-cpf-fixo');
+    const elEmailFixo = document.getElementById('perfil-email-fixo');
+    const elTelefoneFixo = document.getElementById('perfil-telefone-fixo');
 
     if (elNomeFixo) elNomeFixo.innerText = nomeReal;
     if (elRegFixo) elRegFixo.innerText = regReal;
     if (elCpfFixo) elCpfFixo.innerText = cpfReal;
+    if (elEmailFixo) elEmailFixo.innerText = emailReal;
+    if (elTelefoneFixo) elTelefoneFixo.innerText = telefoneReal;
 
-    // 5. Perfil - Inputs de Contato (Editáveis)
-    const inputEmailPerfil = document.getElementById('perfil-email');
-    const inputTelefonePerfil = document.getElementById('perfil-telefone');
-
-    if(inputEmailPerfil) inputEmailPerfil.value = emailReal;
-    if(inputTelefonePerfil) inputTelefonePerfil.value = telefoneReal;
-
-    // 6. Carrega os dados das outras telas
+    // Carrega módulos e troca tela
     loadDashboardDocente();
     loadTurmas();
     carregarAcervoDocente();
