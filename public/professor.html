@@ -307,33 +307,52 @@
                     <!-- Grid de Informações -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                        <!-- Coluna Esquerda: Dados de Contato e Senha -->
-                        <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                            <h4 class="text-sm font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
-                                <i data-feather="settings" class="h-4 w-4 text-teal-500 mr-2"></i> Configurações
-                            </h4>
+                       <!-- Coluna Esquerda: Dados Cadastrais e Contato -->
+<div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+    <h4 class="text-sm font-bold text-gray-900 mb-4 flex items-center border-b border-gray-50 pb-3">
+        <i data-feather="settings" class="h-4 w-4 text-teal-500 mr-2"></i> Meus Dados
+    </h4>
 
-                            <form class="space-y-4 flex-1 flex flex-col justify-between" onsubmit="event.preventDefault(); alert('Solicitação de alteração enviada à secretaria.');">
-                                <div class="space-y-3">
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">E-mail Institucional</label>
-                                        <input type="email" id="perfil-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="professor@univeas.edu.br">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Telefone / WhatsApp</label>
-                                        <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="(91) 90000-0000">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nova Senha de Acesso</label>
-                                        <input type="password" placeholder="Mínimo 6 caracteres" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                                    </div>
-                                </div>
+    <form id="form-editar-perfil" class="space-y-4 flex-1 flex flex-col justify-between">
+        <div class="space-y-4">
 
-                                <div class="pt-4 border-t border-gray-50">
-                                    <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Atualizar Dados</button>
-                                </div>
-                            </form>
-                        </div>
+            <!-- CAIXA DE DADOS FIXOS (Somente Leitura) -->
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 mb-2">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase">Nome Completo</p>
+                    <p id="perfil-nome-fixo" class="text-sm font-bold text-gray-800">Carregando...</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Nº de Registro</p>
+                        <p id="perfil-registro-fixo" class="text-sm font-black text-teal-600">--</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">CPF</p>
+                        <p id="perfil-cpf-fixo" class="text-sm font-bold text-gray-600">--</p>
+                    </div>
+                </div>
+                <p class="text-[9px] text-gray-400 leading-tight">Para alterar dados cadastrais bloqueados, contate a secretaria acadêmica.</p>
+            </div>
+
+            <!-- DADOS DE CONTATO (Editáveis) -->
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">E-mail Institucional / Pessoal</label>
+                <input type="email" id="perfil-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="professor@univeas.edu.br">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Telefone / WhatsApp</label>
+                <input type="text" id="perfil-telefone" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium" placeholder="(91) 90000-0000">
+            </div>
+        </div>
+
+        <div class="pt-4 border-t border-gray-50 mt-4">
+            <button type="submit" class="w-full bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">
+                Salvar Contato
+            </button>
+        </div>
+    </form>
+</div>
 
                         <!-- Coluna Direita: Turmas e Disciplinas Atreladas ao Professor -->
                         <div class="md:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
@@ -409,6 +428,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('token_siga_docente', data.token_siga);
                     localStorage.setItem('nome_docente', data.nome_professor);
                     localStorage.setItem('registro_docente', data.registro);
+                    localStorage.setItem('email_docente', data.email || '');
+                    localStorage.setItem('telefone_docente', data.telefone || '');
+                    localStorage.setItem('cpf_docente', document.getElementById('input-cpf').value);
                     liberarAcessoDocente();
                 } else {
                     alert(data.detail || "Dados incorretos. Verifique com a secretaria.");
@@ -477,13 +499,15 @@ function liberarAcessoDocente() {
     if (telaLogin) telaLogin.classList.add('hidden');
     if (appContainer) appContainer.classList.remove('hidden');
 
+    // 1. Resgata os dados do LocalStorage
     const nomeReal = localStorage.getItem('nome_docente') || 'Professor';
     const regReal = localStorage.getItem('registro_docente') || 'S/N';
     const emailReal = localStorage.getItem('email_docente') || '';
     const telefoneReal = localStorage.getItem('telefone_docente') || '';
+    const cpfReal = localStorage.getItem('cpf_docente') || '***.***.***-**'; // <-- NOVO AQUI
     const iniciais = getIniciais(nomeReal);
 
-    // Header superior
+    // 2. Header superior (Barra de navegação)
     const elNomeH = document.getElementById('nome-docente-header');
     const elRegH = document.getElementById('registro-docente-header');
     const elInitH = document.getElementById('iniciais-header');
@@ -492,7 +516,7 @@ function liberarAcessoDocente() {
     if (elRegH) elRegH.innerText = "Reg: " + regReal;
     if (elInitH) elInitH.innerText = iniciais;
 
-    // Perfil - Cabeçalho
+    // 3. Perfil - Cabeçalho com Iniciais
     const elPerfilNome = document.getElementById('perfil-nome');
     const elPerfilReg = document.getElementById('perfil-registro');
     const elPerfilInit = document.getElementById('perfil-iniciais');
@@ -501,13 +525,25 @@ function liberarAcessoDocente() {
     if (elPerfilReg) elPerfilReg.innerText = "Registro: " + regReal;
     if (elPerfilInit) elPerfilInit.innerText = iniciais;
 
-    // Perfil - Inputs da Coluna de Contato
+    // ==========================================
+    // 4. PREENCHE A CAIXA DE DADOS FIXOS DO PERFIL
+    // ==========================================
+    const elNomeFixo = document.getElementById('perfil-nome-fixo');
+    const elRegFixo = document.getElementById('perfil-registro-fixo');
+    const elCpfFixo = document.getElementById('perfil-cpf-fixo');
+
+    if (elNomeFixo) elNomeFixo.innerText = nomeReal;
+    if (elRegFixo) elRegFixo.innerText = regReal;
+    if (elCpfFixo) elCpfFixo.innerText = cpfReal;
+
+    // 5. Perfil - Inputs de Contato (Editáveis)
     const inputEmailPerfil = document.getElementById('perfil-email');
     const inputTelefonePerfil = document.getElementById('perfil-telefone');
 
     if(inputEmailPerfil) inputEmailPerfil.value = emailReal;
     if(inputTelefonePerfil) inputTelefonePerfil.value = telefoneReal;
 
+    // 6. Carrega os dados das outras telas
     loadDashboardDocente();
     loadTurmas();
     carregarAcervoDocente();
@@ -1061,6 +1097,47 @@ async function editarMaterial(materialId, tituloAtual, urlAtual) {
         alert("Erro ao atualizar: " + (result?.detail || "Tente novamente."));
     }
 }
+
+
+
+
+
+
+
+
+
+    const formPerfil = document.getElementById('form-editar-perfil');
+if (formPerfil) {
+    formPerfil.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const txtOriginal = btn.innerText;
+        btn.innerHTML = '<i data-feather="loader" class="w-4 h-4 mr-2 inline animate-spin"></i> Salvando...';
+        btn.disabled = true;
+
+        const payload = {
+            email: document.getElementById('perfil-email').value,
+            telefone: document.getElementById('perfil-telefone').value
+        };
+
+        const result = await apiRequest('/docente/perfil/atualizar', 'PUT', payload);
+
+        if (result && result.sucesso) {
+            alert("Contato atualizado com sucesso!");
+            localStorage.setItem('email_docente', payload.email);
+            localStorage.setItem('telefone_docente', payload.telefone);
+        } else {
+            alert("Erro ao atualizar perfil: " + (result?.detail || "Tente novamente."));
+        }
+
+        btn.innerText = txtOriginal;
+        btn.disabled = false;
+        feather.replace();
+    });
+}
+
+
+
 </script>
 
 <!-- ==========================================
