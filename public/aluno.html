@@ -12,6 +12,7 @@
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
 
@@ -47,7 +48,10 @@
      ========================================== -->
 <div id="app-container" class="hidden h-full w-full flex-1 flex">
 
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
+
+<div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:hidden" onclick="toggleMenuMobile()"></div>
+
+<aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-50 h-full shrink-0">
         <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
         </div>
@@ -175,22 +179,21 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4 mb-6">
                         <h4 class="text-lg font-bold text-gray-800 flex items-center">
                             <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
-                            Desempenho Acadêmico
+                            Desempenho Acadêmico e Avaliações
                         </h4>
                         <select id="select-curso-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white" onchange="carregarBoletim()">
-                            <option value="">Selecione o Curso...</option>
+                            <option value="">Selecione o Curso / Módulo...</option>
                         </select>
                     </div>
 
-                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
+                    <!-- Tabela Dinâmica do Boletim -->
+                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6 flex-1">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
-                                <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <tr id="thead-boletim" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     <th class="py-3 px-4">Disciplina / Módulo</th>
-                                    <th class="py-3 px-4 text-center">Nota 1</th>
-                                    <th class="py-3 px-4 text-center">Nota 2</th>
-                                    <th class="py-3 px-4 text-center">Média</th>
-                                    <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
+                                    <th class="py-3 px-4 text-center">Faltas</th>
+                                    <th class="py-3 px-4 text-center">Média / Notas</th>
                                     <th class="py-3 px-4 text-center">Situação</th>
                                 </tr>
                             </thead>
@@ -200,6 +203,18 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Gráfico de Desempenho do Aluno -->
+                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 mt-auto">
+                        <div class="flex items-center justify-between mb-3">
+                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
+                                <i data-feather="bar-chart-2" class="w-4 h-4 text-blue-500 mr-1.5"></i> Evolução de Desempenho por Avaliação / Média
+                            </h5>
+                        </div>
+                        <div class="relative h-48 w-full">
+                            <canvas id="graficoDesempenhoAluno"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -406,39 +421,6 @@ function fazerLogout() {
     location.reload();
 }
 
-function mudarTela(idTela) {
-    document.querySelectorAll('.tela').forEach(tela => {
-        tela.classList.add('hidden');
-        tela.classList.remove('block');
-    });
-
-    const telaAtiva = document.getElementById('tela-' + idTela);
-    if (telaAtiva) {
-        telaAtiva.classList.remove('hidden');
-        telaAtiva.classList.add('block');
-    }
-
-    document.querySelectorAll('.menu-btn').forEach(btn => {
-        btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
-        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
-    });
-
-    const btnAtivo = document.getElementById('btn-' + idTela);
-    if (btnAtivo) {
-        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
-        btnAtivo.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
-    }
-
-    const titulos = {
-        'dashboard': 'Painel Principal',
-        'boletim': 'Boletim Acadêmico',
-        'material': 'Material Didático',
-        'financeiro': 'Situação Financeira',
-        'perfil': 'Meu Perfil'
-    };
-    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'Portal do Aluno';
-}
-
 async function apiRequest(endpoint, method = 'GET', data = null) {
     const headers = { 'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}` };
     const config = { method, headers };
@@ -533,46 +515,152 @@ async function loadCursosAluno() {
     }
 }
 
+let meuGraficoDesempenho = null;
+
 async function carregarBoletim() {
     const cursoId = document.getElementById('select-curso-boletim').value;
     const tbody = document.getElementById('tbody-boletim');
+    const thead = document.getElementById('thead-boletim');
 
     if (!cursoId) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Buscando notas...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Buscando boletim e avaliações...</td></tr>';
 
-    const notas = await apiRequest(`/aluno/boletim/${cursoId}`);
-    if (notas && notas.length > 0) {
+    const resp = await apiRequest(`/aluno/boletim/${cursoId}`);
+
+    // Suporta tanto resposta direta em array quanto objeto contendo dados/avaliacoes
+    const registros = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
+
+    if (registros.length > 0) {
+        // Coleta tipos de avaliações unicas cadastradas nas notas (ex: AV1, AV2, Trabalho, etc.)
+        let tiposAvaliacoesSet = new Set();
+        registros.forEach(r => {
+            if (r.notas && typeof r.notas === 'object') {
+                Object.keys(r.notas).forEach(tipo => tiposAvaliacoesSet.add(tipo));
+            }
+        });
+        const tiposAvaliacoes = Array.from(tiposAvaliacoesSet);
+
+        // 1. MONTA O CABEÇALHO DINAMICAMENTE
+        let thHTML = `
+            <th class="py-3 px-4">Disciplina / Módulo</th>
+            <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
+        `;
+        if (tiposAvaliacoes.length > 0) {
+            tiposAvaliacoes.forEach(tipo => {
+                thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
+            });
+        }
+        thHTML += `
+            <th class="py-3 px-4 text-center">Média</th>
+            <th class="py-3 px-4 text-center">Situação</th>
+        `;
+        thead.innerHTML = thHTML;
+
+        // 2. PREENCHE AS LINHAS DA TABELA
         tbody.innerHTML = '';
-        notas.forEach(n => {
-            const media = n.media ? parseFloat(n.media).toFixed(1) : '-';
-            const n1 = n.nota_1 ? parseFloat(n.nota_1).toFixed(1) : '-';
-            const n2 = n.nota_2 ? parseFloat(n.nota_2).toFixed(1) : '-';
+        let labelsGrafico = [];
+        let dadosGrafico = [];
+
+        registros.forEach(n => {
+            const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
+            const faltas = n.faltas !== undefined ? n.faltas : (n.faltas_totais || 0);
+            const notasObj = n.notas || {};
+
+            let tdsNotas = '';
+            let somaNotas = 0;
+            let qtdNotasValidas = 0;
+
+            if (tiposAvaliacoes.length > 0) {
+                tiposAvaliacoes.forEach(tipo => {
+                    const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== '' ? parseFloat(notasObj[tipo]) : null;
+                    if (valNota !== null) {
+                        somaNotas += valNota;
+                        qtdNotasValidas++;
+                        tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
+                    } else {
+                        tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
+                    }
+                });
+            }
+
+            // Calcula média se houver notas, senão usa a média enviada pelo backend
+            let mediaFinal = qtdNotasValidas > 0 ? (somaNotas / qtdNotasValidas) : (n.media !== undefined ? parseFloat(n.media) : null);
+            let mediaStr = mediaFinal !== null ? mediaFinal.toFixed(1) : '-';
 
             let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
-            if (media !== '-' && parseFloat(media) >= 7.0) {
-                badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
-            } else if (media !== '-' && parseFloat(media) < 7.0 && n2 !== '-') {
-                badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Reprovado</span>`;
+            if (mediaFinal !== null) {
+                if (mediaFinal >= 7.0) {
+                    badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
+                } else {
+                    badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
+                }
             }
 
             tbody.innerHTML += `
                 <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
-                    <td class="py-4 px-4 font-bold text-gray-900">${n.disciplina}</td>
-                    <td class="py-4 px-4 text-center">${n1}</td>
-                    <td class="py-4 px-4 text-center">${n2}</td>
-                    <td class="py-4 px-4 text-center font-black ${media !== '-' && media >= 7 ? 'text-green-600' : 'text-gray-800'}">${media}</td>
-                    <td class="py-4 px-4 text-center text-yellow-600 font-bold">${n.faltas || 0}</td>
+                    <td class="py-4 px-4 font-bold text-gray-900">${nomeDisc}</td>
+                    <td class="py-4 px-4 text-center text-yellow-600 font-bold">${faltas}</td>
+                    ${tdsNotas}
+                    <td class="py-4 px-4 text-center font-black ${mediaFinal !== null && mediaFinal >= 7 ? 'text-green-600' : 'text-gray-800'}">${mediaStr}</td>
                     <td class="py-4 px-4 text-center">${badge}</td>
                 </tr>
             `;
+
+            // Prepara dados para o gráfico
+            labelsGrafico.push(nomeDisc);
+            dadosGrafico.push(mediaFinal !== null ? mediaFinal : 0);
         });
+
+        // 3. RENDERIZA OU ATUALIZA O GRÁFICO CHART.JS
+        renderizarGraficoDesempenho(labelsGrafico, dadosGrafico);
+
     } else {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhuma nota lançada para este curso ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum registro de notas encontrado para este curso.</td></tr>';
+        renderizarGraficoDesempenho([], []);
     }
+    feather.replace();
+}
+
+function renderizarGraficoDesempenho(labels, dados) {
+    const ctx = document.getElementById('graficoDesempenhoAluno');
+    if (!ctx) return;
+
+    if (meuGraficoDesempenho) {
+        meuGraficoDesempenho.destroy();
+    }
+
+    meuGraficoDesempenho = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Média por Disciplina',
+                data: dados,
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: 'rgb(37, 99, 235)',
+                borderWidth: 1,
+                borderRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10,
+                    ticks: { stepSize: 2 }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
 }
 
 async function carregarMateriais() {
@@ -686,19 +774,66 @@ async function enviarComprovante(inputElement) {
         labelParent.innerHTML = textOriginal;
     }
 }
+function mudarTela(idTela) {
+    document.querySelectorAll('.tela').forEach(tela => {
+        tela.classList.add('hidden');
+        tela.classList.remove('block');
+    });
 
-function toggleMenuMobile() {
-    const sidebar = document.querySelector('aside');
-    if (sidebar) {
-        if (sidebar.classList.contains('-translate-x-full')) {
-            sidebar.classList.remove('-translate-x-full', 'absolute');
-            sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
-        } else {
-            sidebar.classList.add('-translate-x-full', 'absolute');
-            sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+    const telaAtiva = document.getElementById('tela-' + idTela);
+    if (telaAtiva) {
+        telaAtiva.classList.remove('hidden');
+        telaAtiva.classList.add('block');
+    }
+
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
+        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+    });
+
+    const btnAtivo = document.getElementById('btn-' + idTela);
+    if (btnAtivo) {
+        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+        btnAtivo.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
+    }
+
+    const titulos = {
+        'dashboard': 'Painel Principal',
+        'boletim': 'Boletim Acadêmico',
+        'material': 'Material Didático',
+        'financeiro': 'Situação Financeira',
+        'perfil': 'Meu Perfil'
+    };
+    document.getElementById('titulo-pagina').innerText = titulos[idTela] || 'Portal do Aluno';
+
+    // Fecha o menu mobile automaticamente ao trocar de aba no telemóvel
+    if (window.innerWidth < 768) {
+        const sidebar = document.querySelector('aside');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            toggleMenuMobile();
         }
     }
 }
+
+function toggleMenuMobile() {
+    const sidebar = document.querySelector('aside');
+    const backdrop = document.getElementById('mobile-backdrop');
+
+    if (sidebar) {
+        if (sidebar.classList.contains('-translate-x-full')) {
+            // ABRIR MENU
+            sidebar.classList.remove('-translate-x-full', 'absolute');
+            sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+            if (backdrop) backdrop.classList.remove('hidden');
+        } else {
+            // FECHAR MENU
+            sidebar.classList.add('-translate-x-full', 'absolute');
+            sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+            if (backdrop) backdrop.classList.add('hidden');
+        }
+    }
+}
+
 </script>
 </body>
 </html>
