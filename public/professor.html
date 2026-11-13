@@ -178,59 +178,58 @@
             </div>
 
             <!-- TELA: DIÁRIO ELETRÔNICO -->
-            <div id="tela-diario" class="tela hidden">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
-                    <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                        <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
-                        Preenchimento do Diário Eletrônico
-                    </h4>
+<div id="tela-diario" class="tela hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
+        <h4 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span>
+            Diário Eletrônico (Sincronizado com a Matriz)
+        </h4>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <div class="lg:col-span-2">
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Disciplina / Turma</label>
-                            <select id="select-turma-diario" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                                <option value="">Selecione uma turma...</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data da Aula</label>
-                            <input type="date" id="data-aula-diario" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                        </div>
-                        <div class="flex items-end">
-                            <button onclick="carregarChamada()" class="w-full bg-teal-50 text-teal-700 font-bold py-2 px-4 rounded-lg text-xs uppercase hover:bg-teal-100 border border-teal-200 transition">Listar Chamada</button>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Conteúdo Ministrado na Aula (Obrigatório)</label>
-                        <textarea id="conteudo-aula-diario" rows="2" placeholder="Descreva brevemente o assunto tratado em sala de aula hoje..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white"></textarea>
-                    </div>
-
-                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
-                        <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
-                            <thead class="bg-gray-50">
-                                <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                    <th class="py-3 px-4 w-12">Matr.</th>
-                                    <th class="py-3 px-4">Nome do Aluno</th>
-                                    <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
-                                    <th class="py-3 px-4 w-24 text-center">Nota 1</th>
-                                    <th class="py-3 px-4 w-24 text-center">Nota 2</th>
-                                </tr>
-                            </thead>
-                           <tbody id="tbody-alunos-diario" class="divide-y divide-gray-100 font-medium text-gray-700">
-                                <tr>
-                                    <td colspan="5" class="text-center py-8 text-gray-400">Selecione uma turma e clique em "Listar Chamada".</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-400 font-medium">As notas salvas são refletidas na administração em tempo real.</p>
-                        <button onclick="salvarDiario(this)" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
-                    </div>
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div class="lg:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Disciplina / Turma</label>
+                <select id="select-turma-diario" onchange="processarTurmaDiario()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                    <option value="">Selecione uma turma...</option>
+                </select>
             </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data Automática da Aula</label>
+                <input type="date" id="data-aula-diario" readonly class="w-full border border-teal-300 bg-teal-50 text-teal-900 rounded-lg px-3 py-2 text-sm focus:outline-none font-bold cursor-not-allowed">
+            </div>
+            <div class="flex items-end">
+                <button onclick="carregarChamada()" class="w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase hover:bg-teal-600 shadow-sm transition">Atualizar Pauta</button>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Conteúdo Ministrado na Aula (Obrigatório)</label>
+            <textarea id="conteudo-aula-diario" rows="2" placeholder="Descreva brevemente o assunto tratado em sala de aula hoje..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white"></textarea>
+        </div>
+
+        <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
+            <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
+                <thead class="bg-gray-50">
+                    <tr id="thead-diario" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <th class="py-3 px-4 w-12">Matr.</th>
+                        <th class="py-3 px-4">Nome do Aluno</th>
+                        <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
+                        <!-- As colunas de notas serão inseridas aqui pelo JS -->
+                    </tr>
+                </thead>
+                <tbody id="tbody-alunos-diario" class="divide-y divide-gray-100 font-medium text-gray-700">
+                    <tr>
+                        <td colspan="10" class="text-center py-8 text-gray-400">Selecione uma turma para carregar a pauta.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400 font-medium">As avaliações seguem o cronograma definido pela secretaria.</p>
+            <button onclick="salvarDiario(this)" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
+        </div>
+    </div>
+</div>
 
             <!-- TELA: MATERIAL DIDÁTICO -->
             <div id="tela-material" class="tela hidden">
@@ -694,41 +693,89 @@ async function loadTurmas() {
         }
     }
 }
+// =========================================================
+// LÓGICA DO DIÁRIO ELETRÔNICO (DATA AUTOMÁTICA E AVALIAÇÕES)
+// =========================================================
 
 function prepararDiario(idTurma) {
     document.getElementById('select-turma-diario').value = idTurma;
     mudarTela('diario');
+    processarTurmaDiario();
+}
 
+function processarTurmaDiario() {
+    const turmaId = document.getElementById('select-turma-diario').value;
     const inputData = document.getElementById('data-aula-diario');
-    if (inputData && !inputData.value) {
-        const hoje = new Date().toISOString().split('T')[0];
-        inputData.value = hoje;
+
+    if (!turmaId) {
+        inputData.value = '';
+        return;
     }
 
+    const turma = turmasProfessor.find(t => t.id === turmaId);
+    const diasAula = (turma && turma.detalhes && turma.detalhes.dias_aula) ? turma.detalhes.dias_aula : [];
+
+    // Calcula automaticamente a data mais recente com base nos dias definidos
+    inputData.value = calcularDataAulaMaisProxima(diasAula);
     carregarChamada();
+}
+
+// Descobre a última data em que a aula deveria ter ocorrido
+function calcularDataAulaMaisProxima(diasAulaStrArray) {
+    const hoje = new Date();
+    if (!diasAulaStrArray || diasAulaStrArray.length === 0) return hoje.toISOString().split('T')[0];
+
+    const mapaDias = {'Dom': 0, 'Seg': 1, 'Ter': 2, 'Qua': 3, 'Qui': 4, 'Sex': 5, 'Sáb': 6};
+    const diasValidos = diasAulaStrArray.map(d => mapaDias[d]);
+
+    for (let i = 0; i < 7; i++) {
+        let diaTeste = new Date(hoje);
+        diaTeste.setDate(hoje.getDate() - i);
+        if (diasValidos.includes(diaTeste.getDay())) {
+            return diaTeste.toISOString().split('T')[0];
+        }
+    }
+    return hoje.toISOString().split('T')[0];
 }
 
 async function carregarChamada() {
     const turmaId = document.getElementById('select-turma-diario').value;
     const tbody = document.getElementById('tbody-alunos-diario');
+    const thead = document.getElementById('thead-diario');
 
-    if (!turmaId) {
-        alert("Selecione uma turma no campo superior primeiro.");
-        return;
-    }
+    if (!turmaId) return;
 
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-teal-600 font-bold"><i data-feather="loader" class="w-5 h-5 inline animate-spin mr-2"></i> Buscando alunos matriculados e histórico...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-teal-600 font-bold"><i data-feather="loader" class="w-5 h-5 inline animate-spin mr-2"></i> Processando diário...</td></tr>';
     feather.replace();
 
-    const cursoId = turmaId.split('_')[0];
+    const turma = turmasProfessor.find(t => t.id === turmaId);
+    const avaliacoes = (turma && turma.detalhes && turma.detalhes.avaliacoes) ? turma.detalhes.avaliacoes : [];
 
+    // 1. CONSTRÓI O CABEÇALHO DINAMICAMENTE COM AS AVALIAÇÕES DA MATRIZ
+    let thHTML = `
+        <th class="py-3 px-4 w-12">Matr.</th>
+        <th class="py-3 px-4">Nome do Aluno</th>
+        <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
+    `;
+
+    if (avaliacoes.length > 0) {
+        avaliacoes.forEach(av => {
+            thHTML += `<th class="py-3 px-4 w-28 text-center text-blue-600" title="Data Prevista: ${av.data}">${av.tipo}</th>`;
+        });
+    } else {
+        thHTML += `<th class="py-3 px-4 w-28 text-center text-blue-600">Nota Final</th>`;
+    }
+    thead.innerHTML = thHTML;
+
+    // 2. BUSCA OS ALUNOS E AS NOTAS SALVAS
+    const cursoId = turmaId.split('_')[0];
     const [alunos, pautaSalvaResp] = await Promise.all([
         apiRequest('/alunos'),
         apiRequest(`/docente/diario/${turmaId}`)
     ]);
 
     if (!alunos) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-500 font-bold">Erro ao carregar lista de alunos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-500 font-bold">Erro ao carregar lista.</td></tr>';
         return;
     }
 
@@ -737,15 +784,24 @@ async function carregarChamada() {
 
     if (alunosDaTurma.length > 0) {
         tbody.innerHTML = '';
-
         alunosDaTurma.forEach((aluno, index) => {
-            const registroAnterior = pauta.find(p => String(p.aluno_id) === String(aluno.id)) || {};
-            const faltas = registroAnterior.faltas !== undefined ? registroAnterior.faltas : 0;
-            const nota1 = registroAnterior.nota_1 !== undefined && registroAnterior.nota_1 !== null ? registroAnterior.nota_1 : '';
-            const nota2 = registroAnterior.nota_2 !== undefined && registroAnterior.nota_2 !== null ? registroAnterior.nota_2 : '';
-
+            const regAntigo = pauta.find(p => String(p.aluno_id) === String(aluno.id)) || {};
+            const notasSalvas = regAntigo.notas || {}; // Agora o DB guarda um objeto de notas
+            const faltas = regAntigo.faltas || 0;
             const num = String(index + 1).padStart(2, '0');
-            const row = `
+
+            let tdNotasHTML = '';
+            if (avaliacoes.length > 0) {
+                avaliacoes.forEach(av => {
+                    const val = notasSalvas[av.tipo] !== undefined ? notasSalvas[av.tipo] : '';
+                    tdNotasHTML += `<td class="py-3 px-4"><input type="number" step="0.1" min="0" max="10" value="${val}" data-tipo="${av.tipo}" class="input-nota-dinamica w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium"></td>`;
+                });
+            } else {
+                const val = notasSalvas['Nota Final'] !== undefined ? notasSalvas['Nota Final'] : '';
+                tdNotasHTML += `<td class="py-3 px-4"><input type="number" step="0.1" min="0" max="10" value="${val}" data-tipo="Nota Final" class="input-nota-dinamica w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium"></td>`;
+            }
+
+            tbody.innerHTML += `
                 <tr class="hover:bg-teal-50/30 transition-colors linha-aluno border-b border-gray-50" data-aluno-id="${aluno.id}">
                     <td class="py-3 px-4 text-gray-400 font-bold">${num}</td>
                     <td class="py-3 px-4">
@@ -755,18 +811,12 @@ async function carregarChamada() {
                     <td class="py-3 px-4">
                         <input type="number" min="0" value="${faltas}" class="input-falta w-full text-center border border-gray-300 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 font-bold bg-white">
                     </td>
-                    <td class="py-3 px-4">
-                        <input type="number" step="0.1" min="0" max="10" value="${nota1}" placeholder="0.0" class="input-nota1 w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium">
-                    </td>
-                    <td class="py-3 px-4">
-                        <input type="number" step="0.1" min="0" max="10" value="${nota2}" placeholder="0.0" class="input-nota2 w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-medium">
-                    </td>
+                    ${tdNotasHTML}
                 </tr>
             `;
-            tbody.innerHTML += row;
         });
     } else {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">Nenhum aluno ativo matriculado neste curso.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-400">Nenhum aluno ativo matriculado neste curso.</td></tr>';
     }
 }
 
@@ -780,7 +830,7 @@ async function salvarDiario(btnElement) {
     const conteudo = document.getElementById('conteudo-aula-diario').value;
 
     if (!turmaId || !dataAula || !conteudo) {
-        alert("Preencha a Turma, a Data da Aula e o Conteúdo Ministrado!");
+        alert("Preencha o Conteúdo Ministrado para prosseguir.");
         btnElement.innerText = textoOriginal;
         btnElement.disabled = false;
         return;
@@ -790,33 +840,35 @@ async function salvarDiario(btnElement) {
     document.querySelectorAll('.linha-aluno').forEach(linha => {
         const alunoId = linha.getAttribute('data-aluno-id');
         const falta = linha.querySelector('.input-falta').value;
-        const nota1 = linha.querySelector('.input-nota1').value;
-        const nota2 = linha.querySelector('.input-nota2').value;
+
+        // Coleta todas as notas dinâmicas criadas
+        let dictNotas = {};
+        linha.querySelectorAll('.input-nota-dinamica').forEach(inp => {
+            if (inp.value !== '') {
+                dictNotas[inp.getAttribute('data-tipo')] = parseFloat(inp.value);
+            }
+        });
 
         if(alunoId) {
             arrayAlunos.push({
                 aluno_id: alunoId,
                 faltas: parseInt(falta) || 0,
-                nota_1: nota1 !== '' ? parseFloat(nota1) : null,
-                nota_2: nota2 !== '' ? parseFloat(nota2) : null
+                notas: dictNotas // Envia o dicionário inteiro para o Python
             });
         }
     });
-
-    const dataHoraAtual = new Date().toLocaleString('pt-BR');
 
     const payload = {
         turma_id: turmaId,
         data_aula: dataAula,
         conteudo_ministrado: conteudo,
-        data_hora_registro: dataHoraAtual,
         lancamentos: arrayAlunos
     };
 
     const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert(`Diário sincronizado com sucesso às ${dataHoraAtual}! As notas já estão disponíveis no Portal do Aluno.`);
+        alert("Diário sincronizado! Notas disponíveis no Portal do Aluno.");
     } else {
         alert("Falha ao salvar diário: " + (result?.detail || 'Tente novamente.'));
     }
