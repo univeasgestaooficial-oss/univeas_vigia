@@ -193,8 +193,10 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data Automática da Aula</label>
-                <input type="date" id="data-aula-diario" readonly class="w-full border border-teal-300 bg-teal-50 text-teal-900 rounded-lg px-3 py-2 text-sm focus:outline-none font-bold cursor-not-allowed">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Data da Aula (Cronograma)</label>
+                <select id="data-aula-diario" class="w-full border border-teal-300 bg-teal-50 text-teal-900 rounded-lg px-3 py-2 text-sm focus:outline-none font-bold">
+                    <option value="">Selecione a turma primeiro...</option>
+                </select>
             </div>
             <div class="flex items-end">
                 <button onclick="carregarChamada()" class="w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase hover:bg-teal-600 shadow-sm transition">Atualizar Pauta</button>
@@ -721,21 +723,78 @@ function processarTurmaDiario() {
 }
 
 // Descobre a última data em que a aula deveria ter ocorrido
-function calcularDataAulaMaisProxima(diasAulaStrArray) {
-    const hoje = new Date();
-    if (!diasAulaStrArray || diasAulaStrArray.length === 0) return hoje.toISOString().split('T')[0];
+function processarTurmaDiario() {
+    const turmaId = document.getElementById('select-turma-diario').value;
+    const selectData = document.getElementById('data-aula-diario');
+
+    if (!turmaId) {
+        selectData.innerHTML = '<option value="">Selecione a turma primeiro...</option>';
+        return;
+    }
+
+    const turma = turmasProfessor.find(t => t.id === turmaId);
+
+    if (!turma || !turma.detalhes || !turma.detalhes.data_inicio) {
+        selectData.innerHTML = '<option value="">Datas não definidas pela secretaria.</option>';
+        return;
+    }
+
+    const diasAula = turma.detalhes.dias_aula || [];
+    const dataInicio = turma.detalhes.data_inicio;
+
+    // Gera todas as datas válidas desde o início do módulo até hoje
+    const datasValidas = gerarDatasDoCronograma(dataInicio, diasAula);
+
+    if (datasValidas.length === 0) {
+        selectData.innerHTML = '<option value="">Nenhuma aula ocorrida até hoje.</option>';
+    } else {
+        selectData.innerHTML = '';
+        // Inverte para a data mais recente aparecer primeiro no topo da lista
+        datasValidas.reverse().forEach(dataObj => {
+            const opt = document.createElement('option');
+            opt.value = dataObj.iso;
+            opt.text = dataObj.formatada;
+            selectData.appendChild(opt);
+        });
+    }
+
+    carregarChamada();
+}
+
+function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
+    if (!dataInicioStr || !diasAulaStrArray || diasAulaStrArray.length === 0) return [];
 
     const mapaDias = {'Dom': 0, 'Seg': 1, 'Ter': 2, 'Qua': 3, 'Qui': 4, 'Sex': 5, 'Sáb': 6};
     const diasValidos = diasAulaStrArray.map(d => mapaDias[d]);
 
-    for (let i = 0; i < 7; i++) {
-        let diaTeste = new Date(hoje);
-        diaTeste.setDate(hoje.getDate() - i);
-        if (diasValidos.includes(diaTeste.getDay())) {
-            return diaTeste.toISOString().split('T')[0];
+    // Força a data inicial usando T00:00:00 para evitar que o fuso horário pule um dia para trás
+    const inicio = new Date(dataInicioStr + 'T00:00:00');
+    const hoje = new Date();
+
+    const datas = [];
+    let atual = new Date(inicio);
+
+    // O laço roda do primeiro dia de aula até o dia de HOJE
+    while (atual <= hoje) {
+        if (diasValidos.includes(atual.getDay())) {
+            const ano = atual.getFullYear();
+            const mes = String(atual.getMonth() + 1).padStart(2, '0');
+            const dia = String(atual.getDate()).padStart(2, '0');
+
+            // O nome do dia da semana para ficar bonito no select
+            const nomesDias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            const nomeDiaSemana = nomesDias[atual.getDay()];
+
+            datas.push({
+                iso: `${ano}-${mes}-${dia}`,
+                formatada: `${dia}/${mes}/${ano} (${nomeDiaSemana})`
+            });
         }
+        // Avança um dia
+        atual.setDate(atual.getDate() + 1);
     }
-    return hoje.toISOString().split('T')[0];
+
+    return datas;
 }
 
 async function carregarChamada() {
