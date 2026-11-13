@@ -24,6 +24,8 @@ from pydantic import BaseModel
 class LancamentoAluno(BaseModel):
     aluno_id: str
     faltas: int
+    notas: dict = {}  # Agora aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
+    # Mantidos por retrocompatibilidade caso tenha dados velhos gravados
     nota_1: Optional[float] = None
     nota_2: Optional[float] = None
 
