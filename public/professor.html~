@@ -47,8 +47,10 @@
      ========================================== -->
 <div id="app-container" class="hidden h-full w-full flex-1 flex">
 
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-20 h-full shrink-0">
-        <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
+    <div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:hidden" onclick="toggleMenuMobile()"></div>
+
+<aside class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-50 h-full shrink-0">
+    <div class="h-20 flex items-center justify-center border-b border-gray-100 px-4">
             <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-14 w-auto object-contain">
         </div>
 
@@ -108,12 +110,15 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
 
-            <!-- TELA: DASHBOARD -->
+        <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 no-scrollbar relative w-full">
+
+<!-- TELA: DASHBOARD -->
             <div id="tela-dashboard" class="tela block">
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                    <!-- Card 1: Turmas Ativas -> Redireciona para Minhas Turmas -->
+                    <div onclick="mudarTela('turmas')" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-teal-300 hover:-translate-y-1 transition-all duration-300">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Turmas Ativas</p>
                             <h3 id="dash-turmas" class="text-3xl font-black text-gray-800 mt-1">0</h3>
@@ -122,7 +127,9 @@
                             <i data-feather="users" class="h-6 w-6"></i>
                         </div>
                     </div>
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+
+                    <!-- Card 2: Diários Pendentes -> Redireciona para Diário Eletrônico -->
+                    <div onclick="mudarTela('diario')" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-yellow-400 hover:-translate-y-1 transition-all duration-300">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Diários Pendentes</p>
                             <h3 id="dash-diarios" class="text-3xl font-black text-yellow-500 mt-1">0</h3>
@@ -131,7 +138,9 @@
                             <i data-feather="alert-circle" class="h-6 w-6"></i>
                         </div>
                     </div>
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+
+                    <!-- Card 3: Aulas na Semana -> Redireciona para Diário Eletrônico -->
+                    <div onclick="mudarTela('diario')" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md hover:border-teal-300 hover:-translate-y-1 transition-all duration-300">
                         <div>
                             <p class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Aulas na Semana</p>
                             <h3 id="dash-aulas" class="text-3xl font-black text-teal-500 mt-1">0</h3>
@@ -143,13 +152,13 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4">
-                            <i data-feather="clock" class="h-5 w-5 text-teal-500 mr-2"></i> Próximas Aulas (Hoje)
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[420px]">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center border-b border-gray-50 pb-4 shrink-0">
+                            <i data-feather="calendar" class="h-5 w-5 text-teal-500 mr-2"></i> Cronograma e Avaliações
                         </h4>
-                        <ul id="lista-proximas-aulas" class="space-y-4">
-                            <p class="text-sm text-gray-400">Nenhuma aula programada para hoje.</p>
-                        </ul>
+                        <div id="lista-cronograma-dashboard" class="space-y-4 overflow-y-auto pr-2 flex-1 no-scrollbar">
+                            <p class="text-sm text-gray-400">Carregando cronograma da matriz...</p>
+                        </div>
                     </div>
 
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -157,7 +166,7 @@
                             <i data-feather="bell" class="h-5 w-5 text-teal-500 mr-2"></i> Mural de Avisos
                         </h4>
                         <div id="lista-avisos" class="space-y-4">
-                             <p class="text-sm text-gray-400">Nenhum aviso da secretaria.</p>
+                            <p class="text-sm text-gray-400">Nenhum aviso da secretaria.</p>
                         </div>
                     </div>
                 </div>
@@ -694,6 +703,7 @@ async function loadTurmas() {
             containerPerfilTurmas.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Nenhuma turma alocada para este registro de docente.</p>';
         }
     }
+    renderizarCronogramaDashboard();
 }
 // =========================================================
 // LÓGICA DO DIÁRIO ELETRÔNICO (DATA AUTOMÁTICA E AVALIAÇÕES)
@@ -705,24 +715,6 @@ function prepararDiario(idTurma) {
     processarTurmaDiario();
 }
 
-function processarTurmaDiario() {
-    const turmaId = document.getElementById('select-turma-diario').value;
-    const inputData = document.getElementById('data-aula-diario');
-
-    if (!turmaId) {
-        inputData.value = '';
-        return;
-    }
-
-    const turma = turmasProfessor.find(t => t.id === turmaId);
-    const diasAula = (turma && turma.detalhes && turma.detalhes.dias_aula) ? turma.detalhes.dias_aula : [];
-
-    // Calcula automaticamente a data mais recente com base nos dias definidos
-    inputData.value = calcularDataAulaMaisProxima(diasAula);
-    carregarChamada();
-}
-
-// Descobre a última data em que a aula deveria ter ocorrido
 function processarTurmaDiario() {
     const turmaId = document.getElementById('select-turma-diario').value;
     const selectData = document.getElementById('data-aula-diario');
@@ -812,9 +804,9 @@ async function carregarChamada() {
 
     // 1. CONSTRÓI O CABEÇALHO DINAMICAMENTE COM AS AVALIAÇÕES DA MATRIZ
     let thHTML = `
-        <th class="py-3 px-4 w-12">Matr.</th>
-        <th class="py-3 px-4">Nome do Aluno</th>
-        <th class="py-3 px-4 w-24 text-center text-teal-600">Faltas</th>
+        <th class="py-3 px-4 w-12 whitespace-nowrap">Matr.</th>
+        <th class="py-3 px-4 whitespace-nowrap min-w-[200px]">Nome do Aluno</th>
+        <th class="py-3 px-4 w-24 text-center text-teal-600 whitespace-nowrap">Faltas</th>
     `;
 
     if (avaliacoes.length > 0) {
@@ -845,7 +837,7 @@ async function carregarChamada() {
         tbody.innerHTML = '';
         alunosDaTurma.forEach((aluno, index) => {
             const regAntigo = pauta.find(p => String(p.aluno_id) === String(aluno.id)) || {};
-            const notasSalvas = regAntigo.notas || {}; // Agora o DB guarda um objeto de notas
+            const notasSalvas = regAntigo.notas || {};
             const faltas = regAntigo.faltas || 0;
             const num = String(index + 1).padStart(2, '0');
 
@@ -938,13 +930,61 @@ async function salvarDiario(btnElement) {
 
 function toggleMenuMobile() {
     const sidebar = document.querySelector('aside');
+    const backdrop = document.getElementById('mobile-backdrop');
+
     if (sidebar) {
         if (sidebar.classList.contains('-translate-x-full')) {
+            // ABRIR MENU
             sidebar.classList.remove('-translate-x-full', 'absolute');
             sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+            if (backdrop) backdrop.classList.remove('hidden');
         } else {
+            // FECHAR MENU
             sidebar.classList.add('-translate-x-full', 'absolute');
             sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-2xl');
+            if (backdrop) backdrop.classList.add('hidden');
+        }
+    }
+}
+
+function mudarTela(idTela) {
+    document.querySelectorAll('.tela').forEach(tela => {
+        tela.classList.add('hidden');
+        tela.classList.remove('block');
+    });
+
+    const telaAtiva = document.getElementById('tela-' + idTela);
+    if (telaAtiva) {
+        telaAtiva.classList.remove('hidden');
+        telaAtiva.classList.add('block');
+    }
+
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+        btn.classList.add('text-gray-500', 'border-transparent', 'font-medium');
+    });
+
+    const btnAtivo = document.getElementById('btn-' + idTela);
+    if (btnAtivo) {
+        btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
+        btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
+    }
+
+    const titulos = {
+        'dashboard': 'Painel Principal',
+        'turmas': 'Minhas Turmas e Disciplinas',
+        'diario': 'Diário Eletrônico',
+        'material': 'Acervo e Material Didático',
+        'perfil': 'Meu Perfil'
+    };
+    const elTitulo = document.getElementById('titulo-pagina');
+    if(elTitulo) elTitulo.innerText = titulos[idTela] || 'UNIVEAS SGA';
+
+    // NOVO: Fecha o menu mobile automaticamente ao clicar numa tela
+    if (window.innerWidth < 768) {
+        const sidebar = document.querySelector('aside');
+        if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            toggleMenuMobile();
         }
     }
 }
@@ -1193,6 +1233,61 @@ async function editarMaterial(materialId, tituloAtual, urlAtual) {
     } else {
         alert("Erro ao atualizar: " + (result?.detail || "Tente novamente."));
     }
+}
+    function renderizarCronogramaDashboard() {
+    const container = document.getElementById('lista-cronograma-dashboard');
+    if (!container) return;
+
+    if (!turmasProfessor || turmasProfessor.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400">Nenhuma disciplina alocada para exibir.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    turmasProfessor.forEach(turma => {
+        const det = turma.detalhes || {};
+        const dias = det.dias_aula && det.dias_aula.length > 0 ? det.dias_aula.join(', ') : 'Dias não definidos';
+        const horaIni = det.hora_aula_inicio || det.hora_inicio || '--:--';
+        const horaFim = det.hora_aula_fim || det.hora_fim || '--:--';
+        const avaliacoes = det.avaliacoes || [];
+
+        let htmlAvaliacoes = '';
+        if (avaliacoes.length > 0) {
+            htmlAvaliacoes = '<div class="mt-2 flex flex-wrap gap-2">';
+            avaliacoes.forEach(av => {
+                // Converte a data do formato YYYY-MM-DD para o formato brasileiro DD/MM/YYYY
+                let dataFmt = av.data;
+                if(dataFmt && dataFmt.includes('-')) {
+                    const partes = dataFmt.split('-');
+                    dataFmt = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                }
+                htmlAvaliacoes += `
+                    <span class="bg-orange-50 border border-orange-200 text-orange-700 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm cursor-help" title="Horário: ${av.inicio || '--:--'} às ${av.fim || '--:--'}">
+                        ${av.tipo}: ${dataFmt || 'S/ Data'}
+                    </span>`;
+            });
+            htmlAvaliacoes += '</div>';
+        } else {
+            htmlAvaliacoes = '<p class="text-[10px] text-gray-400 mt-1 italic">Nenhuma avaliação cadastrada pela secretaria.</p>';
+        }
+
+        container.innerHTML += `
+            <div class="bg-gray-50 border border-gray-100 p-4 rounded-xl hover:border-teal-300 hover:shadow-sm transition-all duration-300">
+                <h5 class="text-sm font-black text-gray-800 uppercase leading-tight">${turma.nome_disciplina || 'Disciplina'}</h5>
+                <p class="text-[10px] text-gray-500 font-medium uppercase mt-0.5 mb-2">${turma.curso_pai || 'Curso'}</p>
+
+                <div class="flex items-center text-teal-800 text-xs font-bold mb-3 bg-teal-100/50 px-3 py-2 rounded-lg border border-teal-100 w-fit">
+                    <i data-feather="clock" class="w-3.5 h-3.5 mr-1.5"></i> ${dias} • ${horaIni} às ${horaFim}
+                </div>
+
+                <div class="border-t border-gray-200 pt-3">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Calendário de Avaliações</p>
+                    ${htmlAvaliacoes}
+                </div>
+            </div>
+        `;
+    });
+    feather.replace();
 }
 
 </script>
