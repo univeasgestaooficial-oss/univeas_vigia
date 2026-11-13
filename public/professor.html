@@ -709,24 +709,6 @@ function prepararDiario(idTurma) {
 
 function processarTurmaDiario() {
     const turmaId = document.getElementById('select-turma-diario').value;
-    const inputData = document.getElementById('data-aula-diario');
-
-    if (!turmaId) {
-        inputData.value = '';
-        return;
-    }
-
-    const turma = turmasProfessor.find(t => t.id === turmaId);
-    const diasAula = (turma && turma.detalhes && turma.detalhes.dias_aula) ? turma.detalhes.dias_aula : [];
-
-    // Calcula automaticamente a data mais recente com base nos dias definidos
-    inputData.value = calcularDataAulaMaisProxima(diasAula);
-    carregarChamada();
-}
-
-// Descobre a última data em que a aula deveria ter ocorrido
-function processarTurmaDiario() {
-    const turmaId = document.getElementById('select-turma-diario').value;
     const selectData = document.getElementById('data-aula-diario');
 
     if (!turmaId) {
@@ -814,7 +796,6 @@ async function carregarChamada() {
 
     // 1. CONSTRÓI O CABEÇALHO DINAMICAMENTE COM AS AVALIAÇÕES DA MATRIZ
     let thHTML = `
-        let thHTML = `
         <th class="py-3 px-4 w-12 whitespace-nowrap">Matr.</th>
         <th class="py-3 px-4 whitespace-nowrap min-w-[200px]">Nome do Aluno</th>
         <th class="py-3 px-4 w-24 text-center text-teal-600 whitespace-nowrap">Faltas</th>
@@ -848,7 +829,7 @@ async function carregarChamada() {
         tbody.innerHTML = '';
         alunosDaTurma.forEach((aluno, index) => {
             const regAntigo = pauta.find(p => String(p.aluno_id) === String(aluno.id)) || {};
-            const notasSalvas = regAntigo.notas || {}; // Agora o DB guarda um objeto de notas
+            const notasSalvas = regAntigo.notas || {};
             const faltas = regAntigo.faltas || 0;
             const num = String(index + 1).padStart(2, '0');
 
