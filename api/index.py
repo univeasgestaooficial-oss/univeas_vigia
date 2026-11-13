@@ -1559,95 +1559,89 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
     matricula_aluno = aluno_doc.to_dict().get("matricula")
 
-    # 2. Busca o curso e sua matriz curricular oficial (onde estão ementa, foto, horários, etc.)
+    # 2. Busca o curso e sua matriz curricular oficial completa (todos os semestres/módulos)
     curso_doc = db.collection("cursos").document(curso_id).get()
     grade_curricular = []
     if curso_doc.exists:
         grade_curricular = curso_doc.to_dict().get("grade_curricular", [])
 
-    # 3. Busca os registros nos diários de classe para extrair notas e faltas do aluno
+    # 3. Busca os registros nos diários de classe para extrair notas e faltas existentes
     diarios_docs = db.collection("diarios").stream()
-
-    # Mapeia as disciplinas do aluno com base nos diários lançados pelos professores
-    disciplinas_map = {}
+    lancamentos_aluno = {}
 
     for doc in diarios_docs:
         d_data = doc.to_dict()
         t_id = d_data.get("turma_id", "")
 
-        # Verifica se o diário pertence a este curso
         if not t_id.startswith(f"{curso_id}_"):
             continue
 
-        # Extrai o nome da disciplina do ID da turma (formato: cursoId_NomeDisciplina)
         _, nome_disc = t_id.split("_", 1)
+        nome_disc_limpo = nome_disc.strip().upper()
 
         for lanc in d_data.get("avaliacoes", []):
             if str(lanc.get("aluno_id")) == str(aluno_id):
-                if nome_disc not in disciplinas_map:
-                    disciplinas_map[nome_disc] = {
-                        "disciplina": nome_disc,
+                if nome_disc_limpo not in lancamentos_aluno:
+                    lancamentos_aluno[nome_disc_limpo] = {
                         "faltas": 0,
-                        "notas": {},
-                        "situacao": "Cursando"
+                        "notas": {}
                     }
+                lancamentos_aluno[nome_disc_limpo]["faltas"] += int(lanc.get("faltas", 0))
+                lancamentos_aluno[nome_disc_limpo]["notas"].update(lanc.get("notas", {}))
 
-                disciplinas_map[nome_disc]["faltas"] += int(lanc.get("faltas", 0))
-                # Mescla as notas enviadas nas avaliações
-                notas_lanc = lanc.get("notas", {})
-                disciplinas_map[nome_disc]["notas"].update(notas_lanc)
-
-    # Caso o aluno não tenha lançamentos em diários ainda, exibe as disciplinas da grade com dados vazios
-    if not disciplinas_map and grade_curricular:
-        for m in grade_curricular:
-            if isinstance(m, dict):
-                nome_m = m.get("nome") or m.get("disciplina")
-                if nome_m:
-                    disciplinas_map[nome_m] = {
-                        "disciplina": nome_m,
-                        "faltas": 0,
-                        "notas": {},
-                        "situacao": "Cursando"
-                    }
-
-    # 4. Enriquece cada item combinando com os dados oficiais da matriz curricular
+    # 4. Monta o boletim baseado na MATRIZ CURRICULAR OFICIAL para garantir que NENHUMA disciplina suma
     boletim_enriquecido = []
-    for nome_disc, item in disciplinas_map.items():
-        # Procura a disciplina correspondente na matriz curricular oficial
-        matriz_match = next(
-            (m for m in grade_curricular if str(m.get("nome", "")).strip().upper() == str(nome_disc).strip().upper()),
-            {}
-        )
 
-        # Se não achar no primeiro nível, busca dentro de sub-disciplinas se houver
-        if not matriz_match:
-            for m in grade_curricular:
-                for sub in m.get("disciplinas", []):
-                    if str(sub.get("nome", "")).strip().upper() == str(nome_disc).strip().upper():
-                        matriz_match = sub
-                        break
+    for m in grade_curricular:
+        if not isinstance(m, dict):
+            continue
 
-        # Calcula média simples se houver notas
-        notas_vals = [float(v) for v in item["notas"].values() if v is not None and str(v) != '']
-        media_final = round(sum(notas_vals) / len(notas_vals), 1) if notas_vals else None
+        semestre_modulo = m.get("semestre", "Semestre Único")
 
-        item_completo = {
-            "disciplina": nome_disc,
-            "semestre": matriz_match.get("semestre", "Semestre Único"),
-            "faltas": item["faltas"],
-            "media_final": media_final,
-            "situacao": item["situacao"],
-            "notas": item["notas"],
-            "ementa": matriz_match.get("ementa", "Nenhuma ementa detalhada informada."),
-            "foto_modulo": matriz_match.get("foto_modulo", ""),
-            "ch_teoria": matriz_match.get("ch_teoria", 0),
-            "ch_pratica": matriz_match.get("ch_pratica", 0),
-            "ch_es": matriz_match.get("ch_estagio", 0),
-            "ch_total": matriz_match.get("ch_total", 40),
-            "avaliacoes_previstas": [av.get("tipo") if isinstance(av, dict) else av for av in
-                                     matriz_match.get("avaliacoes", ["AV1", "AV2", "Final"])]
-        }
-        boletim_enriquecido.append(item_completo)
+        # Verifica se o módulo possui sub-disciplinas ou é uma disciplina direta
+        sub_lista = m.get("disciplinas", [])
+        if isinstance(sub_lista, list) and len(sub_lista) > 0:
+            itens_para_processar = sub_lista
+        else:
+            itens_para_processar = [m]
+
+        for disc_matriz in itens_para_processar:
+            if not isinstance(disc_matriz, dict):
+                continue
+
+            nome_disc = disc_matriz.get("nome") or disc_matriz.get("disciplina")
+            if not nome_disc:
+                continue
+
+            nome_limpo = nome_disc.strip().upper()
+            dados_lancados = lancamentos_aluno.get(nome_limpo, {"faltas": 0, "notas": {}})
+
+            # Calcula média se houver notas lançadas
+            notas_vals = [float(v) for v in dados_lancados["notas"].values() if v is not None and str(v) != '']
+            media_final = round(sum(notas_vals) / len(notas_vals), 1) if notas_vals else None
+
+            # Determina a situação com base nas notas ou padrão Cursando
+            situacao = "Cursando"
+            if media_final is not None:
+                situacao = "Aprovado" if media_final >= 7.0 else "Em Recuperação"
+
+            item_completo = {
+                "disciplina": nome_disc,
+                "semestre": semestre_modulo,
+                "faltas": dados_lancados["faltas"],
+                "media_final": media_final,
+                "situacao": situacao,
+                "notas": dados_lancados["notas"],
+                "ementa": disc_matriz.get("ementa", "Nenhuma ementa detalhada informada."),
+                "foto_modulo": disc_matriz.get("foto_modulo", m.get("foto_modulo", "")),
+                "ch_teoria": disc_matriz.get("ch_teoria", 0),
+                "ch_pratica": disc_matriz.get("ch_pratica", 0),
+                "ch_es": disc_matriz.get("ch_es", 0),
+                "ch_total": disc_matriz.get("ch_total", 40),
+                "avaliacoes_previstas": [av.get("tipo") if isinstance(av, dict) else av for av in
+                                         disc_matriz.get("avaliacoes", ["AV1", "AV2", "Final"])]
+            }
+            boletim_enriquecido.append(item_completo)
 
     return boletim_enriquecido
 
