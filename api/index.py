@@ -99,6 +99,7 @@ async def login_administrador(senha: str = Form(...)):
 # ==========================================
 # 2.6 AUTENTICAÇÃO DO PROFESSOR (DOCENTE)
 # ==========================================
+
 @app.post("/api/v1/auth/docente")
 async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
     checar_db()
@@ -114,11 +115,12 @@ async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
             "sucesso": True,
             "token_siga": f"docente_{docente_encontrado['id']}",
             "nome_professor": docente_encontrado["nome"],
-            "registro": docente_encontrado["registro"]
+            "registro": docente_encontrado["registro"],
+            "email": docente_encontrado.get("email", "Não cadastrado"),
+            "telefone": docente_encontrado.get("telefone", "Não cadastrado")
         }
     else:
         raise HTTPException(status_code=401, detail="Registro ou CPF incorretos. Acesso negado.")
-
 
 # ==========================================
 # 2.7 AUTENTICAÇÃO DO ALUNO (ESTUDANTE)
