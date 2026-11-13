@@ -996,45 +996,70 @@ async function renderizarDashboardAluno() {
     const containerDash = document.getElementById('container-semestres-dash');
     if (!containerDash) return;
 
-    // Se já tivermos o boletim carregado, usamos os dados dele para pegar as matrizes
     const cursoId = document.getElementById('select-curso-boletim')?.value;
     if (!cursoId) {
         containerDash.innerHTML = '<p class="text-sm text-gray-400 py-4">Selecione o curso no boletim primeiro.</p>';
         return;
     }
 
-    const boletim = dadosBoletimAtual || []; // Garantindo que pega o JSON do Python
+    const boletim = dadosBoletimAtual || [];
     if (boletim.length === 0) return;
 
-    // Agrupa por semestre (Caso o back-end envie o semestre; senão agrupa em "Módulos")
     const semestres = {};
+    let semestreAtivo = null;
+
+    // 1. Agrupa as disciplinas por semestre e descobre qual é o Semestre Atual (que possui módulo "Cursando")
     boletim.forEach((disc, index) => {
         const sem = disc.semestre || 'Semestre Único';
-        if (!semestres[sem]) semestres[sem] = [];
-        disc.indexOriginal = index; // Guarda o índice para abrir os detalhes
-        semestres[sem].push(disc);
+        if (!semestres[sem]) semestres[sem] = { nome: sem, disciplinas: [], temCursando: false };
+        disc.indexOriginal = index;
+
+        // Se a matéria está ativa, este é o semestre destaque
+        if (disc.situacao && disc.situacao.toLowerCase() === 'cursando') {
+            semestres[sem].temCursando = true;
+            semestreAtivo = sem;
+        }
+        semestres[sem].disciplinas.push(disc);
+    });
+
+    // Fallback: se nenhum estiver cursando, pega o primeiro semestre disponível como ativo
+    if (!semestreAtivo && Object.keys(semestres).length > 0) {
+        semestreAtivo = Object.keys(semestres)[0];
+    }
+
+    // 2. Ordenação da Pilha: Semestre ativo no topo, os demais ficam abaixo
+    const semestresOrdenados = Object.values(semestres).sort((a, b) => {
+        if (a.nome === semestreAtivo) return -1;
+        if (b.nome === semestreAtivo) return 1;
+        return 0; // Mantém a ordem original para os demais (histórico)
     });
 
     containerDash.innerHTML = '';
 
-    for (const [semestre, disciplinas] of Object.entries(semestres)) {
+    // 3. Renderiza os Carrosséis
+    semestresOrdenados.forEach(semObj => {
+        const isDestaque = semObj.nome === semestreAtivo;
         let cardsHTML = '';
-        disciplinas.forEach(d => {
-            const foto = d.foto_modulo || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
-            let badge = '';
 
-            // Verifica aprovação
+        semObj.disciplinas.forEach(d => {
+            const foto = d.foto_modulo || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
+            let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
+
             if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
                 badge = '<span class="absolute top-3 right-3 bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Concluído</span>';
             } else if (d.situacao && d.situacao.toLowerCase() === 'reprovado') {
                 badge = '<span class="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Reprovado</span>';
+            } else if (d.situacao && d.situacao.toLowerCase() === 'cursando') {
+                // Efeito visual no módulo que está acontecendo agora
+                badge = '<span class="absolute top-3 right-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase animate-pulse">Em Andamento</span>';
             }
 
             cardsHTML += `
-                <div onclick="abrirTelaDisciplina(${d.indexOriginal})" class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer min-w-[260px] w-[260px] flex-shrink-0 relative group">
+                <div onclick="abrirTelaDisciplina(${d.indexOriginal})" class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer min-w-[260px] w-[260px] flex-shrink-0 relative group">
                     ${badge}
                     <div class="h-32 bg-gray-100 overflow-hidden">
-                        <img src="${foto}" alt="${d.disciplina}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <!-- pointer-events-none garante que a imagem não atrapalhe o rastro do mouse -->
+                        <img src="${foto}" alt="${d.disciplina}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none">
                     </div>
                     <div class="p-4">
                         <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">EAD / Presencial</p>
@@ -1044,16 +1069,94 @@ async function renderizarDashboardAluno() {
             `;
         });
 
-        // Monta a linha do carrossel para este semestre
+        // Diferenciação Visual do Semestre em Destaque vs Antigos/Futuros
+        const destaqueClasses = isDestaque
+            ? 'border-2 border-blue-500 bg-blue-50/40 p-5 rounded-2xl shadow-sm relative'
+            : 'pl-2 opacity-80 hover:opacity-100 transition-opacity duration-300';
+
+        const tituloBadge = isDestaque
+            ? '<span class="ml-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-wider">Mês Atual</span>'
+            : '';
+
         containerDash.innerHTML += `
-            <div>
-                <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-3 border-l-4 border-blue-500 pl-2">${semestre}</h3>
-                <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            <div class="${destaqueClasses} mb-8">
+                <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest mb-4 flex items-center">
+                    <span class="w-1.5 h-5 ${isDestaque ? 'bg-blue-600' : 'bg-gray-400'} rounded mr-2 inline-block"></span>
+                    ${semObj.nome}
+                    ${tituloBadge}
+                </h3>
+                <div class="carrossel-semestre flex gap-4 overflow-x-auto pb-4 no-scrollbar cursor-ew-resize relative" style="scroll-behavior: auto;">
                     ${cardsHTML}
                 </div>
             </div>
         `;
-    }
+    });
+
+    // 4. Injeta a física de movimento do mouse após renderizar o HTML
+    aplicarEfeitoScrollMouse();
+}
+
+// ==========================================
+// FÍSICA DE SCROLL INTERATIVO (HOVER SCROLL)
+// ==========================================
+function aplicarEfeitoScrollMouse() {
+    const carrosseis = document.querySelectorAll('.carrossel-semestre');
+
+    carrosseis.forEach(carrossel => {
+        let scrollAnimation = null;
+        let velocidadeScroll = 0;
+
+        // Loop de animação de alta performance a 60 FPS
+        const animarScroll = () => {
+            if (velocidadeScroll !== 0) {
+                carrossel.scrollLeft += velocidadeScroll;
+                scrollAnimation = requestAnimationFrame(animarScroll);
+            }
+        };
+
+        carrossel.addEventListener('mousemove', (e) => {
+            const rect = carrossel.getBoundingClientRect();
+            const x = e.clientX - rect.left; // Posição X do mouse dentro do container
+            const largura = rect.width;
+
+            // Área invisível nas laterais (em pixels) que aciona o movimento
+            const zonaAtiva = 150;
+            const velocidadeMaxima = 7; // Ajuste a velocidade máxima do giro
+
+            if (x < zonaAtiva) {
+                // Mouse perto da borda Esquerda (Rola para trás)
+                // Acelera conforme se aproxima mais da ponta
+                const proporcao = 1 - (x / zonaAtiva);
+                velocidadeScroll = -(velocidadeMaxima * proporcao);
+
+                if (!scrollAnimation) scrollAnimation = requestAnimationFrame(animarScroll);
+
+            } else if (x > largura - zonaAtiva) {
+                // Mouse perto da borda Direita (Rola para frente)
+                const proporcao = 1 - ((largura - x) / zonaAtiva);
+                velocidadeScroll = (velocidadeMaxima * proporcao);
+
+                if (!scrollAnimation) scrollAnimation = requestAnimationFrame(animarScroll);
+
+            } else {
+                // Mouse no meio da tela (Para o movimento)
+                velocidadeScroll = 0;
+                if (scrollAnimation) {
+                    cancelAnimationFrame(scrollAnimation);
+                    scrollAnimation = null;
+                }
+            }
+        });
+
+        // Se o mouse sair do carrossel, para de rolar imediatamente
+        carrossel.addEventListener('mouseleave', () => {
+            velocidadeScroll = 0;
+            if (scrollAnimation) {
+                cancelAnimationFrame(scrollAnimation);
+                scrollAnimation = null;
+            }
+        });
+    });
 }
 
 // Transita da Dashboard para os Detalhes da Disciplina
