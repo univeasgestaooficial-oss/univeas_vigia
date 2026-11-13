@@ -632,11 +632,15 @@ async function carregarBoletim() {
     const selectDisciplina = document.getElementById('select-disciplina-boletim');
     const tbody = document.getElementById('tbody-boletim');
     const thead = document.getElementById('thead-boletim');
+    const containerDash = document.getElementById('container-semestres-dash');
 
     if (!cursoId) {
         selectDisciplina.classList.add('hidden');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
         renderizarGraficoDesempenho([], []);
+
+        // Se não tem curso, avisa no dashboard também
+        if(containerDash) containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Aguardando seleção do curso...</p>';
         return;
     }
 
@@ -658,10 +662,15 @@ async function carregarBoletim() {
         selectDisciplina.value = "0";
         renderizarDisciplinaSelecionada();
 
+        // MÁGICA AQUI: Desenha os cards no painel principal AGORA que os dados chegaram!
+        renderizarDashboardAluno();
+
     } else {
         selectDisciplina.classList.add('hidden');
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum registro encontrado para este curso.</td></tr>';
         renderizarGraficoDesempenho([], []);
+
+        if(containerDash) containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Nenhum módulo encontrado para este curso.</p>';
     }
 }
 
@@ -1124,14 +1133,6 @@ function confirmarPresencaAluno() {
     fecharModalPresenca();
 }
 
-// Sobrescrevendo a função loadDashboardAluno para chamar os cards depois dos indicadores
-const loadDashboardOriginal = loadDashboardAluno;
-loadDashboardAluno = async function() {
-    await loadDashboardOriginal();
-    // Após carregar os indicadores, acionamos a construção do carrossel
-
-    loadDashboardAluno().then(() => renderizarDashboardAluno());
-}
 </script>
 
 </body>
