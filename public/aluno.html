@@ -940,10 +940,10 @@ async function renderizarDashboardAluno() {
         let cardsHTML = '';
 
         semObj.disciplinas.forEach(d => {
-            const fotoModulo = d.foto_modulo || d.foto_card || d.capa_modulo || d.imagem_modulo || d.capa || d.imagem || d.foto;
-            
-            const foto = (fotoModulo && typeof fotoModulo === 'string' && fotoModulo.trim() !== '') 
-                ? fotoModulo.trim() 
+            // Garante que se a disciplina tiver foto cadastrada, ela usa.
+            // Se não tiver, usa exatamente a mesma capa padrão do curso principal.
+            const foto = (d.foto_modulo && d.foto_modulo.trim() !== '')
+                ? d.foto_modulo.trim()
                 : capaPadraoCurso;
 
             let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
@@ -970,28 +970,6 @@ async function renderizarDashboardAluno() {
             `;
         });
 
-        const destaqueClasses = isDestaque
-            ? 'border-2 border-blue-500 bg-blue-50/40 p-5 rounded-2xl shadow-sm relative'
-            : 'pl-2 opacity-80 hover:opacity-100 transition-opacity duration-300';
-
-        const tituloBadge = isDestaque
-            ? '<span class="ml-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-wider">Mês Atual</span>'
-            : '';
-
-        containerDash.innerHTML += `
-            <div class="${destaqueClasses} mb-8">
-                <h3 class="text-sm font-black text-gray-800 uppercase tracking-widest mb-4 flex items-center">
-                    <span class="w-1.5 h-5 ${isDestaque ? 'bg-blue-600' : 'bg-gray-400'} rounded mr-2 inline-block"></span>
-                    ${semObj.nome}
-                    ${tituloBadge}
-                </h3>
-                <div class="carrossel-semestre flex gap-4 overflow-x-auto pb-4 no-scrollbar cursor-ew-resize relative" style="scroll-behavior: auto;">
-                    ${cardsHTML}
-                </div>
-            </div>
-        `;
-    });
-    
     aplicarEfeitoScrollMouse();
 }
 
