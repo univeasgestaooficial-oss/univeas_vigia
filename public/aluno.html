@@ -903,6 +903,12 @@ async function renderizarDashboardAluno() {
         return;
     }
 
+    // Identifica o curso atual para pegar a capa padrão caso nenhuma foto de módulo seja encontrada
+    const selectBoletimEl = document.getElementById('select-curso-boletim');
+    const cursoIdAtivo = selectBoletimEl ? selectBoletimEl.value : (cursosDoAluno[0]?.id || '');
+    const cursoAtualObj = cursosDoAluno.find(c => c.id === cursoIdAtivo) || cursosDoAluno[0];
+    const capaPadraoCurso = cursoAtualObj?.foto_capa || cursoAtualObj?.capa || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
+
     const semestres = {};
     let semestreAtivo = null;
 
@@ -935,11 +941,12 @@ async function renderizarDashboardAluno() {
         let cardsHTML = '';
 
         semObj.disciplinas.forEach(d => {
-            // CORREÇÃO: Pega estritamente a foto da disciplina específica (`d.foto_modulo`). Se não houver, usa a padrão neutra do Unsplash.
-            const foto = (d.foto_modulo && d.foto_modulo.trim() !== '') 
-                ? d.foto_modulo 
-                : 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
-            
+            // VARREDURA TOTAL: Procura a foto em qualquer propriedade que o admin.html possa ter enviado
+            const fotoModulo = d.foto_modulo || d.foto || d.capa || d.imagem || d.imagem_modulo;
+            const foto = (fotoModulo && typeof fotoModulo === 'string' && fotoModulo.trim() !== '')
+                ? fotoModulo.trim()
+                : capaPadraoCurso;
+
             let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
 
             if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
@@ -954,11 +961,11 @@ async function renderizarDashboardAluno() {
                 <div onclick="abrirTelaDisciplina(${d.indexOriginal})" class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer min-w-[260px] w-[260px] flex-shrink-0 relative group">
                     ${badge}
                     <div class="h-32 bg-gray-100 overflow-hidden">
-                        <img src="${foto}" alt="${d.disciplina}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none">
+                        <img src="${foto}" alt="${d.disciplina || d.nome_disciplina || 'Disciplina'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none">
                     </div>
                     <div class="p-4">
                         <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Módulo Acadêmico</p>
-                        <h4 class="text-sm font-bold text-gray-900 uppercase truncate" title="${d.disciplina}">${d.disciplina}</h4>
+                        <h4 class="text-sm font-bold text-gray-900 uppercase truncate" title="${d.disciplina || d.nome_disciplina || 'Disciplina'}">${d.disciplina || d.nome_disciplina || 'Disciplina'}</h4>
                     </div>
                 </div>
             `;
