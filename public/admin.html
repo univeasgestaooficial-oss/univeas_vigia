@@ -197,7 +197,7 @@
                         </h4>
                         <div class="flex space-x-2 w-full sm:w-auto">
                             <div class="relative flex-1 sm:w-64">
-                                <input type="text" placeholder="Buscar notificação..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                                <input type="text" id="busca-notificacoes" oninput="filtrarNotificacoes()" placeholder="Buscar notificação..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
                                 <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                             </div>
                             <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
@@ -738,7 +738,7 @@
                         <div class="flex flex-wrap gap-2 text-[11px] font-bold">
                             <span id="diario-badge-alunos" class="bg-white text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg">0 Alunos</span>
                             <span id="diario-badge-aprovados" class="bg-green-100 text-green-700 px-3 py-1.5 rounded-lg">0 Aprovados</span>
-                            <span id="diario-badge-media-turma" class="bg-teal-600 text-white px-3 py-1.5 rounded-lg">Média Turma: 0.0</span>
+                            <span id="diario-badge-media-turma" class="bg-teal-600 text-white px-3 py-1.5 rounded-lg">Média Turma: 0,0</span>
                         </div>
                     </div>
 
@@ -746,7 +746,7 @@
                     <div class="overflow-x-auto border rounded-xl border-gray-100 flex-1">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
-                                <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                <tr id="diario-thead-row" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                     <th class="py-3 px-4 whitespace-nowrap">Matrícula</th>
                                     <th class="py-3 px-4 whitespace-nowrap">Nome do Aluno</th>
                                     <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Faltas</th>
@@ -769,7 +769,7 @@
                     <!-- Rodapé de Ações -->
                     <div class="no-print flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100">
                         <p class="text-[11px] text-gray-400 font-medium">
-                            * Critério padrão UNIVEAS: Média ≥ 7,0 para aprovação direta.
+                            Critério padrão UNIVEAS: Média Ponderada ≥ 8,0 para aprovação direta.
                         </p>
                         <button type="button" id="btn-salvar-diario" onclick="salvarDiarioEletronico()" class="w-full sm:w-auto bg-teal-500 text-white font-bold py-3 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-md flex items-center justify-center">
                             <i data-feather="save" class="w-4 h-4 mr-2"></i> Salvar Lançamentos
@@ -812,7 +812,7 @@
                         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 border-b border-gray-100 pb-6 mb-6">
                             <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
                                 <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mês de Faturamento</label>
-                                <input type="month" id="filtro-mes-financeiro" class="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-teal-700 transition w-full sm:w-48 shadow-inner">
+                                <input type="month" id="filtro-mes-financeiro" onchange="loadFinanceiro()" class="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-teal-700 transition w-full sm:w-48 shadow-inner">
                             </div>
 
                             <div class="flex items-center space-x-2 sm:space-x-3 w-full md:w-auto">
@@ -958,6 +958,7 @@ let docentesGlobais = [];
 let alunosGlobais = [];
 let cursosGlobais = [];
 let pautaAtualDiario = [];
+let colunasAvaliacaoDiarioAtual = [];
 
 const API_BASE_URL = "https://univeasvigia.vercel.app/api/v1";
 
@@ -1132,7 +1133,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 }
 
 // ==========================================
-// 4. DIÁRIO ELETRÔNICO CONSOLIDADO (ADMIN)
+// 4. DIÁRIO ELETRÔNICO CONSOLIDADO (ADMIN - MÉDIA PONDERADA >= 8,0)
 // ==========================================
 async function initDiarioEletronico() {
     const selectCurso = document.getElementById('diario-select-curso');
@@ -1196,6 +1197,32 @@ function atualizarModulosDiario() {
     selectModulo.innerHTML = opts;
 }
 
+function obterConfigAvaliacoesModulo(cursoId, moduloNome) {
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    if (!curso) return [{ tipo: 'AV1', peso: 1 }, { tipo: 'AV2', peso: 1 }];
+
+    let grade = [];
+    try {
+        const raw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
+        grade = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {}
+
+    const modObj = grade.find(m => (m.nome || '').trim().toUpperCase() === moduloNome.trim().toUpperCase());
+    if (modObj && Array.isArray(modObj.avaliacoes) && modObj.avaliacoes.length > 0) {
+        return modObj.avaliacoes.map(av => {
+            if (typeof av === 'object') {
+                return {
+                    tipo: av.tipo || av.nome || 'Avaliação',
+                    peso: parseFloat(av.peso) || 1
+                };
+            }
+            return { tipo: String(av), peso: 1 };
+        });
+    }
+
+    return [{ tipo: 'AV1', peso: 1 }, { tipo: 'AV2', peso: 1 }];
+}
+
 function encontrarDocenteDoModulo(cursoId, moduloNome) {
     for (const doc of docentesGlobais) {
         let vinculos = [];
@@ -1232,16 +1259,33 @@ async function carregarPautaDiario() {
     const modulo = document.getElementById('diario-select-modulo').value;
     const periodo = document.getElementById('diario-select-periodo').value;
     const tbody = document.getElementById('tabela-diario');
+    const theadRow = document.getElementById('diario-thead-row');
 
     if (!cursoId || !modulo) {
         alert("Selecione um Curso e um Módulo antes de carregar a pauta.");
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-teal-600 font-bold">Sincronizando pauta com o banco de dados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-teal-600 font-bold">Sincronizando pauta com o banco de dados...</td></tr>';
 
     const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
     const docenteNome = encontrarDocenteDoModulo(cursoId, modulo);
+    colunasAvaliacaoDiarioAtual = obterConfigAvaliacoesModulo(cursoId, modulo);
+
+    // Atualiza o cabeçalho da tabela dinamicamente com os pesos da matriz
+    let thHtml = `
+        <th class="py-3 px-4 whitespace-nowrap">Matrícula</th>
+        <th class="py-3 px-4 whitespace-nowrap">Nome do Aluno</th>
+        <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Faltas</th>
+    `;
+    colunasAvaliacaoDiarioAtual.forEach(av => {
+        thHtml += `<th class="py-3 px-4 text-center w-28 whitespace-nowrap text-teal-700">${av.tipo} <span class="text-[9px] text-gray-400 font-normal">(P.${av.peso})</span></th>`;
+    });
+    thHtml += `
+        <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Média</th>
+        <th class="py-3 px-4 text-center w-32 whitespace-nowrap">Situação</th>
+    `;
+    theadRow.innerHTML = thHtml;
 
     // Exibe barra de resumo da pauta
     const infoBar = document.getElementById('diario-info-bar');
@@ -1249,7 +1293,7 @@ async function carregarPautaDiario() {
     document.getElementById('diario-titulo-pauta').innerText = `${curso?.nome_curso || 'Curso'} • ${modulo} (${periodo})`;
     document.getElementById('diario-docente-responsavel').innerText = `Docente Responsável: ${docenteNome}`;
 
-    // Tenta buscar lançamentos já salvos no backend (rota /diario)
+    // Busca lançamentos já salvos no backend
     let registrosSalvos = [];
     const respDiario = await apiRequest(`/diario?curso_id=${encodeURIComponent(cursoId)}&modulo=${encodeURIComponent(modulo)}&periodo=${encodeURIComponent(periodo)}`);
     if (respDiario && !respDiario.detail) {
@@ -1257,36 +1301,29 @@ async function carregarPautaDiario() {
     }
 
     // Filtra alunos matriculados neste curso
-    const alunosDaTurma = alunosGlobais.filter(a => alunoPertenceAoCurso(a, cursoId));
+    const alunosDaTurma = alunosGlobais.filter(a => alunoPertenceAoCurso(a, cursoId) && a.status !== 'Cancelado');
 
     if (alunosDaTurma.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-xs text-gray-500">Nenhum aluno matriculado neste curso até o momento.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-500">Nenhum aluno matriculado neste curso até o momento.</td></tr>';
         atualizarResumoEstatisticoDiario([]);
         return;
     }
 
     pautaAtualDiario = alunosDaTurma.map(aluno => {
-        // Verifica se há nota salva na rota /diario ou dentro de aluno.notas_json / aluno.boletim
-        let reg = registrosSalvos.find(r => String(r.aluno_id) === String(aluno.id) || r.matricula === aluno.matricula);
-
-        if (!reg && aluno.diario_json) {
-            try {
-                const dLocal = typeof aluno.diario_json === 'string' ? JSON.parse(aluno.diario_json) : aluno.diario_json;
-                const chave = `${cursoId}_${modulo}_${periodo}`;
-                if (dLocal && dLocal[chave]) reg = dLocal[chave];
-            } catch (e) {}
-        }
+        const reg = registrosSalvos.find(r =>
+            (String(r.aluno_id) === String(aluno.id) || r.matricula === aluno.matricula) &&
+            (!r.disciplina || r.disciplina.trim().toUpperCase() === modulo.trim().toUpperCase())
+        );
 
         const faltas = reg?.faltas ?? 0;
-        const n1 = reg?.nota1 ?? '';
-        const n2 = reg?.nota2 ?? '';
+        const notasObj = reg?.notas ? { ...reg.notas } : {};
+
         return {
             aluno_id: aluno.id,
             matricula: aluno.matricula || '-',
             nome: aluno.nome || 'Sem Nome',
             faltas: faltas,
-            nota1: n1,
-            nota2: n2
+            notas: notasObj
         };
     });
 
@@ -1298,24 +1335,30 @@ function renderizarLinhasDiario() {
     tbody.innerHTML = '';
 
     pautaAtualDiario.forEach((item, idx) => {
-        const { mediaTexto, situacaoHtml } = calcularSituacaoAluno(item.nota1, item.nota2);
+        const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
+
+        let tdsNotas = '';
+        colunasAvaliacaoDiarioAtual.forEach(av => {
+            const val = item.notas[av.tipo] !== undefined && item.notas[av.tipo] !== null ? item.notas[av.tipo] : '';
+            const safeTipo = av.tipo.replace(/'/g, "\\'");
+            tdsNotas += `
+                <td class="py-2.5 px-3 text-center">
+                    <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${val}"
+                        oninput="atualizarNotaLinhaDiario(${idx}, '${safeTipo}', this.value)"
+                        class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
+                </td>
+            `;
+        });
 
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition" data-index="${idx}">
                 <td class="py-3 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${item.matricula}</td>
                 <td class="py-3 px-4 text-gray-800 font-bold text-xs whitespace-nowrap">${item.nome}</td>
                 <td class="py-2.5 px-3 text-center">
-                    <input type="number" min="0" max="200" value="${item.faltas}" onchange="atualizarLinhaDiario(${idx}, 'faltas', this.value)"
+                    <input type="number" min="0" max="200" value="${item.faltas}" onchange="atualizarFaltaLinhaDiario(${idx}, this.value)"
                         class="w-16 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
                 </td>
-                <td class="py-2.5 px-3 text-center">
-                    <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${item.nota1}" oninput="atualizarLinhaDiario(${idx}, 'nota1', this.value)"
-                        class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
-                </td>
-                <td class="py-2.5 px-3 text-center">
-                    <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${item.nota2}" oninput="atualizarLinhaDiario(${idx}, 'nota2', this.value)"
-                        class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
-                </td>
+                ${tdsNotas}
                 <td class="py-3 px-4 text-center font-black text-xs text-gray-800" id="diario-media-${idx}">
                     ${mediaTexto}
                 </td>
@@ -1329,11 +1372,20 @@ function renderizarLinhasDiario() {
     atualizarResumoEstatisticoDiario(pautaAtualDiario);
 }
 
-function calcularSituacaoAluno(n1Raw, n2Raw) {
-    const temN1 = n1Raw !== '' && n1Raw !== null && !isNaN(parseFloat(n1Raw));
-    const temN2 = n2Raw !== '' && n2Raw !== null && !isNaN(parseFloat(n2Raw));
+function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
+    let somaPonderada = 0;
+    let somaPesos = 0;
 
-    if (!temN1 && !temN2) {
+    avaliacoesConfig.forEach(av => {
+        const raw = notasObj ? notasObj[av.tipo] : null;
+        if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
+            const peso = parseFloat(av.peso) || 1;
+            somaPonderada += parseFloat(raw) * peso;
+            somaPesos += peso;
+        }
+    });
+
+    if (somaPesos === 0) {
         return {
             mediaNum: null,
             mediaTexto: '-',
@@ -1341,38 +1393,38 @@ function calcularSituacaoAluno(n1Raw, n2Raw) {
         };
     }
 
-    const v1 = temN1 ? parseFloat(n1Raw) : 0;
-    const v2 = temN2 ? parseFloat(n2Raw) : 0;
-    const divisor = (temN1 && temN2) ? 2 : 1;
-    const media = (v1 + v2) / divisor;
+    const media = somaPonderada / somaPesos;
     const mediaTexto = media.toFixed(1).replace('.', ',');
 
-    if (media >= 7.0) {
+    if (media >= 8.0) {
         return {
             mediaNum: media,
             mediaTexto,
             situacaoHtml: '<span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold uppercase">Aprovado</span>'
         };
-    } else if (media >= 4.0) {
-        return {
-            mediaNum: media,
-            mediaTexto,
-            situacaoHtml: '<span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] font-bold uppercase">Recuperação</span>'
-        };
     } else {
         return {
             mediaNum: media,
             mediaTexto,
-            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Reprovado</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Em Recuperação</span>'
         };
     }
 }
 
-function atualizarLinhaDiario(idx, campo, valor) {
+function atualizarFaltaLinhaDiario(idx, valor) {
     if (!pautaAtualDiario[idx]) return;
-    pautaAtualDiario[idx][campo] = valor;
+    pautaAtualDiario[idx].faltas = parseInt(valor) || 0;
+}
 
-    const { mediaTexto, situacaoHtml } = calcularSituacaoAluno(pautaAtualDiario[idx].nota1, pautaAtualDiario[idx].nota2);
+function atualizarNotaLinhaDiario(idx, tipoAvaliacao, valor) {
+    if (!pautaAtualDiario[idx]) return;
+    if (valor === '') {
+        delete pautaAtualDiario[idx].notas[tipoAvaliacao];
+    } else {
+        pautaAtualDiario[idx].notas[tipoAvaliacao] = parseFloat(valor);
+    }
+
+    const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(pautaAtualDiario[idx].notas, colunasAvaliacaoDiarioAtual);
     const elMedia = document.getElementById(`diario-media-${idx}`);
     const elSit = document.getElementById(`diario-situacao-${idx}`);
     if (elMedia) elMedia.innerText = mediaTexto;
@@ -1388,11 +1440,11 @@ function atualizarResumoEstatisticoDiario(lista) {
     let qtdComNota = 0;
 
     lista.forEach(item => {
-        const { mediaNum } = calcularSituacaoAluno(item.nota1, item.nota2);
+        const { mediaNum } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
         if (mediaNum !== null) {
             somaMedias += mediaNum;
             qtdComNota++;
-            if (mediaNum >= 7.0) aprovados++;
+            if (mediaNum >= 8.0) aprovados++;
         }
     });
 
@@ -1422,14 +1474,15 @@ async function salvarDiarioEletronico() {
         modulo: modulo,
         periodo: periodo,
         lancamentos: pautaAtualDiario.map(item => {
-            const { mediaNum } = calcularSituacaoAluno(item.nota1, item.nota2);
+            const { mediaNum } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
             return {
                 aluno_id: item.aluno_id,
+                curso_id: cursoId,
+                disciplina: modulo,
                 matricula: item.matricula,
                 nome: item.nome,
                 faltas: parseInt(item.faltas) || 0,
-                nota1: item.nota1 !== '' ? parseFloat(item.nota1) : null,
-                nota2: item.nota2 !== '' ? parseFloat(item.nota2) : null,
+                notas: item.notas,
                 media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null
             };
         })
@@ -1438,9 +1491,9 @@ async function salvarDiarioEletronico() {
     const result = await apiRequest('/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert("Diário Eletrônico salvo e consolidado com sucesso!");
+        alert(result.mensagem || "Diário Eletrônico salvo e consolidado com sucesso!");
     } else {
-        alert(result?.detail || "Lançamentos registrados localmente. Verifique se a rota /diario/salvar está ativa no backend.");
+        alert(result?.detail || "Erro ao salvar lançamentos no servidor.");
     }
 
     btn.innerHTML = originalHtml;
@@ -1469,7 +1522,7 @@ async function loadDashboard() {
         tbody.innerHTML = '';
         (data.notificacoes || []).forEach(notif => {
             tbody.innerHTML += `
-                <tr>
+                <tr class="linha-notificacao">
                     <td class="py-3 px-4">${notif.descricao}</td>
                     <td class="py-3 px-4 text-center"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-[10px] font-bold">${notif.status}</span></td>
                     <td class="py-3 px-4 text-right space-x-1">
@@ -1480,6 +1533,13 @@ async function loadDashboard() {
             `;
         });
     }
+}
+
+function filtrarNotificacoes() {
+    const termo = document.getElementById('busca-notificacoes')?.value.toLowerCase() || '';
+    document.querySelectorAll('.linha-notificacao').forEach(tr => {
+        tr.style.display = tr.innerText.toLowerCase().includes(termo) ? '' : 'none';
+    });
 }
 
 async function updateNotificacao(notificacaoId, acao) {
@@ -1757,7 +1817,6 @@ async function loadFinanceiro() {
     }
 
     lista.forEach((item) => {
-        // Soma mensalidades de todos os cursos vinculados ao aluno (suporta cursos_json e curso_id)
         let idsCursos = new Set();
         if (item.curso_id || item.curso) idsCursos.add(String(item.curso_id || item.curso));
         if (item.cursos_json) {
@@ -1819,9 +1878,9 @@ async function loadFinanceiro() {
         `;
     });
 
+    filtrarFinanceiro();
     feather.replace();
 }
-
 
 async function carregarIndicadoresFinanceiros() {
     const dados = await apiRequest('/financeiro/indicadores');
@@ -1850,7 +1909,7 @@ async function informarNFFinanceiro(alunoId) {
 }
 
 function filtrarFinanceiro() {
-    const termo = document.getElementById('busca-financeiro').value.toLowerCase();
+    const termo = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
     const linhas = document.querySelectorAll('.linha-financeiro');
     linhas.forEach(linha => {
         const nome = linha.querySelector('.busca-nome').innerText.toLowerCase();
@@ -2206,7 +2265,7 @@ function adicionarDisciplina() {
 
             <div class="bg-orange-50/30 p-4 rounded-lg border border-orange-200 shadow-sm flex flex-col h-full">
                 <div class="flex items-center justify-between mb-3 border-b border-orange-100 pb-2">
-                    <label class="block text-[10px] font-bold text-orange-600 uppercase">Calendário de Avaliações</label>
+                    <label class="block text-[10px] font-bold text-orange-600 uppercase">Calendário de Avaliações e Pesos</label>
                     <button type="button" onclick="adicionarAvaliacao(${contadorDisciplina})" class="bg-orange-100 text-orange-700 hover:bg-orange-200 px-2 py-1.5 rounded text-[10px] font-bold uppercase transition flex items-center shadow-sm">
                         <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Prova/Trabalho
                     </button>
@@ -2241,11 +2300,18 @@ function adicionarAvaliacao(moduloId, dados = null) {
         <div class="w-full sm:flex-1">
             <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Tipo</label>
             <select class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs bg-white focus:outline-orange-500 input-aval-tipo">
+                <option value="Primeira avaliação" ${dados?.tipo === 'Primeira avaliação' ? 'selected' : ''}>Primeira avaliação</option>
+                <option value="Segunda avaliação" ${dados?.tipo === 'Segunda avaliação' ? 'selected' : ''}>Segunda avaliação</option>
+                <option value="Atividade complementar" ${dados?.tipo === 'Atividade complementar' ? 'selected' : ''}>Atividade complementar</option>
                 <option value="prova" ${dados?.tipo === 'prova' ? 'selected' : ''}>Prova Escrita</option>
                 <option value="trabalho" ${dados?.tipo === 'trabalho' ? 'selected' : ''}>Trabalho/Seminário</option>
                 <option value="pratica" ${dados?.tipo === 'pratica' ? 'selected' : ''}>Avaliação Prática</option>
                 <option value="desafio" ${dados?.tipo === 'desafio' ? 'selected' : ''}>Desafio Gamificado</option>
             </select>
+        </div>
+        <div class="w-16">
+            <label class="block text-[8px] font-bold text-orange-600 uppercase mb-0.5">Peso</label>
+            <input type="number" step="0.5" min="0.5" value="${dados?.peso || 1}" class="w-full border border-gray-200 rounded px-1.5 py-1.5 text-xs text-center font-bold text-orange-700 focus:outline-orange-500 input-aval-peso">
         </div>
         <div class="flex-1">
             <label class="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">Data</label>
@@ -2300,6 +2366,7 @@ document.getElementById('form-curso')?.addEventListener('submit', async (e) => {
         bloco.querySelectorAll('.item-avaliacao').forEach(aval => {
             avaliacoesDesteModulo.push({
                 tipo: aval.querySelector('.input-aval-tipo').value,
+                peso: parseFloat(aval.querySelector('.input-aval-peso')?.value) || 1,
                 data: aval.querySelector('.input-aval-data').value || "A definir",
                 hora_inicio: aval.querySelector('.input-aval-hora-inicio').value || "--:--",
                 hora_fim: aval.querySelector('.input-aval-hora-fim') ? aval.querySelector('.input-aval-hora-fim').value || "--:--" : "--:--"
@@ -2467,9 +2534,10 @@ function verDetalhesCurso(id_firebase) {
                 htmlAvaliacoes = '<div class="mt-4 border-t border-gray-200 pt-3"><p class="text-[10px] font-black text-orange-600 uppercase mb-2"><i data-feather="calendar" class="w-3 h-3 inline mr-1"></i> Avaliações Cadastradas:</p><div class="flex flex-col gap-2">';
                 avaliacoes.forEach(aval => {
                     let tipoNome = aval.tipo ? aval.tipo.toUpperCase() : 'AVALIAÇÃO';
+                    let pesoTexto = aval.peso ? ` (Peso ${aval.peso})` : '';
                     htmlAvaliacoes += `
                         <div class="bg-orange-50 border border-orange-100 text-orange-800 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex flex-wrap items-center justify-between gap-2">
-                            <span>${tipoNome}</span>
+                            <span>${tipoNome}${pesoTexto}</span>
                             <span class="bg-white px-2 py-1 rounded text-orange-600">Data: ${aval.data || 'A definir'} | Horário: ${aval.hora_inicio || '--:--'} às ${aval.hora_fim || '--:--'}</span>
                         </div>`;
                 });
@@ -3144,180 +3212,6 @@ async function abrirModalSistema() {
         form.telefone_instituicao.value = config.telefone_instituicao || '';
         form.endereco_instituicao.value = config.endereco_instituicao || '';
         form.cor_tema.value = config.cor_tema || '#14b8a6';
-    }
-}
-
-async function loadDiario() {
-    const tbody = document.getElementById('tbody-diario');
-    const selectCurso = document.getElementById('filtro-curso-diario');
-    if (!tbody) return;
-
-    tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-400">Carregando diário consolidado...</td></tr>';
-
-    const dados = await apiRequest('/diario');
-    diarioConsolidadoGlobal = Array.isArray(dados) ? dados : [];
-
-    if (selectCurso) {
-        const valorAtual = selectCurso.value;
-        const cursosUnicos = [...new Set(diarioConsolidadoGlobal.map(d => d.nome_curso))];
-        selectCurso.innerHTML = '<option value="">Todos os Cursos</option>';
-        cursosUnicos.forEach(c => {
-            selectCurso.innerHTML += `<option value="${c}">${c}</option>`;
-        });
-        if (valorAtual) selectCurso.value = valorAtual;
-    }
-
-    filtrarDiario();
-}
-
-function renderizarTabelaDiario(lista) {
-    const tbody = document.getElementById('tbody-diario');
-    const thead = document.getElementById('thead-diario');
-    if (!tbody) return;
-
-    if (!lista || lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-400">Nenhum registro acadêmico encontrado.</td></tr>';
-        return;
-    }
-
-    // Descobre todas as colunas de avaliação presentes no filtro atual
-    const colunasAvaliacao = [];
-    lista.forEach(item => {
-        const previstas = Array.isArray(item.avaliacoes_previstas) && item.avaliacoes_previstas.length > 0
-            ? item.avaliacoes_previstas
-            : Object.keys(item.notas || {});
-        previstas.forEach(av => {
-            if (!colunasAvaliacao.includes(av)) colunasAvaliacao.push(av);
-        });
-    });
-
-    if (thead) {
-        let thHtml = `
-            <th class="py-3 px-4">Aluno / Matrícula</th>
-            <th class="py-3 px-4">Curso / Disciplina</th>
-            <th class="py-3 px-4 text-center">Faltas Totais</th>
-        `;
-        colunasAvaliacao.forEach(av => {
-            thHtml += `<th class="py-3 px-4 text-center text-teal-700">${av}</th>`;
-        });
-        thHtml += `
-            <th class="py-3 px-4 text-center">Média</th>
-            <th class="py-3 px-4 text-center">Situação</th>
-        `;
-        thead.innerHTML = thHtml;
-    }
-
-    tbody.innerHTML = '';
-
-    lista.forEach(item => {
-        let soma = 0;
-        let qtd = 0;
-        let tdsNotas = '';
-
-        colunasAvaliacao.forEach(av => {
-            const val = item.notas && item.notas[av] !== undefined && item.notas[av] !== null && item.notas[av] !== ''
-                ? item.notas[av]
-                : '';
-            if (val !== '' && !isNaN(parseFloat(val))) {
-                soma += parseFloat(val);
-                qtd++;
-            }
-            tdsNotas += `
-                <td class="py-3 px-4 text-center">
-                    <input type="number" step="0.1" min="0" max="10" data-av="${av}" value="${val}" onchange="recalcularLinhaAdmin(this)" placeholder="-" class="input-nota-admin w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-xs font-bold focus:outline-none focus:border-teal-500">
-                </td>
-            `;
-        });
-
-        const media = qtd > 0 ? (soma / qtd).toFixed(1) : '-';
-        const aprovado = qtd > 0 && (soma / qtd) >= 7.0;
-        const badge = qtd === 0
-            ? '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase">Cursando</span>'
-            : (aprovado
-                ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aprovado</span>'
-                : '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Recuperação</span>');
-
-        tbody.innerHTML += `
-            <tr class="linha-diario-admin hover:bg-gray-50 transition border-b border-gray-50"
-                data-aluno-id="${item.aluno_id}"
-                data-curso-id="${item.curso_id}"
-                data-disciplina="${item.disciplina}">
-                <td class="py-3 px-4">
-                    <p class="font-bold text-gray-800 text-xs uppercase">${item.nome_aluno}</p>
-                    <p class="text-[10px] text-gray-400 font-mono">${item.matricula}</p>
-                </td>
-                <td class="py-3 px-4">
-                    <p class="font-bold text-teal-700 text-xs uppercase">${item.disciplina}</p>
-                    <p class="text-[10px] text-gray-400 uppercase">${item.nome_curso}</p>
-                </td>
-                <td class="py-3 px-4 text-center">
-                    <input type="number" min="0" value="${item.faltas || 0}" class="input-faltas-admin w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-xs font-bold text-yellow-600 focus:outline-none focus:border-teal-500">
-                </td>
-                ${tdsNotas}
-                <td class="py-3 px-4 text-center font-black text-xs celula-media-admin ${aprovado ? 'text-green-600' : 'text-gray-800'}">${media}</td>
-                <td class="py-3 px-4 text-center celula-situacao-admin">${badge}</td>
-            </tr>
-        `;
-    });
-}
-
-function recalcularLinhaAdmin(inputEl) {
-    const tr = inputEl.closest('tr');
-    const inputs = tr.querySelectorAll('.input-nota-admin');
-    let soma = 0;
-    let qtd = 0;
-
-    inputs.forEach(inp => {
-        if (inp.value !== '' && !isNaN(parseFloat(inp.value))) {
-            soma += parseFloat(inp.value);
-            qtd++;
-        }
-    });
-
-    const celMedia = tr.querySelector('.celula-media-admin');
-    const celSit = tr.querySelector('.celula-situacao-admin');
-
-    if (qtd === 0) {
-        celMedia.innerText = '-';
-        celSit.innerHTML = '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase">Cursando</span>';
-    } else {
-        const m = soma / qtd;
-        celMedia.innerText = m.toFixed(1);
-        celMedia.className = `py-3 px-4 text-center font-black text-xs celula-media-admin ${m >= 7 ? 'text-green-600' : 'text-red-600'}`;
-        celSit.innerHTML = m >= 7
-            ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aprovado</span>'
-            : '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Recuperação</span>';
-    }
-}
-
-async function salvarDiarioConsolidado() {
-    const linhas = document.querySelectorAll('.linha-diario-admin');
-    if (linhas.length === 0) return;
-
-    const registros = [];
-    linhas.forEach(tr => {
-        const notas = {};
-        tr.querySelectorAll('.input-nota-admin').forEach(inp => {
-            if (inp.value !== '') {
-                notas[inp.dataset.av] = parseFloat(inp.value);
-            }
-        });
-
-        registros.push({
-            aluno_id: tr.dataset.alunoId,
-            curso_id: tr.dataset.cursoId,
-            disciplina: tr.dataset.disciplina,
-            faltas: parseInt(tr.querySelector('.input-faltas-admin').value || '0', 10),
-            notas: notas
-        });
-    });
-
-    const res = await apiRequest('/diario/salvar', 'POST', { registros });
-    if (res && res.sucesso) {
-        alert(res.mensagem || 'Diário consolidado salvo com sucesso!');
-        await loadDiario();
-    } else {
-        alert(res?.detail || 'Erro ao salvar diário consolidado.');
     }
 }
 
