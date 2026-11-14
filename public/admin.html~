@@ -1757,26 +1757,42 @@ async function loadFinanceiro() {
     }
 
     lista.forEach((item) => {
-        const cursoDoAluno = cursosGlobais.find(c => c.id == (item.curso || item.curso_id));
-        let valorCobranca = 0;
-
-        if (cursoDoAluno) {
-            valorCobranca = (cursoDoAluno.promocao_ativa === 'Sim' && cursoDoAluno.valor_promocional)
-                ? parseFloat(cursoDoAluno.valor_promocional)
-                : parseFloat(cursoDoAluno.valor_mensalidade);
+        // Soma mensalidades de todos os cursos vinculados ao aluno (suporta cursos_json e curso_id)
+        let idsCursos = new Set();
+        if (item.curso_id || item.curso) idsCursos.add(String(item.curso_id || item.curso));
+        if (item.cursos_json) {
+            try {
+                const arr = typeof item.cursos_json === 'string' ? JSON.parse(item.cursos_json) : item.cursos_json;
+                if (Array.isArray(arr)) arr.forEach(c => { if (c.curso_id) idsCursos.add(String(c.curso_id)); });
+            } catch (e) {}
         }
 
-        const valorFormatado = valorCobranca
-            ? valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-            : 'R$ 0,00';
+        let valorCobranca = 0;
+        idsCursos.forEach(cid => {
+            const cursoDoAluno = cursosGlobais.find(c => String(c.id) === cid);
+            if (cursoDoAluno) {
+                valorCobranca += (cursoDoAluno.promocao_ativa === 'Sim' && cursoDoAluno.valor_promocional)
+                    ? parseFloat(cursoDoAluno.valor_promocional)
+                    : parseFloat(cursoDoAluno.valor_mensalidade || 0);
+            }
+        });
+
+        const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         const isPendente = item.possui_pendencia_financeira === 'Sim';
+        const emAnalise = item.status_comprovante === 'Em Análise';
         const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
+        const safeDetalhes = (item.detalhes_pendencia_financeira || '').replace(/'/g, "\\'");
         let mesRef = item.detalhes_pendencia_financeira || inputMes.value;
 
-        const statusHtml = !isPendente
-            ? `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '', '${item.numero_nf || ''}')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`
-            : `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesRef}', '${item.numero_nf || ''}')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
+        let statusHtml = '';
+        if (!isPendente) {
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '', '${item.numero_nf || ''}')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
+        } else if (emAnalise) {
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${item.ultimo_comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
+        } else {
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
+        }
 
         let idComprovante = item.numero_nf || `#FIN-${item.matricula || '000'}`;
 
@@ -1805,6 +1821,7 @@ async function loadFinanceiro() {
 
     feather.replace();
 }
+
 
 async function carregarIndicadoresFinanceiros() {
     const dados = await apiRequest('/financeiro/indicadores');
@@ -3127,6 +3144,180 @@ async function abrirModalSistema() {
         form.telefone_instituicao.value = config.telefone_instituicao || '';
         form.endereco_instituicao.value = config.endereco_instituicao || '';
         form.cor_tema.value = config.cor_tema || '#14b8a6';
+    }
+}
+
+async function loadDiario() {
+    const tbody = document.getElementById('tbody-diario');
+    const selectCurso = document.getElementById('filtro-curso-diario');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-400">Carregando diário consolidado...</td></tr>';
+
+    const dados = await apiRequest('/diario');
+    diarioConsolidadoGlobal = Array.isArray(dados) ? dados : [];
+
+    if (selectCurso) {
+        const valorAtual = selectCurso.value;
+        const cursosUnicos = [...new Set(diarioConsolidadoGlobal.map(d => d.nome_curso))];
+        selectCurso.innerHTML = '<option value="">Todos os Cursos</option>';
+        cursosUnicos.forEach(c => {
+            selectCurso.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+        if (valorAtual) selectCurso.value = valorAtual;
+    }
+
+    filtrarDiario();
+}
+
+function renderizarTabelaDiario(lista) {
+    const tbody = document.getElementById('tbody-diario');
+    const thead = document.getElementById('thead-diario');
+    if (!tbody) return;
+
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-400">Nenhum registro acadêmico encontrado.</td></tr>';
+        return;
+    }
+
+    // Descobre todas as colunas de avaliação presentes no filtro atual
+    const colunasAvaliacao = [];
+    lista.forEach(item => {
+        const previstas = Array.isArray(item.avaliacoes_previstas) && item.avaliacoes_previstas.length > 0
+            ? item.avaliacoes_previstas
+            : Object.keys(item.notas || {});
+        previstas.forEach(av => {
+            if (!colunasAvaliacao.includes(av)) colunasAvaliacao.push(av);
+        });
+    });
+
+    if (thead) {
+        let thHtml = `
+            <th class="py-3 px-4">Aluno / Matrícula</th>
+            <th class="py-3 px-4">Curso / Disciplina</th>
+            <th class="py-3 px-4 text-center">Faltas Totais</th>
+        `;
+        colunasAvaliacao.forEach(av => {
+            thHtml += `<th class="py-3 px-4 text-center text-teal-700">${av}</th>`;
+        });
+        thHtml += `
+            <th class="py-3 px-4 text-center">Média</th>
+            <th class="py-3 px-4 text-center">Situação</th>
+        `;
+        thead.innerHTML = thHtml;
+    }
+
+    tbody.innerHTML = '';
+
+    lista.forEach(item => {
+        let soma = 0;
+        let qtd = 0;
+        let tdsNotas = '';
+
+        colunasAvaliacao.forEach(av => {
+            const val = item.notas && item.notas[av] !== undefined && item.notas[av] !== null && item.notas[av] !== ''
+                ? item.notas[av]
+                : '';
+            if (val !== '' && !isNaN(parseFloat(val))) {
+                soma += parseFloat(val);
+                qtd++;
+            }
+            tdsNotas += `
+                <td class="py-3 px-4 text-center">
+                    <input type="number" step="0.1" min="0" max="10" data-av="${av}" value="${val}" onchange="recalcularLinhaAdmin(this)" placeholder="-" class="input-nota-admin w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-xs font-bold focus:outline-none focus:border-teal-500">
+                </td>
+            `;
+        });
+
+        const media = qtd > 0 ? (soma / qtd).toFixed(1) : '-';
+        const aprovado = qtd > 0 && (soma / qtd) >= 7.0;
+        const badge = qtd === 0
+            ? '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase">Cursando</span>'
+            : (aprovado
+                ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aprovado</span>'
+                : '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Recuperação</span>');
+
+        tbody.innerHTML += `
+            <tr class="linha-diario-admin hover:bg-gray-50 transition border-b border-gray-50"
+                data-aluno-id="${item.aluno_id}"
+                data-curso-id="${item.curso_id}"
+                data-disciplina="${item.disciplina}">
+                <td class="py-3 px-4">
+                    <p class="font-bold text-gray-800 text-xs uppercase">${item.nome_aluno}</p>
+                    <p class="text-[10px] text-gray-400 font-mono">${item.matricula}</p>
+                </td>
+                <td class="py-3 px-4">
+                    <p class="font-bold text-teal-700 text-xs uppercase">${item.disciplina}</p>
+                    <p class="text-[10px] text-gray-400 uppercase">${item.nome_curso}</p>
+                </td>
+                <td class="py-3 px-4 text-center">
+                    <input type="number" min="0" value="${item.faltas || 0}" class="input-faltas-admin w-16 border border-gray-200 rounded-lg px-2 py-1 text-center text-xs font-bold text-yellow-600 focus:outline-none focus:border-teal-500">
+                </td>
+                ${tdsNotas}
+                <td class="py-3 px-4 text-center font-black text-xs celula-media-admin ${aprovado ? 'text-green-600' : 'text-gray-800'}">${media}</td>
+                <td class="py-3 px-4 text-center celula-situacao-admin">${badge}</td>
+            </tr>
+        `;
+    });
+}
+
+function recalcularLinhaAdmin(inputEl) {
+    const tr = inputEl.closest('tr');
+    const inputs = tr.querySelectorAll('.input-nota-admin');
+    let soma = 0;
+    let qtd = 0;
+
+    inputs.forEach(inp => {
+        if (inp.value !== '' && !isNaN(parseFloat(inp.value))) {
+            soma += parseFloat(inp.value);
+            qtd++;
+        }
+    });
+
+    const celMedia = tr.querySelector('.celula-media-admin');
+    const celSit = tr.querySelector('.celula-situacao-admin');
+
+    if (qtd === 0) {
+        celMedia.innerText = '-';
+        celSit.innerHTML = '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase">Cursando</span>';
+    } else {
+        const m = soma / qtd;
+        celMedia.innerText = m.toFixed(1);
+        celMedia.className = `py-3 px-4 text-center font-black text-xs celula-media-admin ${m >= 7 ? 'text-green-600' : 'text-red-600'}`;
+        celSit.innerHTML = m >= 7
+            ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aprovado</span>'
+            : '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Recuperação</span>';
+    }
+}
+
+async function salvarDiarioConsolidado() {
+    const linhas = document.querySelectorAll('.linha-diario-admin');
+    if (linhas.length === 0) return;
+
+    const registros = [];
+    linhas.forEach(tr => {
+        const notas = {};
+        tr.querySelectorAll('.input-nota-admin').forEach(inp => {
+            if (inp.value !== '') {
+                notas[inp.dataset.av] = parseFloat(inp.value);
+            }
+        });
+
+        registros.push({
+            aluno_id: tr.dataset.alunoId,
+            curso_id: tr.dataset.cursoId,
+            disciplina: tr.dataset.disciplina,
+            faltas: parseInt(tr.querySelector('.input-faltas-admin').value || '0', 10),
+            notas: notas
+        });
+    });
+
+    const res = await apiRequest('/diario/salvar', 'POST', { registros });
+    if (res && res.sucesso) {
+        alert(res.mensagem || 'Diário consolidado salvo com sucesso!');
+        await loadDiario();
+    } else {
+        alert(res?.detail || 'Erro ao salvar diário consolidado.');
     }
 }
 
