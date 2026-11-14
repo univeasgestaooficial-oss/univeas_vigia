@@ -371,7 +371,7 @@
                 </div>
             </div>
 
-            <!-- ============================================== -->
+           <!-- ============================================== -->
             <!-- 3. CENTRAL DE EMISSÃO DE DOCUMENTOS -->
             <!-- ============================================== -->
             <div id="tela-documentos" class="tela hidden">
@@ -381,14 +381,36 @@
                     </h4>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 bg-gray-50 p-4 sm:p-6 rounded-xl border border-gray-100 mb-6 sm:mb-8">
+
+                        <!-- CAMPO DE BUSCA COM AUTOCOMPLETE INTEGRADO -->
                         <div class="relative">
-                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Buscar Aluno</label>
-                            <input type="text" placeholder="Matrícula, CPF ou Nome..." class="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
-                            <i data-feather="search" class="absolute left-3 top-[28px] h-4 w-4 text-gray-400"></i>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Buscar Aluno</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                                    <i data-feather="search" class="h-4 w-4"></i>
+                                </span>
+                                <input type="text" id="doc-busca-aluno" oninput="filtrarAlunosDocumento()" onfocus="filtrarAlunosDocumento()" autocomplete="off" placeholder="Digite a matrícula, CPF ou Nome..." class="w-full border border-gray-200 rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                                <input type="hidden" id="doc-aluno-id-selecionado">
+                            </div>
+
+                            <!-- Dropdown de Sugestões em Tempo Real -->
+                            <div id="doc-dropdown-alunos" class="hidden absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-40 max-h-60 overflow-y-auto divide-y divide-gray-100"></div>
+
+                            <!-- Crachá de Confirmação do Aluno Selecionado -->
+                            <div id="doc-aluno-confirmado" class="hidden mt-2 bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-black text-teal-900 uppercase" id="doc-conf-nome">--</p>
+                                    <p class="text-[11px] text-teal-700 font-medium" id="doc-conf-detalhes">Mat: -- • CPF: --</p>
+                                </div>
+                                <button type="button" onclick="limparSelecaoAlunoDoc()" class="text-teal-600 hover:text-red-600 p-1 rounded-lg transition" title="Trocar aluno">
+                                    <i data-feather="x-circle" class="w-4 h-4"></i>
+                                </button>
+                            </div>
                         </div>
+
                         <div>
                             <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Documento</label>
-                            <select class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
+                            <select id="doc-tipo-select" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white">
                                 <option>Histórico Escolar Parcial</option>
                                 <option>Declaração de Vínculo/Matrícula</option>
                                 <option>Histórico Escolar Conclusão</option>
@@ -398,7 +420,7 @@
                     </div>
 
                     <div class="flex justify-end border-b border-gray-100 pb-6 mb-6 space-x-3">
-                        <button id="btn-gerar-documento" class="w-full sm:w-auto bg-teal-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition flex items-center justify-center">
+                        <button id="btn-gerar-documento" onclick="emitirNovoDocumento()" class="w-full sm:w-auto bg-teal-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-teal-600 transition flex items-center justify-center cursor-pointer">
                             <i data-feather="file-text" class="h-4 w-4 mr-2"></i> Gerar Documento PDF
                         </button>
                     </div>
@@ -408,7 +430,7 @@
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Lista de Documentos Emitidos</p>
                             <div class="flex space-x-2 w-full sm:w-auto">
                                 <div class="relative flex-1 sm:w-64">
-                                    <input type="text" placeholder="Nome, Tipo, Matrícula, CPF..." class="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                    <input type="text" placeholder="Nome, Tipo, Matrícula..." class="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
                                     <i data-feather="search" class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"></i>
                                 </div>
                                 <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
@@ -2795,6 +2817,14 @@ function imprimirCardCurso(id_firebase) {
 }
 
 async function loadDocumentos() {
+    // Garante que a lista global de alunos está preenchida para o autocomplete funcionar perfeitamente
+    if (!window.alunosCache || window.alunosCache.length === 0) {
+        const respAlunos = await apiRequest('/alunos');
+        if (respAlunos && !respAlunos.detail) {
+            window.alunosCache = Array.isArray(respAlunos) ? respAlunos : (respAlunos.dados || []);
+        }
+    }
+
     const documentos = await apiRequest('/documentos');
     const tbody = document.querySelector('#tela-documentos tbody');
     if (!tbody || !documentos) return;
@@ -2830,38 +2860,34 @@ async function loadDocumentos() {
 }
 
 async function emitirNovoDocumento() {
-    const inputBusca = document.querySelector('#tela-documentos input[placeholder*="Matrícula"]').value;
-    const tipoDoc = document.querySelector('#tela-documentos select').value;
+    const alunoId = document.getElementById('doc-aluno-id-selecionado').value;
+    const tipoDoc = document.getElementById('doc-tipo-select').value;
 
-    if (!inputBusca) {
-        alert("Digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
-        return;
-    }
-
-    const alunos = await apiRequest('/alunos');
-    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos?.dados || []);
-    const aluno = listaAlunos.find(a => a.matricula === inputBusca || a.cpf === inputBusca || a.nome.toLowerCase().includes(inputBusca.toLowerCase()));
-
-    if (!aluno) {
-        alert("Aluno não encontrado na base de dados.");
+    if (!alunoId) {
+        alert("Por favor, selecione um aluno válido na lista suspensa do campo 'Buscar Aluno' antes de gerar o documento.");
+        document.getElementById('doc-busca-aluno').focus();
         return;
     }
 
     const formData = new FormData();
-    formData.append('aluno_id', aluno.id);
+    formData.append('aluno_id', alunoId);
     formData.append('tipo_documento', tipoDoc);
     formData.append('observacao', 'Emitido via Painel Admin');
 
     const result = await apiRequest('/documentos/emitir', 'POST', formData);
 
     if (result && result.sucesso) {
-        alert(result.mensagem);
+        alert(result.mensagem || "Documento gerado com sucesso!");
+        limparSelecaoAlunoDoc();
         loadDocumentos();
-        baixarDocumentoPDF(result.id_documento, tipoDoc);
+        if (result.id_documento) {
+            baixarDocumentoPDF(result.id_documento, tipoDoc);
+        }
     } else {
         alert(result?.detail || "Erro ao emitir documento.");
     }
 }
+
 
 function baixarDocumentoPDF(id_documento, tipo_doc) {
     const token = localStorage.getItem('token_siga');
@@ -3084,6 +3110,8 @@ function fecharModalPendencia() {
     }
 }
 
+
+
 let contadorVinculosDocente = 0;
 
 function adicionarVinculoDocente(cursoId = '', moduloSelecionado = '') {
@@ -3214,6 +3242,78 @@ async function abrirModalSistema() {
         form.cor_tema.value = config.cor_tema || '#14b8a6';
     }
 }
+
+function filtrarAlunosDocumento() {
+    const termo = (document.getElementById('doc-busca-aluno').value || '').trim().toLowerCase();
+    const dropdown = document.getElementById('doc-dropdown-alunos');
+    const listaBase = typeof listaAlunosGlobal !== 'undefined' ? listaAlunosGlobal : (window.alunosCache || []);
+
+    if (termo.length < 2) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        return;
+    }
+
+    const termoNumeros = termo.replace(/\D/g, '');
+    const encontrados = listaBase.filter(a => {
+        const nome = (a.nome || '').toLowerCase();
+        const mat = (a.matricula || '').toLowerCase();
+        const cpf = (a.cpf || '').replace(/\D/g, '');
+        return nome.includes(termo) || mat.includes(termo) || (termoNumeros && cpf.includes(termoNumeros));
+    }).slice(0, 8);
+
+    if (encontrados.length === 0) {
+        dropdown.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">Nenhum aluno encontrado para "${termo}".</div>`;
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    dropdown.innerHTML = encontrados.map(a => {
+        const statusCor = a.status === 'Ativo' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+        return `
+            <button type="button" onclick="selecionarAlunoDocumento('${a.id}')" class="w-full text-left px-4 py-2.5 hover:bg-teal-50 transition flex items-center justify-between gap-2">
+                <div>
+                    <p class="text-xs font-black text-gray-800 uppercase">${a.nome}</p>
+                    <p class="text-[11px] text-gray-500">Mat: <strong>${a.matricula || 'S/N'}</strong> • CPF: ${a.cpf || 'N/I'}</p>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${statusCor}">${a.status || 'Ativo'}</span>
+            </button>
+        `;
+    }).join('');
+
+    dropdown.classList.remove('hidden');
+}
+
+function selecionarAlunoDocumento(alunoId) {
+    const listaBase = typeof listaAlunosGlobal !== 'undefined' ? listaAlunosGlobal : (window.alunosCache || []);
+    const aluno = listaBase.find(a => String(a.id) === String(alunoId));
+    if (!aluno) return;
+
+    document.getElementById('doc-aluno-id-selecionado').value = aluno.id;
+    document.getElementById('doc-busca-aluno').value = aluno.nome;
+    document.getElementById('doc-dropdown-alunos').classList.add('hidden');
+
+    document.getElementById('doc-conf-nome').innerText = aluno.nome;
+    document.getElementById('doc-conf-detalhes').innerText = `Matrícula: ${aluno.matricula || 'S/N'} • CPF: ${aluno.cpf || 'N/I'} • Status: ${aluno.status || 'Ativo'}`;
+    document.getElementById('doc-aluno-confirmado').classList.remove('hidden');
+    if (window.feather) feather.replace();
+}
+
+function limparSelecaoAlunoDoc() {
+    document.getElementById('doc-aluno-id-selecionado').value = '';
+    document.getElementById('doc-busca-aluno').value = '';
+    document.getElementById('doc-aluno-confirmado').classList.add('hidden');
+    document.getElementById('doc-busca-aluno').focus();
+}
+
+// Fecha o dropdown ao clicar fora
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('doc-dropdown-alunos');
+    const input = document.getElementById('doc-busca-aluno');
+    if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
+        dropdown.classList.add('hidden');
+    }
+});
 
 function fecharModalSistema() {
     const modal = document.getElementById('modal-sistema');
