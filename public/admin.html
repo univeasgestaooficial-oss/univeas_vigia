@@ -2817,7 +2817,6 @@ function imprimirCardCurso(id_firebase) {
 }
 
 async function loadDocumentos() {
-    // Garante que a lista global de alunos está preenchida para o autocomplete funcionar perfeitamente
     if (!window.alunosCache || window.alunosCache.length === 0) {
         const respAlunos = await apiRequest('/alunos');
         if (respAlunos && !respAlunos.detail) {
@@ -2826,7 +2825,7 @@ async function loadDocumentos() {
     }
 
     const documentos = await apiRequest('/documentos');
-    const tbody = document.querySelector('#tela-documentos tbody');
+    const tbody = document.querySelector('#tabela-documentos-emitidos');
     if (!tbody || !documentos) return;
 
     tbody.innerHTML = '';
@@ -2843,14 +2842,23 @@ async function loadDocumentos() {
             dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' - ' + dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
 
+        const safeTipo = (doc.tipo_documento || '').replace(/'/g, "\\'");
+        const safeObs = (doc.observacao || '').replace(/'/g, "\\'");
+
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
                 <td class="py-3 px-4 text-gray-800 font-bold whitespace-nowrap">${doc.tipo_documento}</td>
-                <td class="py-3 px-4 text-gray-500 whitespace-nowrap">${doc.nome_aluno} <span class="text-[10px] bg-gray-100 px-1 py-0.5 rounded font-mono ml-1">${doc.matricula}</span></td>
+                <td class="py-3 px-4 text-gray-500 whitespace-nowrap">${doc.nome_aluno} <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded font-mono ml-1">${doc.matricula}</span></td>
                 <td class="py-3 px-4 text-gray-400 text-xs whitespace-nowrap">${dataFormatada}</td>
-                <td class="py-3 px-4 text-right whitespace-nowrap">
-                    <button onclick="baixarDocumentoPDF('${doc.id}', '${doc.tipo_documento}')" class="bg-gray-100 text-gray-700 hover:bg-teal-500 hover:text-white px-3 py-1.5 rounded transition text-xs font-bold inline-flex items-center">
-                        <i data-feather="download" class="w-3 h-3 mr-1.5"></i> Download
+                <td class="py-3 px-4 text-right space-x-1 flex justify-end items-center whitespace-nowrap">
+                    <button onclick="baixarDocumentoPDF('${doc.id}', '${doc.tipo_documento}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Baixar PDF">
+                        <i data-feather="download" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="abrirModalEditarDocumento('${doc.id}', '${safeTipo}', '${safeObs}')" class="text-yellow-600 hover:text-white hover:bg-yellow-500 bg-yellow-50 p-2 rounded transition" title="Editar Documento">
+                        <i data-feather="edit" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="excluirDocumentoEmitido('${doc.id}')" class="text-red-500 hover:text-white hover:bg-red-500 bg-red-50 p-2 rounded transition" title="Excluir Registro">
+                        <i data-feather="trash-2" class="w-4 h-4"></i>
                     </button>
                 </td>
             </tr>
@@ -2859,35 +2867,115 @@ async function loadDocumentos() {
     feather.replace();
 }
 
-async function emitirNovoDocumento() {
-    const alunoId = document.getElementById('doc-aluno-id-selecionado').value;
-    const tipoDoc = document.getElementById('doc-tipo-select').value;
 
-    if (!alunoId) {
-        alert("Por favor, selecione um aluno válido na lista suspensa do campo 'Buscar Aluno' antes de gerar o documento.");
-        document.getElementById('doc-busca-aluno').focus();
+// Abre o modal rápido para editar o tipo ou observação do documento emitido
+function abrirModalEditarDocumento(idDoc, tipoAtual, obsAtual) {
+    let modal = document.getElementById('modal-editar-doc');
+    if (modal) modal.remove();
+
+    const htmlModal = `
+    <div id="modal-editar-doc" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-yellow-500">
+            <button onclick="fecharModalEditarDoc()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
+            <h3 class="text-lg font-black text-gray-900 mb-1 uppercase">Editar Documento Emitido</h3>
+            <p class="text-xs text-gray-500 mb-4 font-medium">Altere as informações do registro do documento.</p>
+
+            <form onsubmit="salvarEdicaoDocumento(event, '${idDoc}')" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Tipo de Documento</label>
+                    <select id="edit-doc-tipo" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                        <option value="Histórico Escolar Parcial">Histórico Escolar Parcial</option>
+                        <option value="Declaração de Vínculo/Matrícula">Declaração de Vínculo/Matrícula</option>
+                        <option value="Histórico Escolar Conclusão">Histórico Escolar Conclusão</option>
+                        <option value="Certificado de Conclusão">Certificado de Conclusão</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Observação</label>
+                    <textarea id="edit-doc-obs" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">${obsAtual}</textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
+                    <button type="button" onclick="fecharModalEditarDoc()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="bg-yellow-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-yellow-600 transition">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', htmlModal);
+    document.getElementById('edit-doc-tipo').value = tipoAtual;
+    feather.replace();
+}
+
+function fecharModalEditarDoc() {
+    const modal = document.getElementById('modal-editar-doc');
+    if (modal) modal.remove();
+}
+
+async function salvarEdicaoDocumento(e, idDoc) {
+    e.preventDefault();
+    const novoTipo = document.getElementById('edit-doc-tipo').value;
+    const novaObs = document.getElementById('edit-doc-obs').value;
+
+    const formData = new FormData();
+    formData.append('tipo_documento', novoTipo);
+    formData.append('observacao', novaObs);
+
+    const result = await apiRequest(`/documentos/${idDoc}`, 'PUT', formData);
+    if (result && result.sucesso) {
+        alert("Documento atualizado com sucesso!");
+        fecharModalEditarDoc();
+        loadDocumentos();
+    } else {
+        alert(result?.detail || "Erro ao atualizar documento.");
+    }
+}
+
+async function excluirDocumentoEmitido(idDoc) {
+    if (!confirm("Tem certeza que deseja excluir o registro deste documento emitido?")) return;
+
+    const result = await apiRequest(`/documentos/${idDoc}`, 'DELETE');
+    if (result && result.sucesso) {
+        alert("Registro de documento excluído com sucesso.");
+        loadDocumentos();
+    } else {
+        alert(result?.detail || "Erro ao excluir documento.");
+    }
+}
+
+async function emitirNovoDocumento() {
+    const inputBusca = document.querySelector('#tela-documentos input[placeholder*="Matrícula"]').value;
+    const tipoDoc = document.querySelector('#tela-documentos select').value;
+
+    if (!inputBusca) {
+        alert("Digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
+        return;
+    }
+
+    const alunos = await apiRequest('/alunos');
+    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos?.dados || []);
+    const aluno = listaAlunos.find(a => a.matricula === inputBusca || a.cpf === inputBusca || a.nome.toLowerCase().includes(inputBusca.toLowerCase()));
+
+    if (!aluno) {
+        alert("Aluno não encontrado na base de dados.");
         return;
     }
 
     const formData = new FormData();
-    formData.append('aluno_id', alunoId);
+    formData.append('aluno_id', aluno.id);
     formData.append('tipo_documento', tipoDoc);
     formData.append('observacao', 'Emitido via Painel Admin');
 
     const result = await apiRequest('/documentos/emitir', 'POST', formData);
 
     if (result && result.sucesso) {
-        alert(result.mensagem || "Documento gerado com sucesso!");
-        limparSelecaoAlunoDoc();
+        alert(result.mensagem);
         loadDocumentos();
-        if (result.id_documento) {
-            baixarDocumentoPDF(result.id_documento, tipoDoc);
-        }
+        baixarDocumentoPDF(result.id_documento, tipoDoc);
     } else {
         alert(result?.detail || "Erro ao emitir documento.");
     }
 }
-
 
 function baixarDocumentoPDF(id_documento, tipo_doc) {
     const token = localStorage.getItem('token_siga');
