@@ -903,7 +903,6 @@ async function renderizarDashboardAluno() {
         return;
     }
 
-    // Identifica o curso atual para pegar a capa padrão caso nenhuma foto de módulo seja encontrada
     const selectBoletimEl = document.getElementById('select-curso-boletim');
     const cursoIdAtivo = selectBoletimEl ? selectBoletimEl.value : (cursosDoAluno[0]?.id || '');
     const cursoAtualObj = cursosDoAluno.find(c => c.id === cursoIdAtivo) || cursosDoAluno[0];
@@ -940,12 +939,9 @@ async function renderizarDashboardAluno() {
         const isDestaque = semObj.nome === semestreAtivo;
         let cardsHTML = '';
 
-        // ---> COLE ESSE BLOCO AQUI <---
         semObj.disciplinas.forEach(d => {
-            // VARREDURA TOTAL: Verifica todas as variações possíveis de nomes de imagens vindas do admin
             const fotoModulo = d.foto_modulo || d.foto_card || d.capa_modulo || d.imagem_modulo || d.capa || d.imagem || d.foto;
             
-            // Se achar a foto específica do módulo, usa ela. Se não, usa a capa padrão do curso.
             const foto = (fotoModulo && typeof fotoModulo === 'string' && fotoModulo.trim() !== '') 
                 ? fotoModulo.trim() 
                 : capaPadraoCurso;
@@ -973,7 +969,6 @@ async function renderizarDashboardAluno() {
                 </div>
             `;
         });
-        // <------------------------------->
 
         const destaqueClasses = isDestaque
             ? 'border-2 border-blue-500 bg-blue-50/40 p-5 rounded-2xl shadow-sm relative'
@@ -997,7 +992,9 @@ async function renderizarDashboardAluno() {
         `;
     });
     
-    
+    aplicarEfeitoScrollMouse();
+}
+
 function aplicarEfeitoScrollMouse() {
     const carrosseis = document.querySelectorAll('.carrossel-semestre');
 
