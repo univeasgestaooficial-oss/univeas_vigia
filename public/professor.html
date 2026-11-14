@@ -112,6 +112,18 @@
 
         <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 no-scrollbar relative w-full">
 
+            <div id="wrapper-seletor-turma-prof" class="hidden mb-6 bg-indigo-50 border border-indigo-200 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                <div class="flex-1 mr-3">
+                    <label class="block text-[10px] font-black text-indigo-700 uppercase tracking-wider mb-1">Turma / Disciplina em Lançamento</label>
+                    <select id="select-turma-ativa-prof" onchange="mudarTurmaAtivaProfessor(this.value)" class="w-full bg-white border border-indigo-300 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-inner">
+                        <!-- Preenchido via JavaScript -->
+                    </select>
+                </div>
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-sm">
+                    <i data-feather="users" class="w-5 h-5"></i>
+                </div>
+            </div>
+
             <!-- TELA: DASHBOARD -->
             <div id="tela-dashboard" class="tela block">
 
@@ -1277,6 +1289,46 @@ async function editarMaterial(materialId, tituloEnc, urlEnc) {
     } else {
         alert("Erro ao atualizar: " + (result?.detail || "Tente novamente."));
     }
+}
+
+function inicializarSeletorTurmasProfessor(professorData) {
+    const wrapper = document.getElementById('wrapper-seletor-turma-prof');
+    const select = document.getElementById('select-turma-ativa-prof');
+
+    if (!wrapper || !select) return;
+
+    const listaTurmas = professorData.turmas_vinculadas || [];
+
+    // Se tiver apenas 1 turma, esconde o seletor
+    if (listaTurmas.length <= 1) {
+        wrapper.classList.add('hidden');
+        if (listaTurmas.length === 1) {
+            localStorage.setItem('turma_ativa_id', listaTurmas[0].turma_id);
+        }
+        return;
+    }
+
+    // Se tiver mais de 1 turma, exibe o seletor para alternar
+    wrapper.classList.remove('hidden');
+
+    let turmaSalva = localStorage.getItem('turma_ativa_id') || listaTurmas[0].turma_id;
+
+    let optionsHtml = '';
+    listaTurmas.forEach(t => {
+        let label = `${t.nome_curso} - ${t.disciplina} (${t.modulo})`;
+        let selected = String(t.turma_id) === String(turmaSalva) ? 'selected' : '';
+        optionsHtml += `<option value="${t.turma_id}" ${selected}>${label}</option>`;
+    });
+
+    select.innerHTML = optionsHtml;
+    localStorage.setItem('turma_ativa_id', select.value);
+    if (window.feather) feather.replace();
+}
+
+function mudarTurmaAtivaProfessor(novaTurmaId) {
+    localStorage.setItem('turma_ativa_id', novaTurmaId);
+    // Recarrega a listagem de alunos e diário da nova turma selecionada
+    carregarDiarioEAlunosDaTurma(novaTurmaId);
 }
 
 function renderizarCronogramaDashboard() {
