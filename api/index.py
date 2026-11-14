@@ -16,6 +16,7 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 import urllib.request
 from typing import List, Optional
 from pydantic import BaseModel
+import base64
 
 
 # ==========================================
@@ -53,14 +54,14 @@ if firebase_env and not firebase_admin._apps:
     try:
         cred_dict = json.loads(firebase_env)
         cred = credentials.Certificate(cred_dict)
+        bucket_name = f"{cred_dict.get('project_id')}.appspot.com"
         firebase_admin.initialize_app(cred, {
-            'storageBucket': 'seu-projeto-id.appspot.com'
+            'storageBucket': bucket_name
         })
     except Exception as e:
         print(f"Erro ao inicializar Firebase: {e}")
 
 db = firestore.client() if firebase_admin._apps else None
-
 # ==========================================
 # 2. INICIALIZAÇÃO DA API
 # ==========================================
@@ -1297,7 +1298,7 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
                                                      fontName='Helvetica-Oblique', fontSize=9, alignment=TA_CENTER,
                                                      spaceAfter=15, textColor=colors.HexColor('#64748b'))))
 
-        table_data = [['REGISTRO', 'NOME DO PRESTADOR', 'TELEFONE', 'TIPO / TURNO', 'MÓDULO VINCULADO']]
+        table_data = [['REGISTRO', 'NOME DO PRESTADOR', 'TELEFONE', 'TIPO / TURNO', 'DISCIPLINAS VINCULADAS']]
         for d in docentes:
             nome = str(d.get('nome') or d.get('nome_prestador') or '-').upper()
             registro = str(d.get('registro') or '-')
@@ -1305,11 +1306,24 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
             tipo = str(d.get('tipo_profissional', '')).title()
             turno = str(d.get('turno_atuacao', '')).title()
             tipo_turno = f"{tipo}\n({turno})" if tipo else '-'
-            vinculo = str(d.get('modulo_vinculado') or 'Múltiplos / Geral').upper()
-            table_data.append([registro, nome, telefone, tipo_turno, vinculo])
 
-        if len(docentes) == 0:
-            table_data.append(['Nenhum docente encontrado para os critérios de busca.', '', '', '', ''])
+            vinculos_raw = d.get('vinculos_json', '[]')
+            try:
+                vinculos_list = json.loads(vinculos_raw) if isinstance(vinculos_raw, str) else vinculos_raw
+            except Exception:
+                vinculos_list = []
+
+            if isinstance(vinculos_list, list) and len(vinculos_list) > 0:
+                nomes_vinc = [
+                    str(v.get('disciplina') or v.get('modulo') or '').strip()
+                    for v in vinculos_list
+                    if isinstance(v, dict) and (v.get('disciplina') or v.get('modulo'))
+                ]
+                vinculo = ", ".join(nomes_vinc).upper() if nomes_vinc else "MÚLTIPLOS / GERAL"
+            else:
+                vinculo = str(d.get('modulo_vinculado') or 'Múltiplos / Geral').upper()
+
+            table_data.append([registro, nome, telefone, tipo_turno, vinculo])
 
         t_obj = Table(table_data, colWidths=[60, 160, 80, 90, 145])
         t_obj.setStyle(TableStyle([
@@ -1530,37 +1544,75 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
     curso_id = aluno_dados.get("curso_id") or aluno_dados.get("curso")
 
     disciplinas_atuais = []
+    pesos_por_disciplina = {}
+
     if curso_id:
         curso_doc = db.collection("cursos").document(curso_id).get()
         if curso_doc.exists:
             c_dados = curso_doc.to_dict()
             nome_curso = c_dados.get("nome_curso", "Curso")
             for m in c_dados.get("grade_curricular", []):
-                if isinstance(m, dict):
+                if not isinstance(m, dict):
+                    continue
+                sub_lista = m.get("disciplinas", [])
+                itens = sub_lista if (isinstance(sub_lista, list) and len(sub_lista) > 0) else [m]
+
+                for disc in itens:
+                    if not isinstance(disc, dict):
+                        continue
+                    nome_disc = disc.get("nome") or disc.get("disciplina") or "Módulo"
                     disciplinas_atuais.append({
-                        "nome": m.get("nome") or m.get("disciplina") or "Módulo",
+                        "nome": nome_disc,
                         "curso": nome_curso
                     })
 
-    diarios_docs = db.collection("diarios").stream()
-    total_faltas = 0
-    soma_notas = 0
-    qtd_notas = 0
+                    pesos_map = {}
+                    for av in disc.get("avaliacoes", []):
+                        if isinstance(av, dict):
+                            tipo_av = av.get("tipo") or av.get("nome")
+                            if tipo_av:
+                                pesos_map[tipo_av] = float(av.get("peso", 1) or 1)
+                    pesos_por_disciplina[nome_disc.strip().upper()] = pesos_map
 
-    for doc in diarios_docs:
+    # Consolida notas e faltas por disciplina
+    lancamentos_por_disc = {}
+    total_faltas = 0
+
+    for doc in db.collection("diarios").stream():
         d_data = doc.to_dict()
+        t_id = d_data.get("turma_id", "")
+        if curso_id and not t_id.startswith(f"{curso_id}_"):
+            continue
+
+        disc_key = t_id.split("_", 1)[1].strip().upper() if "_" in t_id else "GERAL"
+
         for lanc in d_data.get("avaliacoes", []):
             if str(lanc.get("aluno_id")) == str(aluno_id):
                 total_faltas += int(lanc.get("faltas", 0))
-                notas_dict = lanc.get("notas", {})
-                for k, v in notas_dict.items():
-                    try:
-                        soma_notas += float(v)
-                        qtd_notas += 1
-                    except Exception:
-                        pass
+                if disc_key not in lancamentos_por_disc:
+                    lancamentos_por_disc[disc_key] = {}
+                lancamentos_por_disc[disc_key].update(lanc.get("notas", {}))
 
-    media_geral = round(soma_notas / qtd_notas, 1) if qtd_notas > 0 else 0.0
+    # Calcula a média ponderada de cada disciplina e depois a média geral
+    medias_disciplinas = []
+    for disc_key, notas_dict in lancamentos_por_disc.items():
+        pesos_map = pesos_por_disciplina.get(disc_key, {})
+        soma_ponderada = 0.0
+        soma_pesos = 0.0
+
+        for tipo_nota, val_nota in notas_dict.items():
+            if val_nota is not None and str(val_nota) != "":
+                try:
+                    peso = pesos_map.get(tipo_nota, 1.0)
+                    soma_ponderada += float(val_nota) * peso
+                    soma_pesos += peso
+                except Exception:
+                    pass
+
+        if soma_pesos > 0:
+            medias_disciplinas.append(soma_ponderada / soma_pesos)
+
+    media_geral = round(sum(medias_disciplinas) / len(medias_disciplinas), 1) if medias_disciplinas else 0.0
     is_pendente = aluno_dados.get("possui_pendencia_financeira") == "Sim"
 
     return {
@@ -1569,8 +1621,6 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
         "status_financeiro": "Pendente" if is_pendente else "Regular",
         "disciplinas_atuais": disciplinas_atuais[:3]
     }
-
-
 @app.get("/api/v1/aluno/cursos")
 async def listar_cursos_aluno(authorization: str = Header(None)):
     checar_db()
@@ -1629,9 +1679,22 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
         for lanc in d_data.get("avaliacoes", []):
             if str(lanc.get("aluno_id")) == str(aluno_id):
                 if nome_disc_limpo not in lancamentos_aluno:
-                    lancamentos_aluno[nome_disc_limpo] = {"faltas": 0, "notas": {}}
-                lancamentos_aluno[nome_disc_limpo]["faltas"] += int(lanc.get("faltas", 0))
+                    lancamentos_aluno[nome_disc_limpo] = {
+                        "faltas": 0,
+                        "notas": {},
+                        "historico_aulas": []
+                    }
+
+                faltas_aula = int(lanc.get("faltas", 0))
+                lancamentos_aluno[nome_disc_limpo]["faltas"] += faltas_aula
                 lancamentos_aluno[nome_disc_limpo]["notas"].update(lanc.get("notas", {}))
+
+                if d_data.get("origem") != "Admin":
+                    lancamentos_aluno[nome_disc_limpo]["historico_aulas"].append({
+                        "data_aula": d_data.get("data_aula", ""),
+                        "conteudo": d_data.get("conteudo_ministrado") or "Conteúdo não especificado pelo docente.",
+                        "faltas": faltas_aula
+                    })
 
     boletim_enriquecido = []
 
@@ -1652,16 +1715,53 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 continue
 
             nome_limpo = nome_disc.strip().upper()
-            dados_lancados = lancamentos_aluno.get(nome_limpo, {"faltas": 0, "notas": {}})
+            dados_lancados = lancamentos_aluno.get(
+                nome_limpo,
+                {"faltas": 0, "notas": {}, "historico_aulas": []}
+            )
 
-            notas_vals = [float(v) for v in dados_lancados["notas"].values() if v is not None and str(v) != '']
-            media_final = round(sum(notas_vals) / len(notas_vals), 1) if notas_vals else None
+            # Extrai avaliações previstas e seus respectivos pesos
+            avaliacoes_config = disc_matriz.get("avaliacoes", [])
+            avaliacoes_previstas = []
+            pesos_avaliacoes = {}
 
+            if isinstance(avaliacoes_config, list) and len(avaliacoes_config) > 0:
+                for av in avaliacoes_config:
+                    if isinstance(av, dict):
+                        tipo_av = av.get("tipo") or av.get("nome")
+                        peso_av = float(av.get("peso", 1) or 1)
+                        if tipo_av:
+                            avaliacoes_previstas.append(tipo_av)
+                            pesos_avaliacoes[tipo_av] = peso_av
+                    elif isinstance(av, str):
+                        avaliacoes_previstas.append(av)
+                        pesos_avaliacoes[av] = 1.0
+            else:
+                avaliacoes_previstas = ["AV1", "AV2", "Final"]
+                pesos_avaliacoes = {"AV1": 1.0, "AV2": 1.0, "Final": 1.0}
+
+            # Calcula a Média Ponderada considerando as notas lançadas
+            soma_ponderada = 0.0
+            soma_pesos = 0.0
+            for tipo_nota, val_nota in dados_lancados["notas"].items():
+                if val_nota is not None and str(val_nota) != '':
+                    peso = pesos_avaliacoes.get(tipo_nota, 1.0)
+                    soma_ponderada += float(val_nota) * peso
+                    soma_pesos += peso
+
+            media_final = round(soma_ponderada / soma_pesos, 1) if soma_pesos > 0 else None
+
+            # Regra de aprovação UNIVEAS: Média >= 8.0
             situacao = "Cursando"
             if media_final is not None:
-                situacao = "Aprovado" if media_final >= 7.0 else "Em Recuperação"
+                situacao = "Aprovado" if media_final >= 8.0 else "Em Recuperação"
 
-            # CAPTURA BLINDADA DE EMENTA
+            aulas_ordenadas = sorted(
+                dados_lancados["historico_aulas"],
+                key=lambda x: x.get("data_aula", ""),
+                reverse=True
+            )
+
             ementa_oficial = (
                 disc_matriz.get("descricao") or
                 disc_matriz.get("ementa") or
@@ -1672,7 +1772,6 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 "Nenhuma ementa detalhada informada na matriz curricular."
             )
 
-            # CAPTURA BLINDADA DE FOTO (Verifica todas as variações possíveis salvas pelo Admin)
             foto_oficial = (
                 disc_matriz.get("foto_modulo") or
                 disc_matriz.get("foto_card") or
@@ -1698,13 +1797,20 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 "media_final": media_final,
                 "situacao": situacao,
                 "notas": dados_lancados["notas"],
+                "pesos_avaliacoes": pesos_avaliacoes,
+                "historico_aulas": aulas_ordenadas,
                 "ementa": ementa_oficial,
-                "foto_modulo": foto_oficial,  # Agora entrega a foto correta mapeada de ponta a ponta!
+                "foto_modulo": foto_oficial,
+                "data_inicio": disc_matriz.get("data_inicio") or m.get("data_inicio") or "",
+                "data_fim": disc_matriz.get("data_fim") or m.get("data_fim") or "",
+                "dias_aula": disc_matriz.get("dias_aula") or m.get("dias_aula") or [],
+                "hora_aula_inicio": disc_matriz.get("hora_aula_inicio") or disc_matriz.get("hora_inicio") or m.get("hora_aula_inicio") or "",
+                "hora_aula_fim": disc_matriz.get("hora_aula_fim") or disc_matriz.get("hora_fim") or m.get("hora_aula_fim") or "",
                 "ch_teoria": disc_matriz.get("ch_teoria", 0),
                 "ch_pratica": disc_matriz.get("ch_pratica", 0),
                 "ch_es": disc_matriz.get("ch_es", 0),
                 "ch_total": disc_matriz.get("ch_total", 40),
-                "avaliacoes_previstas": [av.get("tipo") if isinstance(av, dict) else av for av in disc_matriz.get("avaliacoes", ["AV1", "AV2", "Final"])]
+                "avaliacoes_previstas": avaliacoes_previstas
             }
             boletim_enriquecido.append(item_completo)
 
@@ -1757,17 +1863,27 @@ async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), a
     checar_db()
     aluno_id = validar_token_aluno(authorization)
 
+    conteudo_bytes = await comprovante.read()
+    if len(conteudo_bytes) > 2097152:
+        raise HTTPException(status_code=400, detail="O arquivo excede o limite máximo de 2MB.")
+
+    mime_type = comprovante.content_type or "application/octet-stream"
+    b64_str = base64.b64encode(conteudo_bytes).decode("utf-8")
+    data_uri = f"data:{mime_type};base64,{b64_str}"
+
     dados_comp = {
         "aluno_id": aluno_id,
         "nome_arquivo": comprovante.filename,
+        "content_type": mime_type,
+        "arquivo_base64": data_uri,
         "status": "Em Análise",
         "data_envio": datetime.now().isoformat()
     }
-    db.collection("comprovantes_pagamento").add(dados_comp)
+    _, doc_ref = db.collection("comprovantes_pagamento").add(dados_comp)
 
-    # Atualiza o cadastro do aluno para refletir o envio tanto para ele quanto para o Admin
     db.collection("alunos").document(aluno_id).update({
         "status_comprovante": "Em Análise",
+        "ultimo_comprovante_id": doc_ref.id,
         "ultimo_comprovante_nome": comprovante.filename,
         "ultimo_comprovante_data": datetime.now().isoformat()
     })
@@ -1775,19 +1891,30 @@ async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), a
     return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso!"}
 
 
-@app.post("/api/v1/aluno/financeiro/comprovante")
-async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), authorization: str = Header(None)):
+@app.get("/api/v1/financeiro/comprovante/{aluno_id}")
+async def visualizar_comprovante_aluno(aluno_id: str):
     checar_db()
-    aluno_id = validar_token_aluno(authorization)
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    if not aluno_doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
 
-    dados_comp = {
-        "aluno_id": aluno_id,
-        "nome_arquivo": comprovante.filename,
-        "status": "Em Análise",
-        "data_envio": datetime.now().isoformat()
+    comp_id = aluno_doc.to_dict().get("ultimo_comprovante_id")
+    if not comp_id:
+        raise HTTPException(status_code=404, detail="Nenhum comprovante anexado por este aluno.")
+
+    comp_doc = db.collection("comprovantes_pagamento").document(comp_id).get()
+    if not comp_doc.exists:
+        raise HTTPException(status_code=404, detail="Arquivo do comprovante não localizado.")
+
+    comp = comp_doc.to_dict()
+    return {
+        "nome_arquivo": comp.get("nome_arquivo"),
+        "content_type": comp.get("content_type"),
+        "arquivo_base64": comp.get("arquivo_base64"),
+        "data_envio": comp.get("data_envio")
     }
-    db.collection("comprovantes_pagamento").add(dados_comp)
-    return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso!"}
+
+
 
 # Helper reutilizável para calcular o valor mensal real do aluno (considerando múltiplos cursos e promoções)
 def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
@@ -2013,3 +2140,78 @@ async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
         })
 
     return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
+
+@app.get("/api/v1/aluno/notificacoes")
+async def listar_notificacoes_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+
+    if not aluno_doc.exists:
+        return []
+
+    aluno_dados = aluno_doc.to_dict()
+    ids_cursos = set()
+
+    if aluno_dados.get("curso_id"):
+        ids_cursos.add(str(aluno_dados["curso_id"]))
+    if aluno_dados.get("curso"):
+        ids_cursos.add(str(aluno_dados["curso"]))
+
+    c_json = aluno_dados.get("cursos_json", [])
+    if isinstance(c_json, str):
+        try:
+            c_json = json.loads(c_json)
+        except Exception:
+            c_json = []
+    if isinstance(c_json, list):
+        for item in c_json:
+            if isinstance(item, dict) and item.get("curso_id"):
+                ids_cursos.add(str(item["curso_id"]))
+
+    if not ids_cursos:
+        return []
+
+    notificacoes = []
+    docs = db.collection("notificacoes_alunos").stream()
+    for doc in docs:
+        n = doc.to_dict()
+        if str(n.get("curso_id")) in ids_cursos:
+            notificacoes.append({
+                "id": doc.id,
+                "tipo": n.get("tipo", "AVISO"),
+                "disciplina": n.get("disciplina", "Disciplina"),
+                "mensagem": n.get("mensagem", ""),
+                "data_envio": n.get("data_envio", ""),
+                "importante": n.get("importante", True)
+            })
+
+    # Ordena da mais recente para a mais antiga
+    notificacoes.sort(key=lambda x: x.get("data_envio", ""), reverse=True)
+    return notificacoes
+
+
+class PerfilAlunoUpdatePayload(BaseModel):
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    endereco: Optional[str] = None
+
+
+@app.put("/api/v1/aluno/perfil")
+@app.post("/api/v1/aluno/perfil")
+async def atualizar_perfil_aluno(payload: PerfilAlunoUpdatePayload, authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    ref = db.collection("alunos").document(aluno_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    dados_update = {
+        k: v for k, v in payload.model_dump().items() if v is not None and v != ""
+    }
+    if dados_update:
+        dados_update["data_atualizacao"] = datetime.now().isoformat()
+        ref.update(dados_update)
+
+    return {"sucesso": True, "mensagem": "Dados cadastrais atualizados com sucesso!"}
