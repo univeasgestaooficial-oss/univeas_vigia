@@ -940,11 +940,14 @@ async function renderizarDashboardAluno() {
         const isDestaque = semObj.nome === semestreAtivo;
         let cardsHTML = '';
 
+        // ---> COLE ESSE BLOCO AQUI <---
         semObj.disciplinas.forEach(d => {
-            // VARREDURA TOTAL: Procura a foto em qualquer propriedade que o admin.html possa ter enviado
-            const fotoModulo = d.foto_modulo || d.foto || d.capa || d.imagem || d.imagem_modulo;
-            const foto = (fotoModulo && typeof fotoModulo === 'string' && fotoModulo.trim() !== '')
-                ? fotoModulo.trim()
+            // VARREDURA TOTAL: Verifica todas as variações possíveis de nomes de imagens vindas do admin
+            const fotoModulo = d.foto_modulo || d.foto_card || d.capa_modulo || d.imagem_modulo || d.capa || d.imagem || d.foto;
+            
+            // Se achar a foto específica do módulo, usa ela. Se não, usa a capa padrão do curso.
+            const foto = (fotoModulo && typeof fotoModulo === 'string' && fotoModulo.trim() !== '') 
+                ? fotoModulo.trim() 
                 : capaPadraoCurso;
 
             let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
@@ -970,6 +973,7 @@ async function renderizarDashboardAluno() {
                 </div>
             `;
         });
+        // <------------------------------->
 
         const destaqueClasses = isDestaque
             ? 'border-2 border-blue-500 bg-blue-50/40 p-5 rounded-2xl shadow-sm relative'
@@ -992,10 +996,8 @@ async function renderizarDashboardAluno() {
             </div>
         `;
     });
-
-    aplicarEfeitoScrollMouse();
-}
-
+    
+    
 function aplicarEfeitoScrollMouse() {
     const carrosseis = document.querySelectorAll('.carrossel-semestre');
 
