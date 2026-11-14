@@ -903,6 +903,11 @@ async function renderizarDashboardAluno() {
         return;
     }
 
+    // Tenta resgatar a foto de capa padrão do curso atual selecionado para usar como herança caso o módulo não tenha foto própria
+    const cursoIdAtivo = document.getElementById('select-curso-boletim').value;
+    const cursoAtualObj = cursosDoAluno.find(c => c.id === cursoIdAtivo);
+    const fotoCapaCursoPadrao = cursoAtualObj?.foto_capa || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
+
     const semestres = {};
     let semestreAtivo = null;
 
@@ -935,7 +940,8 @@ async function renderizarDashboardAluno() {
         let cardsHTML = '';
 
         semObj.disciplinas.forEach(d => {
-            const foto = d.foto_modulo || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
+            // Prioriza a foto específica do módulo; se não houver, herda a foto de capa cadastrada no curso pelo admin.html
+            const foto = d.foto_modulo || cursoCapaCursoPadrao;
             let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
 
             if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
@@ -984,7 +990,6 @@ async function renderizarDashboardAluno() {
 
     aplicarEfeitoScrollMouse();
 }
-
 function aplicarEfeitoScrollMouse() {
     const carrosseis = document.querySelectorAll('.carrossel-semestre');
 
