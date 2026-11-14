@@ -222,7 +222,7 @@
             </div>
 
            <!-- ==========================================
-                TELA: BOLETIM ACADÊMICO
+                TELA: BOLETIM ACADÊMICO (MECANISMO ANTIGO RESTAURADO)
                 ========================================== -->
             <div id="tela-boletim" class="tela hidden">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full min-h-[550px]">
@@ -236,25 +236,22 @@
                             <select id="select-curso-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white w-full sm:w-48" onchange="carregarBoletim()">
                                 <option value="">Selecione o Curso...</option>
                             </select>
-                            <select id="select-disciplina-boletim" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white w-full sm:w-56 hidden" onchange="renderizarDisciplinaSelecionada()">
-                                <option value="">Selecione a Disciplina...</option>
-                            </select>
                         </div>
                     </div>
 
                     <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6 flex-1">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
-                                <tr id="thead-boletim" class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     <th class="py-3 px-4">Disciplina / Módulo</th>
                                     <th class="py-3 px-4 text-center">Faltas</th>
-                                    <th class="py-3 px-4 text-center">Média</th>
+                                    <th class="py-3 px-4 text-center">Média Parcial</th>
                                     <th class="py-3 px-4 text-center">Situação</th>
                                 </tr>
                             </thead>
-                           <tbody id="tbody-boletim" class="divide-y divide-gray-100 font-medium text-gray-700">
+                            <tbody id="tbody-boletim" class="divide-y divide-gray-100 font-medium text-gray-700">
                                 <tr>
-                                    <td colspan="6" class="text-center py-8 text-gray-400">Selecione o curso acima para carregar suas notas.</td>
+                                    <td colspan="4" class="text-center py-8 text-gray-400">Selecione o curso acima para carregar suas notas.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -543,16 +540,9 @@ async function loadCursosAluno() {
         if (selectDash) selectDash.value = primeiroId;
         selectMaterial.value = primeiroId;
 
-        await carregarBoletimSilencioso(primeiroId);
+        await carregarBoletim();
         carregarMateriais();
     }
-}
-
-async function carregarBoletimSilencioso(cursoId) {
-    if (!cursoId) return;
-    const resp = await apiRequest(`/aluno/boletim/${cursoId}`);
-    dadosBoletimAtual = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
-    renderizarDashboardAluno();
 }
 
 async function carregarBoletim() {
@@ -563,13 +553,11 @@ async function carregarBoletim() {
         document.getElementById('select-curso-boletim').value = cursoId;
     }
 
-    const selectDisciplina = document.getElementById('select-disciplina-boletim');
     const tbody = document.getElementById('tbody-boletim');
     const containerDash = document.getElementById('container-semestres-dash');
 
     if (!cursoId) {
-        selectDisciplina.classList.add('hidden');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Selecione um curso acima.</td></tr>';
         renderizarGraficoDesempenho([], []);
         if(containerDash) containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Aguardando seleção do curso...</p>';
         return;
@@ -579,109 +567,59 @@ async function carregarBoletim() {
     dadosBoletimAtual = Array.isArray(resp) ? resp : (resp?.dados || resp?.notas || []);
 
     if (dadosBoletimAtual.length > 0) {
-        selectDisciplina.innerHTML = '<option value="">Selecione a Disciplina...</option>';
-        dadosBoletimAtual.forEach((d, index) => {
-            selectDisciplina.innerHTML += `<option value="${index}">${d.disciplina || d.nome_disciplina}</option>`;
-        });
-        selectDisciplina.classList.remove('hidden');
-        selectDisciplina.value = "0";
-        renderizarDisciplinaSelecionada();
+        renderizarTabelaBoletimOriginal();
         renderizarDashboardAluno();
     } else {
-        selectDisciplina.classList.add('hidden');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Nenhum registro encontrado para este curso.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Nenhum registro encontrado para este curso.</td></tr>';
         renderizarGraficoDesempenho([], []);
         if(containerDash) containerDash.innerHTML = '<p class="text-sm text-gray-400 py-10 text-center">Nenhum módulo encontrado para este curso.</p>';
     }
 }
 
-function renderizarDisciplinaSelecionada() {
-    const indexStr = document.getElementById('select-disciplina-boletim').value;
+function renderizarTabelaBoletimOriginal() {
     const tbody = document.getElementById('tbody-boletim');
-    const thead = document.getElementById('thead-boletim');
+    tbody.innerHTML = '';
 
-    if (indexStr === "") {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Selecione uma disciplina acima.</td></tr>';
-        renderizarGraficoDesempenho([], []);
-        return;
-    }
-
-    const n = dadosBoletimAtual[parseInt(indexStr)];
-    const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
-    const faltas = n.faltas !== undefined ? n.faltas : (n.faltas_totais || 0);
-    const notasObj = n.notas || {};
-    const tiposAvaliacoes = n.avaliacoes_previstas || Object.keys(notasObj);
-
-    let thHTML = `
-        <th class="py-3 px-4">Disciplina / Módulo</th>
-        <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
-    `;
-    tiposAvaliacoes.forEach(tipo => {
-        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
-    });
-    thHTML += `
-        <th class="py-3 px-4 text-center">Média</th>
-        <th class="py-3 px-4 text-center">Situação</th>
-    `;
-    thead.innerHTML = thHTML;
-
-    let tdsNotas = '';
-    let somaNotas = 0;
-    let qtdNotasValidas = 0;
     let labelsGrafico = [];
     let dadosGrafico = [];
 
-    tiposAvaliacoes.forEach(tipo => {
-        const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== '' ? parseFloat(notasObj[tipo]) : null;
-        if (valNota !== null && !isNaN(valNota)) {
-            somaNotas += valNota;
-            qtdNotasValidas++;
-            tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
-            labelsGrafico.push(tipo);
-            dadosGrafico.push(valNota);
-        } else {
-            tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
-            labelsGrafico.push(tipo);
-            dadosGrafico.push(0);
+    dadosBoletimAtual.forEach((n, index) => {
+        const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
+        const faltas = n.faltas !== undefined ? n.faltas : 0;
+        const mediaFinal = n.media_final !== undefined && n.media_final !== null ? parseFloat(n.media_final) : null;
+        let mediaStr = mediaFinal !== null && !isNaN(mediaFinal) ? mediaFinal.toFixed(1) : '-';
+
+        let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
+        const situacaoOficial = n.situacao || null;
+
+        if (situacaoOficial) {
+            if (situacaoOficial.toLowerCase().includes('aprovado')) {
+                badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+            } else if (situacaoOficial.toLowerCase().includes('reprovado')) {
+                badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+            } else {
+                badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+            }
+        } else if (mediaFinal !== null) {
+            if (mediaFinal >= 7.0) {
+                badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
+            } else {
+                badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
+            }
         }
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 cursor-pointer" onclick="abrirTelaDisciplina(${index})">
+                <td class="py-4 px-4 font-bold text-gray-900">${nomeDisc}</td>
+                <td class="py-4 px-4 text-center text-yellow-600 font-bold">${faltas}</td>
+                <td class="py-4 px-4 text-center font-black ${mediaFinal !== null && mediaFinal >= 7 ? 'text-green-600' : 'text-gray-800'}">${mediaStr}</td>
+                <td class="py-4 px-4 text-center">${badge}</td>
+            </tr>
+        `;
+
+        labelsGrafico.push(nomeDisc);
+        dadosGrafico.push(mediaFinal !== null ? mediaFinal : 0);
     });
-
-    let mediaFinal = null;
-    if (n.media_final !== undefined && n.media_final !== null) {
-        mediaFinal = parseFloat(n.media_final);
-    } else if (tiposAvaliacoes.length > 0) {
-        mediaFinal = somaNotas / tiposAvaliacoes.length;
-    }
-
-    let mediaStr = mediaFinal !== null && !isNaN(mediaFinal) ? mediaFinal.toFixed(1) : '-';
-    let badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">Cursando</span>`;
-    const situacaoOficial = n.situacao || null;
-
-    if (situacaoOficial) {
-        if (situacaoOficial.toLowerCase().includes('aprovado')) {
-            badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        } else if (situacaoOficial.toLowerCase().includes('reprovado')) {
-            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        } else {
-            badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        }
-    } else if (mediaFinal !== null) {
-        if (mediaFinal >= 7.0) {
-            badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
-        } else if (qtdNotasValidas === tiposAvaliacoes.length) {
-            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
-        }
-    }
-
-    tbody.innerHTML = `
-        <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
-            <td class="py-4 px-4 font-bold text-gray-900">${nomeDisc}</td>
-            <td class="py-4 px-4 text-center text-yellow-600 font-bold">${faltas}</td>
-            ${tdsNotas}
-            <td class="py-4 px-4 text-center font-black ${mediaFinal !== null && mediaFinal >= 7 ? 'text-green-600' : 'text-gray-800'}">${mediaStr}</td>
-            <td class="py-4 px-4 text-center">${badge}</td>
-        </tr>
-    `;
 
     renderizarGraficoDesempenho(labelsGrafico, dadosGrafico);
     if (typeof feather !== 'undefined') feather.replace();
@@ -695,14 +633,12 @@ function renderizarGraficoDesempenho(labels, dados) {
         meuGraficoDesempenho.destroy();
     }
 
-    const labelGrafico = labels.length > 0 ? 'Nota Obtida' : 'Aguardando Avaliações';
-
     meuGraficoDesempenho = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labels.length > 0 ? labels : ['Sem Avaliações'],
+            labels: labels.length > 0 ? labels : ['Sem Dados'],
             datasets: [{
-                label: labelGrafico,
+                label: 'Média por Disciplina',
                 data: dados.length > 0 ? dados : [0],
                 backgroundColor: 'rgba(59, 130, 246, 0.7)',
                 borderColor: 'rgb(37, 99, 235)',
@@ -988,7 +924,7 @@ async function renderizarDashboardAluno() {
                 </div>
             </div>
         `;
-    }); // <-- A chave fechada aqui resolve o erro de sintaxe que impedia o script de carregar!
+    });
 
     aplicarEfeitoScrollMouse();
 }
