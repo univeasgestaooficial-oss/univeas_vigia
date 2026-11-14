@@ -1290,6 +1290,105 @@ async function editarMaterial(materialId, tituloAtual, urlAtual) {
     feather.replace();
 }
 
+    async function selecionarTurmaParaDiario() {
+    const turmaId = document.getElementById('select-turma-diario').value;
+    const container = document.getElementById('container-lancamento-diario');
+    const thead = document.getElementById('thead-diario-prof');
+    const tbody = document.getElementById('tbody-diario-prof');
+
+    if (!turmaId) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+    tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-400">Carregando lista de chamada e avaliações...</td></tr>';
+
+    const turmaObj = turmasDocente.find(t => String(t.id) === String(turmaId));
+    const cursoId = turmaId.split('_')[0];
+
+    let avaliacoesConfiguradas = [];
+    if (turmaObj && turmaObj.detalhes && Array.isArray(turmaObj.detalhes.avaliacoes) && turmaObj.detalhes.avaliacoes.length > 0) {
+        avaliacoesConfiguradas = turmaObj.detalhes.avaliacoes.map(a => a.tipo || a.nome || a);
+    } else {
+        avaliacoesConfiguradas = ['AV1', 'AV2', 'Final'];
+    }
+
+    let thHtml = `
+        <th class="py-3 px-4">Aluno / Matrícula</th>
+        <th class="py-3 px-4 text-center w-24">Faltas (Aula)</th>
+    `;
+    avaliacoesConfiguradas.forEach(av => {
+        thHtml += `<th class="py-3 px-4 text-center w-28">${av}</th>`;
+    });
+    thHtml += `<th class="py-3 px-4 text-center w-24">Média</th>`;
+    thead.innerHTML = thHtml;
+
+    const [alunosResp, diarioExistente] = await Promise.all([
+        apiRequest('/alunos'),
+        apiRequest(`/docente/diario/${encodeURIComponent(turmaId)}`)
+    ]);
+
+    const todosAlunos = Array.isArray(alunosResp) ? alunosResp : (alunosResp?.dados || []);
+    const mapaNotas = diarioExistente || {};
+
+    const alunosMatriculados = todosAlunos.filter(a => {
+        if (a.status !== 'Ativo' && a.status !== 'Pendente') return false;
+        if (String(a.curso_id) === String(cursoId) || String(a.curso) === String(cursoId)) return true;
+        if (a.cursos_json) {
+            try {
+                const arr = typeof a.cursos_json === 'string' ? JSON.parse(a.cursos_json) : a.cursos_json;
+                if (Array.isArray(arr) && arr.some(c => String(c.curso_id) === String(cursoId))) return true;
+            } catch (e) {}
+        }
+        return false;
+    });
+
+    tbody.innerHTML = '';
+
+    if (alunosMatriculados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-400">Nenhum aluno matriculado neste curso ainda.</td></tr>';
+        return;
+    }
+
+    alunosMatriculados.forEach(aluno => {
+        const regAnterior = mapaNotas[String(aluno.id)] || { faltas: 0, notas: {} };
+        const faltasAcumuladas = regAnterior.faltas || 0;
+
+        let tdsAvaliacoes = '';
+        avaliacoesConfiguradas.forEach(av => {
+            const notaSalva = regAnterior.notas?.[av] !== undefined && regAnterior.notas?.[av] !== null
+                ? regAnterior.notas[av]
+                : '';
+            tdsAvaliacoes += `
+                <td class="py-3 px-4 text-center">
+                    <input type="number" step="0.1" min="0" max="10" data-avaliacao="${av}" value="${notaSalva}" oninput="recalcularMediaLinhaProf(this)" placeholder="-" class="input-nota-prof w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-center text-xs font-bold focus:outline-none focus:border-orange-500">
+                </td>
+            `;
+        });
+
+        tbody.innerHTML += `
+            <tr class="linha-aluno-diario hover:bg-gray-50 transition" data-aluno-id="${aluno.id}">
+                <td class="py-3 px-4">
+                    <p class="font-bold text-gray-800 text-xs uppercase">${aluno.nome}</p>
+                    <p class="text-[10px] text-gray-400 font-mono">Mat: ${aluno.matricula || 'S/N'} • Acumulado: ${faltasAcumuladas} falta(s)</p>
+                </td>
+                <td class="py-3 px-4 text-center">
+                    <input type="number" min="0" value="0" class="input-faltas-prof w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-center text-xs font-bold text-yellow-600 focus:outline-none focus:border-orange-500" title="Faltas desta aula">
+                </td>
+                ${tdsAvaliacoes}
+                <td class="py-3 px-4 text-center font-black text-xs text-gray-700 celula-media-prof">-</td>
+            </tr>
+        `;
+    });
+
+    // Calcula a média inicial das notas já carregadas
+    document.querySelectorAll('.linha-aluno-diario').forEach(tr => {
+        const primeiroInput = tr.querySelector('.input-nota-prof');
+        if (primeiroInput) recalcularMediaLinhaProf(primeiroInput);
+    });
+}
+
 </script>
 
 <!-- ==========================================
