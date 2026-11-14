@@ -115,6 +115,19 @@
 
         <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
 
+            <!-- SELETOR DE MÚLTIPLOS CURSOS (Coloque logo abaixo do cabeçalho do aluno) -->
+            <div id="wrapper-seletor-curso" class="hidden mb-6 bg-teal-50 border border-teal-200 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                <div class="flex-1 mr-3">
+                    <label class="block text-[10px] font-black text-teal-700 uppercase tracking-wider mb-1">Curso Ativo no Momento</label>
+                    <select id="select-curso-ativo-aluno" onchange="mudarCursoAtivoAluno(this.value)" class="w-full bg-white border border-teal-300 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:border-teal-500 cursor-pointer shadow-inner">
+                        <!-- Preenchido via JavaScript -->
+                    </select>
+                </div>
+                <div class="bg-teal-500 text-white p-2.5 rounded-xl shadow-sm">
+                    <i data-feather="repeat" class="w-5 h-5"></i>
+                </div>
+            </div>
+
             <!-- ==========================================
                  TELA: DASHBOARD
                  ========================================== -->
@@ -621,30 +634,63 @@ async function loadCursosAluno() {
         const selectDash = document.getElementById('select-curso-dash');
         const boxDash = document.getElementById('box-select-curso-dash');
         const selectMaterial = document.getElementById('select-curso-material');
+        const wrapperSeletorTop = document.getElementById('wrapper-seletor-curso');
+        const selectSeletorTop = document.getElementById('select-curso-ativo-aluno');
 
         selectBoletim.innerHTML = '<option value="">Selecione o Curso...</option>';
         if (selectDash) selectDash.innerHTML = '<option value="">Selecione o Curso...</option>';
         selectMaterial.innerHTML = '<option value="">Selecione o Curso...</option>';
+        if (selectSeletorTop) selectSeletorTop.innerHTML = '';
 
         cursos.forEach(c => {
             const opt = `<option value="${c.id}">${c.nome_curso}</option>`;
             selectBoletim.innerHTML += opt;
             if (selectDash) selectDash.innerHTML += opt;
             selectMaterial.innerHTML += opt;
+            if (selectSeletorTop) selectSeletorTop.innerHTML += `<option value="${c.id}">${c.nome_curso}</option>`;
         });
 
-        if (cursos.length > 1 && boxDash) {
-            boxDash.classList.remove('hidden');
+        // Se houver mais de 1 curso, exibe o seletor do topo criado agora
+        if (cursos.length > 1) {
+            if (wrapperSeletorTop) wrapperSeletorTop.classList.remove('hidden');
+            if (boxDash) boxDash.classList.remove('hidden');
+        } else {
+            if (wrapperSeletorTop) wrapperSeletorTop.classList.add('hidden');
+            if (boxDash) boxDash.classList.add('hidden');
         }
 
-        const primeiroId = cursos[0].id;
-        selectBoletim.value = primeiroId;
-        if (selectDash) selectDash.value = primeiroId;
-        selectMaterial.value = primeiroId;
+        // Recupera o curso salvo no navegador ou usa o primeiro da lista
+        const cursoSalvo = localStorage.getItem('curso_ativo_id');
+        const cursoInicial = cursos.some(c => String(c.id) === String(cursoSalvo)) ? cursoSalvo : cursos[0].id;
+
+        selectBoletim.value = cursoInicial;
+        if (selectDash) selectDash.value = cursoInicial;
+        selectMaterial.value = cursoInicial;
+        if (selectSeletorTop) selectSeletorTop.value = cursoInicial;
 
         await carregarBoletim();
         await carregarMateriais();
     }
+}
+
+// Função disparada quando o aluno troca de curso no seletor do topo
+async function mudarCursoAtivoAluno(novoCursoId) {
+    localStorage.setItem('curso_ativo_id', novoCursoId);
+
+    // Sincroniza os outros selects internos da página
+    const selectBoletim = document.getElementById('select-curso-boletim');
+    const selectDash = document.getElementById('select-curso-dash');
+    const selectMaterial = document.getElementById('select-curso-material');
+    const selectSeletorTop = document.getElementById('select-curso-ativo-aluno');
+
+    if (selectBoletim) selectBoletim.value = novoCursoId;
+    if (selectDash) selectDash.value = novoCursoId;
+    if (selectMaterial) selectMaterial.value = novoCursoId;
+    if (selectSeletorTop) selectSeletorTop.value = novoCursoId;
+
+    // Recarrega as informações acadêmicas do novo curso selecionado
+    await carregarBoletim();
+    await carregarMateriais();
 }
 
 async function trocarCursoDashboard() {
@@ -1159,7 +1205,7 @@ async function renderizarDashboardAluno() {
         });
 
         const destaqueClasses = isDestaque
-            ? 'border-2 border-blue-500 bg-blue-50/40 p-5 rounded-2xl shadow-sm relative'
+            ? 'p-5 rounded-2xl shadow-sm relative'
             : 'pl-2 opacity-80 hover:opacity-100 transition-opacity duration-300';
 
         const tituloBadge = isDestaque
@@ -1315,6 +1361,72 @@ function formatarCronogramaDisciplina(d) {
     if (dias) return dias;
     if (horario) return `Horário: ${horario}`;
     return 'Horário a definir';
+}
+
+
+// Variável global para guardar os dados completos do aluno logado
+let dadosAlunoLogado = null;
+
+// 1. Chame esta função logo após carregar os dados do aluno logado (ex: após o fetch('/aluno/perfil'))
+function inicializarSeletorCursosAluno(alunoData) {
+    dadosAlunoLogado = alunoData;
+    const wrapper = document.getElementById('wrapper-seletor-curso');
+    const select = document.getElementById('select-curso-ativo-aluno');
+
+    if (!wrapper || !select) return;
+
+    // Extrai os cursos do aluno (suporta o formato novo 'cursos_json' ou o antigo 'curso_id')
+    let listaCursos = [];
+    try {
+        if (alunoData.cursos_json) {
+            listaCursos = typeof alunoData.cursos_json === 'string' ? JSON.parse(alunoData.cursos_json) : alunoData.cursos_json;
+        } else if (alunoData.curso_id) {
+            listaCursos = [{ curso_id: alunoData.curso_id, nome_curso: alunoData.nome_curso || 'Curso Principal' }];
+        }
+    } catch (e) {
+        console.error("Erro ao ler cursos do aluno:", e);
+    }
+
+    // Se o aluno tiver apenas 1 curso ou nenhum, esconde o seletor para não poluir a tela
+    if (listaCursos.length <= 1) {
+        wrapper.classList.add('hidden');
+        if (listaCursos.length === 1) {
+            localStorage.setItem('curso_ativo_id', listaCursos[0].curso_id);
+        }
+        return;
+    }
+
+    // Se tiver mais de 1 curso, exibe o seletor e preenche as opções
+    wrapper.classList.remove('hidden');
+
+    let cursoAtivoSalvo = localStorage.getItem('curso_ativo_id') || listaCursos[0].curso_id;
+
+    let optionsHtml = '';
+    listaCursos.forEach(c => {
+        // Tenta buscar o nome do curso pelo ID se não vier direto no objeto
+        let nomeExibicao = c.nome_curso || `Curso ID: ${c.curso_id}`;
+        let selected = String(c.curso_id) === String(cursoAtivoSalvo) ? 'selected' : '';
+        optionsHtml += `<option value="${c.curso_id}" ${selected}>${nomeExibicao}</option>`;
+    });
+
+    select.innerHTML = optionsHtml;
+
+    // Garante que o ID salvo é o atual
+    localStorage.setItem('curso_ativo_id', select.value);
+    if (window.feather) feather.replace();
+}
+
+// 2. Executado toda vez que o aluno troca de curso no <select>
+function mudarCursoAtivoAluno(novoCursoId) {
+    localStorage.setItem('curso_ativo_id', novoCursoId);
+
+    // Dispara a atualização das telas do aluno filtrando pelo novo curso
+    if (typeof carregarNotasE_FrequenciasAluno === 'function') {
+        carregarNotasE_FrequenciasAluno(novoCursoId);
+    } else {
+        // Se a função específica não existir, recarrega a página aplicando o contexto
+        location.reload();
+    }
 }
 
 async function abrirTelaDisciplina(indexBoletim) {
