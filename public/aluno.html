@@ -153,13 +153,11 @@
                     <select id="select-curso-dash" onchange="carregarBoletim()"></select>
                 </div>
 
-                <!-- CARROSSÉIS DE DISCIPLINAS POR SEMESTRE -->
                 <div id="container-semestres-dash" class="space-y-8 mt-8">
                     <div class="text-center py-10">
                         <p class="text-gray-400 text-sm animate-pulse">Carregando matriz curricular...</p>
                     </div>
                 </div>
-
             </div>
 
             <!-- ==========================================
@@ -173,23 +171,23 @@
                 </div>
 
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 mb-6">
-                    <div id="disc-foto" class="w-full md:w-56 h-48 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200">
+                    <div id="disc-foto" class="w-full md:w-48 h-48 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200">
                         <img src="" alt="Capa" class="w-full h-full object-cover hidden">
                         <div class="w-full h-full flex items-center justify-center text-gray-400"><i data-feather="image" class="w-8 h-8"></i></div>
                     </div>
                     <div class="flex-1 flex flex-col justify-between">
                         <div>
                             <div class="flex gap-2 mb-2" id="disc-badges">
-                                <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">MÓDULO OFICIAL</span>
+                                <span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">PRESENCIAL</span>
                             </div>
                             <h2 id="disc-nome" class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-1">Nome da Disciplina</h2>
                             <p id="disc-curso" class="text-sm font-bold text-gray-500 uppercase">Curso - Turma</p>
                         </div>
 
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100 text-xs">
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Teoria / Prática / ES</span><span id="disc-ch-detalhada" class="font-bold text-gray-800">-- h</span></div>
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Carga Horária Total</span><span id="disc-ch" class="font-bold text-gray-800">40h</span></div>
-                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Faltas Registradas</span><span id="disc-faltas" class="font-bold text-yellow-600">0</span></div>
+                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Período</span><span id="disc-periodo" class="font-bold text-gray-800">--/-- a --/--</span></div>
+                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Carga Horária</span><span id="disc-ch" class="font-bold text-gray-800">40h</span></div>
+                            <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Faltas</span><span id="disc-faltas" class="font-bold text-yellow-600">0</span></div>
                             <div><span class="block text-[9px] text-gray-400 uppercase font-bold mb-0.5">Média Parcial</span><span id="disc-media" class="font-black text-blue-600 text-sm">-</span></div>
                         </div>
                     </div>
@@ -199,14 +197,14 @@
                     <div class="lg:col-span-2 space-y-6">
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                             <h4 class="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center mb-4 border-b border-gray-50 pb-3">
-                                <i data-feather="file-text" class="mr-2 text-blue-500"></i> Ementa / Descrição Oficial
+                                <i data-feather="file-text" class="mr-2 text-blue-500"></i> Ementa / Descrição
                             </h4>
-                            <p id="disc-ementa" class="text-sm text-gray-600 leading-relaxed">Nenhuma ementa informada para esta disciplina na matriz curricular.</p>
+                            <p id="disc-ementa" class="text-sm text-gray-600 leading-relaxed">Nenhuma ementa informada para esta disciplina.</p>
                         </div>
 
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                             <h4 class="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center mb-4 border-b border-gray-50 pb-3">
-                                <i data-feather="folder" class="mr-2 text-blue-500"></i> Materiais de Apoio Disponibilizados
+                                <i data-feather="folder" class="mr-2 text-blue-500"></i> Materiais de Apoio da Disciplina
                             </h4>
                             <div id="disc-lista-materiais" class="space-y-3">
                                 <p class="text-xs text-gray-400">Nenhum material vinculado.</p>
@@ -218,9 +216,7 @@
                         <h4 class="text-sm font-black text-orange-800 uppercase tracking-widest flex items-center mb-4 border-b border-orange-100 pb-3">
                             <i data-feather="award" class="mr-2 text-orange-500"></i> Avaliações e Notas
                         </h4>
-                        <div id="disc-lista-avaliacoes" class="space-y-3">
-                           <!-- Preenchido via JS -->
-                        </div>
+                        <div id="disc-lista-avaliacoes" class="space-y-3"></div>
                     </div>
                 </div>
             </div>
@@ -386,7 +382,6 @@
 const API_BASE_URL = "/api/v1";
 let cursosDoAluno = [];
 let dadosBoletimAtual = [];
-let matrizCompletaCursoAtual = []; // Armazena a grade curricular completa vinda do curso
 let meuGraficoDesempenho = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -543,12 +538,7 @@ async function loadCursosAluno() {
             selectMaterial.innerHTML += opt;
         });
 
-        const primeiroCurso = cursos[0];
-        const primeiroId = primeiroCurso.id;
-
-        // Salva a matriz curricular oficial diretamente do cadastro do curso
-        matrizCompletaCursoAtual = primeiroCurso.grade_curricular || [];
-
+        const primeiroId = cursos[0].id;
         selectBoletim.value = primeiroId;
         if (selectDash) selectDash.value = primeiroId;
         selectMaterial.value = primeiroId;
@@ -571,11 +561,6 @@ async function carregarBoletim() {
     if (!cursoId && selectDash && selectDash.value) {
         cursoId = selectDash.value;
         document.getElementById('select-curso-boletim').value = cursoId;
-    }
-
-    const cursoSelecionado = cursosDoAluno.find(c => c.id === cursoId);
-    if (cursoSelecionado) {
-        matrizCompletaCursoAtual = cursoSelecionado.grade_curricular || [];
     }
 
     const selectDisciplina = document.getElementById('select-disciplina-boletim');
@@ -950,14 +935,7 @@ async function renderizarDashboardAluno() {
         let cardsHTML = '';
 
         semObj.disciplinas.forEach(d => {
-            // Busca a foto oficial diretamente da matriz do curso ou usa fallback
-            let fotoOficial = d.foto_modulo;
-            if (!fotoOficial && matrizCompletaCursoAtual.length > 0) {
-                const matchMatriz = matrizCompletaCursoAtual.find(m => (m.nome || '').trim().toUpperCase() === (d.disciplina || '').trim().toUpperCase());
-                if (matchMatriz) fotoOficial = matchMatriz.foto_modulo;
-            }
-            const foto = fotoOficial || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
-
+            const foto = d.foto_modulo || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
             let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
 
             if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
@@ -1059,36 +1037,17 @@ async function abrirTelaDisciplina(indexBoletim) {
     const d = dadosBoletimAtual[indexBoletim];
     if(!d) return;
 
-    // Cruza com os dados oficiais cadastrados na matriz curricular do curso
-    let dadosMatriz = {};
-    if (matrizCompletaCursoAtual && matrizCompletaCursoAtual.length > 0) {
-        const match = matrizCompletaCursoAtual.find(m => (m.nome || '').trim().toUpperCase() === (d.disciplina || '').trim().toUpperCase());
-        if (match) dadosMatriz = match;
-    }
-
     document.getElementById('disc-nome').innerText = d.disciplina || 'Disciplina';
     document.getElementById('disc-curso').innerText = document.getElementById('select-curso-boletim').options[document.getElementById('select-curso-boletim').selectedIndex]?.text || 'Curso UNIVEAS';
-
-    // Puxa a ementa correta da matriz ou do diário
-    const ementaOficial = dadosMatriz.ementa || d.ementa || 'Nenhuma ementa detalhada informada para este módulo na matriz curricular.';
-    document.getElementById('disc-ementa').innerText = ementaOficial;
-
-    // Cargas horárias detalhadas (Teoria, Prática, Estágio e Total)
-    const t = dadosMatriz.ch_teoria || 0;
-    const p = dadosMatriz.ch_pratica || 0;
-    const es = dadosMatriz.ch_es || 0;
-    const chTotal = dadosMatriz.ch_total || d.ch_total || 40;
-
-    document.getElementById('disc-ch-detalhada').innerText = `${t}h T / ${p}h P / ${es}h ES`;
-    document.getElementById('disc-ch').innerText = `${chTotal}h`;
+    document.getElementById('disc-periodo').innerText = (d.data_inicio && d.data_fim) ? `${d.data_inicio} a ${d.data_fim}` : 'Período Contínuo';
+    document.getElementById('disc-ch').innerText = (d.ch_total || d.carga_horaria || 40) + 'h';
     document.getElementById('disc-faltas').innerText = d.faltas || 0;
     document.getElementById('disc-media').innerText = d.media_final !== undefined ? parseFloat(d.media_final).toFixed(1) : '-';
+    document.getElementById('disc-ementa').innerText = d.ementa || 'Nenhuma ementa detalhada informada para esta disciplina até o momento.';
 
-    // Foto de capa real do módulo
-    const fotoCapa = dadosMatriz.foto_modulo || d.foto_modulo;
     const divFoto = document.getElementById('disc-foto');
-    if (fotoCapa) {
-        divFoto.querySelector('img').src = fotoCapa;
+    if (d.foto_modulo) {
+        divFoto.querySelector('img').src = d.foto_modulo;
         divFoto.querySelector('img').classList.remove('hidden');
         divFoto.querySelector('div').classList.add('hidden');
     } else {
@@ -1096,22 +1055,20 @@ async function abrirTelaDisciplina(indexBoletim) {
         divFoto.querySelector('div').classList.remove('hidden');
     }
 
-    // Avaliações
     const ulAval = document.getElementById('disc-lista-avaliacoes');
     ulAval.innerHTML = '';
-    const avalPrevistas = d.avaliacoes_previstas || dadosMatriz.avaliacoes || Object.keys(d.notas || {});
+    const avalPrevistas = d.avaliacoes_previstas || Object.keys(d.notas || {});
 
     if (avalPrevistas.length === 0) {
         ulAval.innerHTML = '<p class="text-xs text-orange-400">Nenhuma avaliação configurada.</p>';
     } else {
         avalPrevistas.forEach(tipo => {
-            const nomeAval = typeof tipo === 'object' ? (tipo.tipo || 'Avaliação') : tipo;
-            const nota = (d.notas && d.notas[nomeAval] !== undefined && d.notas[nomeAval] !== '') ? d.notas[nomeAval] : 'Pendente';
+            const nota = (d.notas && d.notas[tipo] !== undefined && d.notas[tipo] !== '') ? d.notas[tipo] : 'Pendente';
             const bgCor = nota === 'Pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-700';
             ulAval.innerHTML += `
                 <div class="bg-white border border-orange-100 p-3 rounded-xl flex items-center justify-between shadow-sm">
                     <div>
-                        <p class="text-xs font-bold text-gray-800 uppercase">${nomeAval}</p>
+                        <p class="text-xs font-bold text-gray-800 uppercase">${tipo}</p>
                         <p class="text-[9px] text-gray-400 uppercase mt-0.5">Avaliação Oficial</p>
                     </div>
                     <span class="${bgCor} px-2 py-1 rounded text-xs font-black">${nota}</span>
@@ -1120,7 +1077,6 @@ async function abrirTelaDisciplina(indexBoletim) {
         });
     }
 
-    // Materiais Didáticos
     const containerMat = document.getElementById('disc-lista-materiais');
     containerMat.innerHTML = '<p class="text-xs text-gray-400">Carregando materiais...</p>';
     const cursoId = document.getElementById('select-curso-boletim').value;
