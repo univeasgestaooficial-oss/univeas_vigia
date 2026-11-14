@@ -1609,15 +1609,34 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
             if media_final is not None:
                 situacao = "Aprovado" if media_final >= 7.0 else "Em Recuperação"
 
-            # CAPTURA BLINDADA: Lê 'descricao' (salva pelo admin.html), 'ementa' ou qualquer outra variação
+            # CAPTURA BLINDADA DE EMENTA
             ementa_oficial = (
-                    disc_matriz.get("descricao") or
-                    disc_matriz.get("ementa") or
-                    disc_matriz.get("detalhes") or
-                    disc_matriz.get("resumo") or
-                    m.get("descricao") or
-                    m.get("ementa") or
-                    "Nenhuma ementa detalhada informada na matriz curricular."
+                disc_matriz.get("descricao") or
+                disc_matriz.get("ementa") or
+                disc_matriz.get("detalhes") or
+                disc_matriz.get("resumo") or
+                m.get("descricao") or
+                m.get("ementa") or
+                "Nenhuma ementa detalhada informada na matriz curricular."
+            )
+
+            # CAPTURA BLINDADA DE FOTO (Verifica todas as variações possíveis salvas pelo Admin)
+            foto_oficial = (
+                disc_matriz.get("foto_modulo") or
+                disc_matriz.get("foto_card") or
+                disc_matriz.get("capa_modulo") or
+                disc_matriz.get("imagem_modulo") or
+                disc_matriz.get("foto") or
+                disc_matriz.get("imagem") or
+                disc_matriz.get("capa") or
+                m.get("foto_modulo") or
+                m.get("foto_card") or
+                m.get("capa_modulo") or
+                m.get("imagem_modulo") or
+                m.get("foto") or
+                m.get("imagem") or
+                m.get("capa") or
+                ""
             )
 
             item_completo = {
@@ -1628,13 +1647,12 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 "situacao": situacao,
                 "notas": dados_lancados["notas"],
                 "ementa": ementa_oficial,
-                "foto_modulo": disc_matriz.get("foto_modulo", m.get("foto_modulo", "")),
+                "foto_modulo": foto_oficial,  # Agora entrega a foto correta mapeada de ponta a ponta!
                 "ch_teoria": disc_matriz.get("ch_teoria", 0),
                 "ch_pratica": disc_matriz.get("ch_pratica", 0),
                 "ch_es": disc_matriz.get("ch_es", 0),
                 "ch_total": disc_matriz.get("ch_total", 40),
-                "avaliacoes_previstas": [av.get("tipo") if isinstance(av, dict) else av for av in
-                                         disc_matriz.get("avaliacoes", ["AV1", "AV2", "Final"])]
+                "avaliacoes_previstas": [av.get("tipo") if isinstance(av, dict) else av for av in disc_matriz.get("avaliacoes", ["AV1", "AV2", "Final"])]
             }
             boletim_enriquecido.append(item_completo)
 
