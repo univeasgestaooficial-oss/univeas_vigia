@@ -24,7 +24,8 @@ from pydantic import BaseModel
 class LancamentoAluno(BaseModel):
     aluno_id: str
     faltas: int
-    notas: dict = {}  # Aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
+    notas: dict = {}  # Agora aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
+    # Mantidos por retrocompatibilidade caso tenha dados velhos gravados
     nota_1: Optional[float] = None
     nota_2: Optional[float] = None
 
@@ -35,39 +36,13 @@ class DiarioPayload(BaseModel):
     conteudo_ministrado: str
     lancamentos: List[LancamentoAluno]
 
-
 class MaterialEdicaoPayload(BaseModel):
     titulo: str
     url_arquivo: str
 
-
 class PerfilDocentePayload(BaseModel):
     email: str
     telefone: str
-
-
-class MaterialPayload(BaseModel):
-    turma_id: str
-    titulo: str
-    url_arquivo: str
-    data_postagem: Optional[str] = None
-
-
-class TurmaConfigPayload(BaseModel):
-    turma_id: str
-    data_inicio: str = None
-    data_fim: str = None
-    ementa: str = None
-    ch_teoria: int = 0
-    ch_pratica: int = 0
-    ch_estagio: int = 0
-    ch_total: int = 0
-    dias_aula: List[str] = []
-    hora_inicio: str = None
-    hora_fim: str = None
-    avaliacoes: List[dict] = []
-    justificativa: str = None
-
 
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
@@ -126,6 +101,7 @@ async def login_administrador(senha: str = Form(...)):
 # ==========================================
 # 2.6 AUTENTICAÇÃO DO PROFESSOR (DOCENTE)
 # ==========================================
+
 @app.post("/api/v1/auth/docente")
 async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
     checar_db()
@@ -140,14 +116,13 @@ async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
         return {
             "sucesso": True,
             "token_siga": f"docente_{docente_encontrado['id']}",
-            "nome_professor": docente_encontrado.get("nome", docente_encontrado.get("nome_prestador", "Professor")),
+            "nome_professor": docente_encontrado["nome"],
             "registro": docente_encontrado["registro"],
             "email": docente_encontrado.get("email", "Não cadastrado"),
             "telefone": docente_encontrado.get("telefone", "Não cadastrado")
         }
     else:
         raise HTTPException(status_code=401, detail="Registro ou CPF incorretos. Acesso negado.")
-
 
 # ==========================================
 # 2.7 AUTENTICAÇÃO DO ALUNO (ESTUDANTE)
@@ -726,9 +701,11 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="Perfil de professor não encontrado")
 
     dados_prof = doc_prof.to_dict()
+    # Puxa os vínculos gravados pelo Admin (JSON) em vez de 'curso_id'
     vinculos_str = dados_prof.get("vinculos_json", "[]")
 
     try:
+        import json
         vinculos = json.loads(vinculos_str)
     except:
         vinculos = []
@@ -739,6 +716,23 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
         "aulas_semana": len(vinculos),
         "curso_vinculado": vinculos[0].get("curso") if vinculos else None
     }
+
+
+# Crie este Schema junto aos outros (lá no topo do arquivo ou antes dessa rota)
+class TurmaConfigPayload(BaseModel):
+    turma_id: str
+    data_inicio: str = None
+    data_fim: str = None
+    ementa: str = None
+    ch_teoria: int = 0
+    ch_pratica: int = 0
+    ch_estagio: int = 0
+    ch_total: int = 0
+    dias_aula: List[str] = []
+    hora_inicio: str = None
+    hora_fim: str = None
+    avaliacoes: List[dict] = []
+    justificativa: str = None
 
 
 @app.get("/api/v1/docente/turmas")
@@ -754,6 +748,7 @@ async def listar_turmas_docente(authorization: str = Header(None)):
     vinculos_str = dados_prof.get("vinculos_json", "[]")
 
     try:
+        import json
         vinculos = json.loads(vinculos_str)
     except:
         vinculos = []
@@ -764,6 +759,7 @@ async def listar_turmas_docente(authorization: str = Header(None)):
             continue
 
         c_id = vinc.get("curso") or vinc.get("curso_id")
+        # Pega prioritariamente o nome da DISCIPLINA, senão pega o módulo
         mod_nome = vinc.get("disciplina") or vinc.get("modulo") or "Módulo/Disciplina"
         nome_curso = "Curso Vinculado"
         ch_total = 40
@@ -774,17 +770,21 @@ async def listar_turmas_docente(authorization: str = Header(None)):
             if c_ref.exists:
                 c_dados = c_ref.to_dict()
                 nome_curso = c_dados.get("nome_curso", "CURSO DESCONHECIDO")
+
                 nome_alvo = str(mod_nome).strip().upper()
 
+                # Busca na grade, navegando pelas sub-disciplinas se existirem
                 for m in c_dados.get("grade_curricular", []):
                     if not isinstance(m, dict): continue
 
+                    # 1. Tenta achar direto no primeiro nível (flat)
                     m_nome = str(m.get("nome") or m.get("disciplina") or "").strip().upper()
                     if m_nome == nome_alvo:
                         detalhes_modulo = m
                         ch_total = int(m.get("ch_total", m.get("carga_horaria", 40)))
                         break
 
+                    # 2. Tenta achar dentro do array 'disciplinas' (aninhado - Nível 2)
                     sub_disciplinas = m.get("disciplinas", [])
                     if isinstance(sub_disciplinas, list):
                         encontrou = False
@@ -804,16 +804,17 @@ async def listar_turmas_docente(authorization: str = Header(None)):
             "nome_disciplina": mod_nome,
             "curso_pai": nome_curso,
             "carga_horaria": ch_total,
-            "detalhes": detalhes_modulo
+            "detalhes": detalhes_modulo  # Agora enviará o objeto completo com Ementa, Horários, etc.
         })
 
     return turmas_formatadas
 
 
+# ROTA NOVA: Onde o professor atualiza as configurações da disciplina
 @app.post("/api/v1/docente/turmas/configurar")
 async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str = Header(None)):
     checar_db()
-    validar_token_docente(authorization)
+    docente_id = validar_token_docente(authorization)
 
     try:
         curso_id, nome_alvo = payload.turma_id.split("_", 1)
@@ -829,6 +830,7 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
 
     curso_dados = curso_doc.to_dict()
     grade = curso_dados.get("grade_curricular", [])
+
     modulo_atualizado = False
 
     def atualizar_obj(obj):
@@ -865,8 +867,10 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
     if not modulo_atualizado:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada na matriz do curso.")
 
+    # Salva os dados na grade
     curso_ref.update({"grade_curricular": grade})
 
+    # SISTEMA DE NOTIFICAÇÃO AO ALUNO
     if payload.justificativa and payload.justificativa.strip():
         nova_notificacao = {
             "tipo": "ALTERACAO_CRONOGRAMA",
@@ -884,11 +888,14 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
 
     return {"sucesso": True, "mensagem": mensagem_retorno}
 
-
 @app.post("/api/v1/docente/diario/salvar")
-async def salvar_diario_eletronico(payload: DiarioPayload, authorization: str = Header(None)):
+async def salvar_diario_eletronico(
+        payload: DiarioPayload,
+        authorization: str = Header(None)
+):
     checar_db()
     docente_id = validar_token_docente(authorization)
+
     avaliacoes_dict = [lancamento.model_dump() for lancamento in payload.lancamentos]
 
     registro_diario = {
@@ -904,8 +911,17 @@ async def salvar_diario_eletronico(payload: DiarioPayload, authorization: str = 
     return {"sucesso": True, "mensagem": "Diário registrado com sucesso!"}
 
 
+class MaterialPayload(BaseModel):
+    turma_id: str
+    titulo: str
+    url_arquivo: str
+    data_postagem: Optional[str] = None
+
 @app.post("/api/v1/docente/material/upload")
-async def upload_material_didatico(payload: MaterialPayload, authorization: str = Header(None)):
+async def upload_material_didatico(
+        payload: MaterialPayload,
+        authorization: str = Header(None)
+):
     checar_db()
     docente_id = validar_token_docente(authorization)
 
@@ -926,65 +942,24 @@ async def upload_material_didatico(payload: MaterialPayload, authorization: str 
 async def listar_materiais_docente(authorization: str = Header(None)):
     checar_db()
     docente_id = validar_token_docente(authorization)
+
     docs = db.collection("materiais_didaticos").where("docente_id", "==", docente_id).stream()
     materiais = []
 
     for doc in docs:
         m = doc.to_dict()
         m["id"] = doc.id
+
+        # Opcional: busca o nome amigável da turma/disciplina se necessário
         turma_id = m.get("turma_id", "")
         m["nome_turma"] = "Turma Vinculada"
         if "_" in turma_id:
             _, mod_nome = turma_id.split("_", 1)
             m["nome_turma"] = mod_nome
+
         materiais.append(m)
 
     return materiais
-
-
-@app.delete("/api/v1/docente/material/{material_id}")
-async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-    ref = db.collection("materiais_didaticos").document(material_id)
-    doc = ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Material não encontrado.")
-    if doc.to_dict().get("docente_id") != docente_id:
-        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
-
-    ref.delete()
-    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
-
-
-@app.put("/api/v1/docente/material/{material_id}")
-async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-    ref = db.collection("materiais_didaticos").document(material_id)
-    doc = ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Material não encontrado.")
-    if doc.to_dict().get("docente_id") != docente_id:
-        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
-
-    ref.update({"titulo": payload.titulo, "url_arquivo": payload.url_arquivo})
-    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
-
-
-@app.put("/api/v1/docente/perfil/atualizar")
-async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-    ref = db.collection("docentes").document(docente_id)
-
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Docente não encontrado.")
-
-    ref.update({"email": payload.email, "telefone": payload.telefone})
-    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
 
 
 # ==========================================
@@ -1060,7 +1035,7 @@ async def atualizar_configuracoes(
 
 
 # ==========================================
-# 9. MÓDULO DE DOCUMENTOS ACADÊMICOS & RELATÓRIOS PDF
+# 9. MÓDULO DE DOCUMENTOS ACADÊMICOS
 # ==========================================
 @app.get("/api/v1/documentos")
 async def listar_documentos():
@@ -1103,6 +1078,9 @@ async def registrar_emissao_documento(
     }
 
 
+# ==========================================
+# 9.1 GERAÇÃO DE PDF DE DOCUMENTOS ACADÊMICOS
+# ==========================================
 @app.get("/api/v1/documentos/{documento_id}/pdf")
 async def gerar_pdf_documento(documento_id: str):
     try:
@@ -1156,7 +1134,7 @@ async def gerar_pdf_documento(documento_id: str):
                     img.hAlign = 'CENTER'
                     elements.append(img)
                     elements.append(Spacer(1, 10))
-            except Exception:
+            except Exception as e:
                 pass
 
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
@@ -1217,6 +1195,9 @@ async def gerar_pdf_documento(documento_id: str):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
+# ==========================================
+# GERAÇÃO DO PDF DE RELATÓRIO DO CORPO DOCENTE
+# ==========================================
 @app.get("/api/v1/docentes/pdf")
 async def gerar_relatorio_docentes_pdf(q: str = None):
     try:
@@ -1315,6 +1296,9 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
+# ==========================================
+# GERAÇÃO DO PDF DE RELATÓRIO DE ALUNOS
+# ==========================================
 @app.get("/api/v1/alunos/pdf")
 async def gerar_relatorio_alunos_pdf(q: str = None):
     try:
@@ -1410,6 +1394,68 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
+@app.delete("/api/v1/docente/material/{material_id}")
+async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+
+    # Proteção: Garante que o professor só exclua materiais dele mesmo
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
+
+    ref.delete()
+    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
+
+
+@app.put("/api/v1/docente/material/{material_id}")
+async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+
+    # Proteção: Garante que o professor só edite materiais dele mesmo
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
+
+    ref.update({
+        "titulo": payload.titulo,
+        "url_arquivo": payload.url_arquivo
+    })
+
+    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
+
+
+@app.put("/api/v1/docente/perfil/atualizar")
+async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("docentes").document(docente_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Docente não encontrado.")
+
+    # Atualiza apenas os dados de contato
+    ref.update({
+        "email": payload.email,
+        "telefone": payload.telefone
+    })
+
+    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
+
+
 # ==========================================
 # 10. MÓDULO DO ALUNO (PORTAL DO ESTUDANTE)
 # ==========================================
@@ -1444,6 +1490,7 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
                         "curso": nome_curso
                     })
 
+    # Busca diários/notas para calcular média geral e faltas
     diarios_docs = db.collection("diarios").stream()
     total_faltas = 0
     soma_notas = 0
@@ -1457,10 +1504,8 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
                 notas_dict = lanc.get("notas", {})
                 for k, v in notas_dict.items():
                     try:
-                        if v is not None and str(v).strip() != '':
-                            v_clean = str(v).replace(',', '.')
-                            soma_notas += float(v_clean)
-                            qtd_notas += 1
+                        soma_notas += float(v)
+                        qtd_notas += 1
                     except:
                         pass
 
@@ -1526,20 +1571,15 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
         if not t_id.startswith(f"{curso_id}_"):
             continue
 
-        parts = t_id.split("_", 1)
-        if len(parts) > 1:
-            nome_disc = parts[1]
-            nome_disc_limpo = nome_disc.strip().upper()
+        _, nome_disc = t_id.split("_", 1)
+        nome_disc_limpo = nome_disc.strip().upper()
 
-            for lanc in d_data.get("avaliacoes", []):
-                if str(lanc.get("aluno_id")) == str(aluno_id):
-                    if nome_disc_limpo not in lancamentos_aluno:
-                        lancamentos_aluno[nome_disc_limpo] = {"faltas": 0, "notas": {}}
-                    try:
-                        lancamentos_aluno[nome_disc_limpo]["faltas"] += int(lanc.get("faltas", 0))
-                    except:
-                        pass
-                    lancamentos_aluno[nome_disc_limpo]["notas"].update(lanc.get("notas", {}))
+        for lanc in d_data.get("avaliacoes", []):
+            if str(lanc.get("aluno_id")) == str(aluno_id):
+                if nome_disc_limpo not in lancamentos_aluno:
+                    lancamentos_aluno[nome_disc_limpo] = {"faltas": 0, "notas": {}}
+                lancamentos_aluno[nome_disc_limpo]["faltas"] += int(lanc.get("faltas", 0))
+                lancamentos_aluno[nome_disc_limpo]["notas"].update(lanc.get("notas", {}))
 
     boletim_enriquecido = []
 
@@ -1562,21 +1602,14 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
             nome_limpo = nome_disc.strip().upper()
             dados_lancados = lancamentos_aluno.get(nome_limpo, {"faltas": 0, "notas": {}})
 
-            notas_vals = []
-            for v in dados_lancados["notas"].values():
-                if v is not None and str(v).strip() != '':
-                    try:
-                        v_clean = str(v).replace(',', '.')
-                        notas_vals.append(float(v_clean))
-                    except:
-                        pass
-
+            notas_vals = [float(v) for v in dados_lancados["notas"].values() if v is not None and str(v) != '']
             media_final = round(sum(notas_vals) / len(notas_vals), 1) if notas_vals else None
 
             situacao = "Cursando"
             if media_final is not None:
                 situacao = "Aprovado" if media_final >= 7.0 else "Em Recuperação"
 
+            # CAPTURA BLINDADA: Lê 'descricao' (salva pelo admin.html), 'ementa' ou qualquer outra variação
             ementa_oficial = (
                     disc_matriz.get("descricao") or
                     disc_matriz.get("ementa") or
@@ -1607,7 +1640,6 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
 
     return boletim_enriquecido
 
-
 @app.get("/api/v1/aluno/materiais/{curso_id}")
 async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None)):
     checar_db()
@@ -1634,7 +1666,8 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
 
     dados = doc.to_dict()
 
-    valor_mensalidade = 350.0
+    # Busca dados do curso para pegar o valor da mensalidade
+    valor_mensalidade = 350.0  # Valor padrão caso não encontre
     curso_id = dados.get("curso")
     if curso_id:
         c_doc = db.collection("cursos").document(curso_id).get()
