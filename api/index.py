@@ -24,7 +24,7 @@ from pydantic import BaseModel
 class LancamentoAluno(BaseModel):
     aluno_id: str
     faltas: int
-    notas: dict = {}
+    notas: dict = {}  # Aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
     nota_1: Optional[float] = None
     nota_2: Optional[float] = None
 
@@ -44,6 +44,29 @@ class MaterialEdicaoPayload(BaseModel):
 class PerfilDocentePayload(BaseModel):
     email: str
     telefone: str
+
+
+class MaterialPayload(BaseModel):
+    turma_id: str
+    titulo: str
+    url_arquivo: str
+    data_postagem: Optional[str] = None
+
+
+class TurmaConfigPayload(BaseModel):
+    turma_id: str
+    data_inicio: str = None
+    data_fim: str = None
+    ementa: str = None
+    ch_teoria: int = 0
+    ch_pratica: int = 0
+    ch_estagio: int = 0
+    ch_total: int = 0
+    dias_aula: List[str] = []
+    hora_inicio: str = None
+    hora_fim: str = None
+    avaliacoes: List[dict] = []
+    justificativa: str = None
 
 
 # ==========================================
@@ -168,7 +191,6 @@ async def matricular_aluno(
         email: str = Form(...),
         telefone: str = Form(...),
         endereco: str = Form(...),
-        curso_id: str = Form(None),
         curso: str = Form(None),
         cursos_json: str = Form("[]"),
         data_nascimento: str = Form(None),
@@ -178,13 +200,12 @@ async def matricular_aluno(
         aceite_termos: str = Form(None)
 ):
     checar_db()
-    c_id = curso_id or curso
     matricula_gerada = f"#{datetime.now().strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
 
     try:
         lista_cursos = json.loads(cursos_json)
     except Exception:
-        lista_cursos = [{"curso_id": c_id}] if c_id else []
+        lista_cursos = [{"curso_id": curso}] if curso else []
 
     novo_aluno = {
         "matricula": matricula_gerada,
@@ -193,14 +214,14 @@ async def matricular_aluno(
         "email": email,
         "telefone": telefone,
         "endereco": endereco,
-        "curso": c_id,
+        "curso": curso,
         "cursos_json": lista_cursos,
         "data_nascimento": data_nascimento,
         "dia_vencimento": dia_vencimento,
         "forma_pagamento": forma_pagamento,
         "pcd": pcd,
         "aceite_termos": aceite_termos,
-        "status": "Ativo",
+        "status": "Pendente",
         "data_cadastro": datetime.now().isoformat()
     }
 
@@ -216,26 +237,20 @@ async def alterar_aluno(
         email: str = Form(None),
         telefone: str = Form(None),
         endereco: str = Form(None),
-        curso_id: str = Form(None),
         curso: str = Form(None),
         cursos_json: str = Form(None),
         data_nascimento: str = Form(None),
         dia_vencimento: str = Form(None),
         forma_pagamento: str = Form(None),
         pcd: str = Form(None),
-        status: str = Form(None),
-        possui_pendencia_financeira: str = Form(None),
-        detalhes_pendencia_financeira: str = Form(None),
-        numero_nf: str = Form(None)
+        status: str = Form(None)
 ):
     checar_db()
     ref = db.collection("alunos").document(aluno_id)
-    doc_atual = ref.get()
 
-    if not doc_atual.exists:
+    if not ref.get().exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado.")
 
-    c_id = curso_id or curso
     lista_cursos = None
     if cursos_json is not None:
         try:
@@ -249,63 +264,22 @@ async def alterar_aluno(
         "email": email,
         "telefone": telefone,
         "endereco": endereco,
-        "curso": c_id,
+        "curso": curso,
         "cursos_json": lista_cursos,
         "data_nascimento": data_nascimento,
         "dia_vencimento": dia_vencimento,
         "forma_pagamento": forma_pagamento,
         "pcd": pcd,
         "status": status,
-        "possui_pendencia_financeira": possui_pendencia_financeira,
-        "detalhes_pendencia_financeira": detalhes_pendencia_financeira,
-        "numero_nf": numero_nf,
         "data_atualizacao": datetime.now().isoformat()
     }
 
     dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
+
     if dados_limpos:
         ref.update(dados_limpos)
 
     return {"sucesso": True, "mensagem": "Aluno atualizado com sucesso"}
-
-
-@app.post("/api/v1/alunos/{aluno_id}/pendencia")
-async def atualizar_pendencia_aluno(
-        aluno_id: str,
-        possui_pendencia: str = Form(None),
-        possui_pendencia_financeira: str = Form(None),
-        detalhes_pendencia: str = Form(None),
-        detalhes_pendencia_financeira: str = Form(None),
-        numero_nf: str = Form(None)
-):
-    checar_db()
-    ref = db.collection("alunos").document(aluno_id)
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-
-    pend = possui_pendencia_financeira or possui_pendencia or "Não"
-    det = detalhes_pendencia_financeira or detalhes_pendencia or ""
-
-    dados = {
-        "possui_pendencia_financeira": pend,
-        "detalhes_pendencia_financeira": det,
-        "status": "Pendente" if pend == "Sim" else "Ativo"
-    }
-    if numero_nf is not None:
-        dados["numero_nf"] = numero_nf
-
-    ref.update(dados)
-    return {"sucesso": True, "mensagem": "Situação financeira atualizada com sucesso!"}
-
-
-@app.post("/api/v1/alunos/{aluno_id}/nf")
-async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form(...)):
-    checar_db()
-    ref = db.collection("alunos").document(aluno_id)
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-    ref.update({"numero_nf": numero_nf})
-    return {"sucesso": True, "mensagem": "Nota Fiscal salva com sucesso!"}
 
 
 @app.delete("/api/v1/alunos/{aluno_id}")
@@ -456,10 +430,7 @@ async def atualizar_curso(
         valor_mensalidade: float = Form(...),
         descricao: str = Form(""),
         foto_capa: str = Form(""),
-        disciplinas_json: str = Form("[]"),
-        duracao: str = Form(None),
-        promocao_ativa: str = Form(None),
-        valor_promocional: str = Form(None)
+        disciplinas_json: str = Form("[]")
 ):
     checar_db()
     try:
@@ -472,14 +443,11 @@ async def atualizar_curso(
         "nome_curso": nome_curso.upper(),
         "categoria": categoria,
         "modalidade": modalidade,
-        "duracao": duracao,
         "valor_matricula": valor_matricula,
         "valor_mensalidade": valor_mensalidade,
         "descricao": descricao,
         "foto_capa": foto_capa,
         "grade_curricular": grade,
-        "promocao_ativa": promocao_ativa,
-        "valor_promocional": valor_promocional,
         "data_atualizacao": datetime.now().isoformat()
     }
 
@@ -686,48 +654,57 @@ async def gerar_pdf_curso(curso_id: str):
 # ==========================================
 # 5. MÓDULO FINANCEIRO
 # ==========================================
-@app.get("/api/v1/financeiro/indicadores")
-async def obter_indicadores_financeiros():
+@app.get("/api/v1/financeiro/mensalidades")
+async def listar_mensalidades():
     checar_db()
-    alunos_docs = list(db.collection("alunos").stream())
-    cursos_docs = {doc.id: doc.to_dict() for doc in db.collection("cursos").stream()}
+    docs = db.collection("mensalidades").stream()
+    return {"lista": [{"id": doc.id, **doc.to_dict()} for doc in docs]}
 
-    total_recebido = 0
-    total_receber = 0
-    inadimplencia = 0
-    pagamentos_mes = 0
 
-    for doc_aluno in alunos_docs:
-        dados = doc_aluno.to_dict()
-        c_id = dados.get("curso")
-        curso_info = cursos_docs.get(c_id, {})
+@app.post("/api/v1/financeiro/baixar/{mensalidade_id}")
+async def dar_baixa_mensalidade(mensalidade_id: str):
+    checar_db()
+    db.collection("mensalidades").document(mensalidade_id).update(
+        {"status": "Pago", "data_pagamento": datetime.now().isoformat()})
+    return {"sucesso": True, "mensagem": "Baixa realizada."}
 
-        valor = 0
-        if curso_info:
-            if curso_info.get("promocao_ativa") == "Sim" and curso_info.get("valor_promocional"):
-                try:
-                    valor = float(curso_info.get("valor_promocional"))
-                except:
-                    valor = float(curso_info.get("valor_mensalidade", 0))
-            else:
-                try:
-                    valor = float(curso_info.get("valor_mensalidade", 0))
-                except:
-                    valor = 0
 
-        if dados.get("possui_pendencia_financeira") == "Sim" or dados.get("status") == "Pendente":
-            inadimplencia += 1
-            total_receber += valor
-        else:
-            total_recebido += valor
-            pagamentos_mes += 1
-
-    return {
-        "total_recebido": total_recebido,
-        "total_receber": total_receber,
-        "inadimplencia": inadimplencia,
-        "pagamentos_mes": pagamentos_mes
+@app.post("/api/v1/financeiro/enviar-comprovante")
+async def aluno_enviar_comprovante(
+        aluno_id: str = Form(...),
+        mensalidade_id: str = Form(...),
+        referencia_pagamento: str = Form(...),
+        comprovante: UploadFile = File(...)
+):
+    checar_db()
+    dados_baixa = {
+        "aluno_id": aluno_id,
+        "mensalidade_id": mensalidade_id,
+        "referencia_pagamento": referencia_pagamento,
+        "nome_arquivo": comprovante.filename,
+        "status": "Em Análise",
+        "data_envio": datetime.now().isoformat()
     }
+    _, doc_ref = db.collection("comprovantes_pagamento").add(dados_baixa)
+    db.collection("mensalidades").document(mensalidade_id).update({
+        "status": "Em Análise",
+        "comprovante_id": doc_ref.id
+    })
+    return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso."}
+
+
+@app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
+async def auditar_e_quitar_mensalidade(
+        mensalidade_id: str,
+        acao: str = Form(...)
+):
+    checar_db()
+    novo_status = "Pago" if acao == 'aprovar' else "Rejeitado"
+    db.collection("mensalidades").document(mensalidade_id).update({
+        "status": novo_status,
+        "data_pagamento": datetime.now().isoformat() if acao == 'aprovar' else None
+    })
+    return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
 
 
 # ==========================================
@@ -760,24 +737,8 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
         "turmas_ativas": len(vinculos),
         "diarios_pendentes": 0,
         "aulas_semana": len(vinculos),
-        "curso_vinculado": vinculos[0].get("curso_id") if vinculos else None
+        "curso_vinculado": vinculos[0].get("curso") if vinculos else None
     }
-
-
-class TurmaConfigPayload(BaseModel):
-    turma_id: str
-    data_inicio: str = None
-    data_fim: str = None
-    ementa: str = None
-    ch_teoria: int = 0
-    ch_pratica: int = 0
-    ch_estagio: int = 0
-    ch_total: int = 0
-    dias_aula: List[str] = []
-    hora_inicio: str = None
-    hora_fim: str = None
-    avaliacoes: List[dict] = []
-    justificativa: str = None
 
 
 @app.get("/api/v1/docente/turmas")
@@ -802,8 +763,8 @@ async def listar_turmas_docente(authorization: str = Header(None)):
         if not isinstance(vinc, dict):
             continue
 
-        c_id = vinc.get("curso_id") or vinc.get("curso")
-        mod_nome = vinc.get("modulo") or vinc.get("disciplina") or "Módulo/Disciplina"
+        c_id = vinc.get("curso") or vinc.get("curso_id")
+        mod_nome = vinc.get("disciplina") or vinc.get("modulo") or "Módulo/Disciplina"
         nome_curso = "Curso Vinculado"
         ch_total = 40
         detalhes_modulo = {}
@@ -817,10 +778,11 @@ async def listar_turmas_docente(authorization: str = Header(None)):
 
                 for m in c_dados.get("grade_curricular", []):
                     if not isinstance(m, dict): continue
+
                     m_nome = str(m.get("nome") or m.get("disciplina") or "").strip().upper()
                     if m_nome == nome_alvo:
                         detalhes_modulo = m
-                        ch_total = int(m.get("ch_total", 40))
+                        ch_total = int(m.get("ch_total", m.get("carga_horaria", 40)))
                         break
 
                     sub_disciplinas = m.get("disciplinas", [])
@@ -831,10 +793,11 @@ async def listar_turmas_docente(authorization: str = Header(None)):
                             d_nome = str(disc.get("nome") or disc.get("disciplina") or "").strip().upper()
                             if d_nome == nome_alvo:
                                 detalhes_modulo = disc
-                                ch_total = int(disc.get("ch_total", 40))
+                                ch_total = int(disc.get("ch_total", disc.get("carga_horaria", 40)))
                                 encontrou = True
                                 break
-                        if encontrou: break
+                        if encontrou:
+                            break
 
         turmas_formatadas.append({
             "id": f"{c_id}_{mod_nome}",
@@ -871,7 +834,6 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
     def atualizar_obj(obj):
         obj["data_inicio"] = payload.data_inicio
         obj["data_fim"] = payload.data_fim
-        obj["descricao"] = payload.ementa
         obj["ementa"] = payload.ementa
         obj["ch_teoria"] = payload.ch_teoria
         obj["ch_pratica"] = payload.ch_pratica
@@ -897,13 +859,30 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
                     atualizar_obj(disc)
                     modulo_atualizado = True
                     break
-        if modulo_atualizado: break
+        if modulo_atualizado:
+            break
 
     if not modulo_atualizado:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada na matriz do curso.")
 
     curso_ref.update({"grade_curricular": grade})
-    return {"sucesso": True, "mensagem": "Configurações sincronizadas com sucesso!"}
+
+    if payload.justificativa and payload.justificativa.strip():
+        nova_notificacao = {
+            "tipo": "ALTERACAO_CRONOGRAMA",
+            "curso_id": curso_id,
+            "disciplina": nome_alvo,
+            "mensagem": f"Houve uma alteração de cronograma/horário na disciplina de {nome_alvo}. Motivo: {payload.justificativa.strip()}",
+            "data_envio": datetime.now().isoformat(),
+            "remetente": "Portal do Professor",
+            "importante": True
+        }
+        db.collection("notificacoes_alunos").add(nova_notificacao)
+        mensagem_retorno = "Alterações salvas e alunos notificados com sucesso!"
+    else:
+        mensagem_retorno = "Configurações sincronizadas com a secretaria!"
+
+    return {"sucesso": True, "mensagem": mensagem_retorno}
 
 
 @app.post("/api/v1/docente/diario/salvar")
@@ -923,13 +902,6 @@ async def salvar_diario_eletronico(payload: DiarioPayload, authorization: str = 
 
     db.collection("diarios").add(registro_diario)
     return {"sucesso": True, "mensagem": "Diário registrado com sucesso!"}
-
-
-class MaterialPayload(BaseModel):
-    turma_id: str
-    titulo: str
-    url_arquivo: str
-    data_postagem: Optional[str] = None
 
 
 @app.post("/api/v1/docente/material/upload")
@@ -961,10 +933,58 @@ async def listar_materiais_docente(authorization: str = Header(None)):
         m = doc.to_dict()
         m["id"] = doc.id
         turma_id = m.get("turma_id", "")
-        m["nome_turma"] = turma_id.split("_")[1] if "_" in turma_id else "Turma Vinculada"
+        m["nome_turma"] = "Turma Vinculada"
+        if "_" in turma_id:
+            _, mod_nome = turma_id.split("_", 1)
+            m["nome_turma"] = mod_nome
         materiais.append(m)
 
     return materiais
+
+
+@app.delete("/api/v1/docente/material/{material_id}")
+async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
+
+    ref.delete()
+    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
+
+
+@app.put("/api/v1/docente/material/{material_id}")
+async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
+
+    ref.update({"titulo": payload.titulo, "url_arquivo": payload.url_arquivo})
+    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
+
+
+@app.put("/api/v1/docente/perfil/atualizar")
+async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+    ref = db.collection("docentes").document(docente_id)
+
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Docente não encontrado.")
+
+    ref.update({"email": payload.email, "telefone": payload.telefone})
+    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
 
 
 # ==========================================
@@ -976,20 +996,22 @@ async def obter_indicadores_dashboard():
     alunos_docs = list(db.collection("alunos").stream())
     docentes_docs = list(db.collection("docentes").stream())
     cursos_docs = list(db.collection("cursos").stream())
+    mensalidades_docs = list(db.collection("mensalidades").stream())
 
     total_alunos = len(alunos_docs)
     total_docentes = len(docentes_docs)
     total_cursos = len(cursos_docs)
-
-    inadimplencia_total = sum(1 for a in alunos_docs if a.to_dict().get("possui_pendencia_financeira") == "Sim")
+    alunos_pendentes = len([a for a in alunos_docs if a.to_dict().get("status") == "Pendente"])
+    mensalidades_atrasadas = len([m for m in mensalidades_docs if m.to_dict().get("status") == "Atrasado"])
+    total_mensalidades = len(mensalidades_docs) if mensalidades_docs else 1
+    inadimplencia = round((mensalidades_atrasadas / total_mensalidades) * 100, 1) if mensalidades_docs else 0
 
     return {
         "total_alunos": total_alunos,
         "total_docentes": total_docentes,
         "total_cursos": total_cursos,
-        "turmas_ativas": total_cursos,
-        "total_inadimplencia": inadimplencia_total,
-        "notificacoes": []
+        "alunos_pendentes": alunos_pendentes,
+        "inadimplencia_percent": f"{inadimplencia}%"
     }
 
 
@@ -1007,9 +1029,9 @@ async def obter_configuracoes():
         "nome_instituicao": "UNIVEAS",
         "cnpj": "53.199.321/0001-23",
         "email": "contato@univeas.com.br",
-        "telefone": "(91) 98325-2639",
+        "telefone": "(91) 90000-0000",
         "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA",
-        "cor_tema": "#14b8a6"
+        "cor_tema": "#0f766e"
     }
 
 
@@ -1017,18 +1039,18 @@ async def obter_configuracoes():
 async def atualizar_configuracoes(
         nome_instituicao: str = Form(None),
         cnpj: str = Form(None),
-        telefone_instituicao: str = Form(None),
-        email_instituicao: str = Form(None),
-        endereco_instituicao: str = Form(None),
+        telefone: str = Form(None),
+        email: str = Form(None),
+        endereco: str = Form(None),
         cor_tema: str = Form(None)
 ):
     checar_db()
     dados_atualizados = {
         "nome_instituicao": nome_instituicao,
         "cnpj": cnpj,
-        "telefone": telefone_instituicao,
-        "email": email_instituicao,
-        "endereco": endereco_instituicao,
+        "telefone": telefone,
+        "email": email,
+        "endereco": endereco,
         "cor_tema": cor_tema,
         "data_atualizacao": datetime.now().isoformat()
     }
@@ -1038,7 +1060,7 @@ async def atualizar_configuracoes(
 
 
 # ==========================================
-# 9. MÓDULO DE DOCUMENTOS ACADÊMICOS
+# 9. MÓDULO DE DOCUMENTOS ACADÊMICOS & RELATÓRIOS PDF
 # ==========================================
 @app.get("/api/v1/documentos")
 async def listar_documentos():
@@ -1124,6 +1146,19 @@ async def gerar_pdf_documento(documento_id: str):
         )
 
         elements = []
+        logo_url = "https://i.imgur.com/ki7mdS2.png"
+        if logo_url:
+            try:
+                req = urllib.request.Request(logo_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    img_data = io.BytesIO(response.read())
+                    img = Image(img_data, width=80, height=80)
+                    img.hAlign = 'CENTER'
+                    elements.append(img)
+                    elements.append(Spacer(1, 10))
+            except Exception:
+                pass
+
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
         elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", subtitle_style))
         elements.append(Spacer(1, 10))
@@ -1142,8 +1177,12 @@ async def gerar_pdf_documento(documento_id: str):
             if c_ref.exists:
                 nome_curso = c_ref.to_dict().get("nome_curso", nome_curso).upper()
 
-        texto = f"Declaramos para os devidos fins que o(a) aluno(a) <b>{nome}</b>, CPF <b>{cpf}</b>, está regularmente matriculado(a) na instituição {sys_dados.get('nome_instituicao')}, sob a matrícula <b>{matricula}</b>, no curso de <b>{nome_curso}</b>."
-        elements.append(Paragraph(texto, body_style))
+        if "DECLARAÇÃO" in tipo_doc:
+            texto = f"Declaramos para os devidos fins de comprovação que o(a) aluno(a) <b>{nome}</b>, portador(a) do CPF <b>{cpf}</b>, está regularmente matriculado(a) na instituição de ensino {sys_dados.get('nome_instituicao')}, sob a matrícula <b>{matricula}</b>, no curso de <b>{nome_curso}</b>."
+            elements.append(Paragraph(texto, body_style))
+        else:
+            texto = f"Certificamos que o registro acadêmico referente ao(à) aluno(a) <b>{nome}</b>, matrícula <b>{matricula}</b> (CPF: {cpf}), vinculado(a) ao curso de <b>{nome_curso}</b>, encontra-se documentado nos arquivos desta instituição."
+            elements.append(Paragraph(texto, body_style))
 
         data_atual = datetime.now().strftime("%d/%m/%Y")
         elements.append(Spacer(1, 40))
@@ -1158,6 +1197,12 @@ async def gerar_pdf_documento(documento_id: str):
             [('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
              ('FONTSIZE', (0, 0), (-1, -1), 10)]))
         elements.append(sig_table)
+        elements.append(Spacer(1, 40))
+
+        cod_val = dados_emissao.get('codigo_validacao', 'N/A')
+        elements.append(
+            Paragraph(f"Documento emitido digitalmente via SIGA UNIVEAS.<br/>Código de Autenticidade: <b>{cod_val}</b>",
+                      footer_style))
 
         pdf.build(elements)
         buffer.seek(0)
@@ -1176,116 +1221,193 @@ async def gerar_pdf_documento(documento_id: str):
 async def gerar_relatorio_docentes_pdf(q: str = None):
     try:
         checar_db()
+        sys_ref = db.collection("sistema").document("configuracoes").get()
+        sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+            "nome_instituicao": "UNIVEAS",
+            "cnpj": "53.199.321/0001-23",
+            "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+        }
+
         docs = db.collection("docentes").stream()
         docentes = [{"id": d.id, **d.to_dict()} for d in docs]
 
         if q:
             q_lower = q.lower()
-            docentes = [d for d in docentes if
-                        q_lower in str(d.get("nome", "")).lower() or q_lower in str(d.get("registro", "")).lower()]
+            docentes = [
+                d for d in docentes
+                if q_lower in str(d.get("nome", "")).lower() or
+                   q_lower in str(d.get("registro", "")).lower() or
+                   q_lower in str(d.get("cpf", "")).lower()
+            ]
 
         buffer = io.BytesIO()
         pdf = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40)
+
         elements = []
         styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14,
+                                     alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e'))
+        subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=9,
+                                        alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155'))
 
-        elements.append(Paragraph("<b>RELATÓRIO DO CORPO DOCENTE</b>",
-                                  ParagraphStyle('Title', parent=styles['Normal'], fontName='Helvetica-Bold',
-                                                 fontSize=14, alignment=TA_CENTER, spaceAfter=20)))
+        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
+        elements.append(
+            Paragraph(f"CNPJ: {sys_dados.get('cnpj', '')} | {sys_dados.get('endereco', '')}", subtitle_style))
+        elements.append(Paragraph("<b>RELATÓRIO GERAL DO CORPO DOCENTE</b>",
+                                  ParagraphStyle('ReportTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                                 fontSize=12, alignment=TA_CENTER, spaceAfter=15,
+                                                 textColor=colors.HexColor('#0f172a'))))
 
-        table_data = [['REGISTRO', 'NOME', 'TELEFONE', 'TIPO']]
+        if q:
+            elements.append(Paragraph(f"<i>Filtro aplicado: '{q}'</i>",
+                                      ParagraphStyle('FilterText', parent=styles['Normal'],
+                                                     fontName='Helvetica-Oblique', fontSize=9, alignment=TA_CENTER,
+                                                     spaceAfter=15, textColor=colors.HexColor('#64748b'))))
+
+        table_data = [['REGISTRO', 'NOME DO PRESTADOR', 'TELEFONE', 'TIPO / TURNO', 'MÓDULO VINCULADO']]
         for d in docentes:
-            table_data.append(
-                [str(d.get('registro', '-')), str(d.get('nome', '-')).upper(), str(d.get('telefone', '-')),
-                 str(d.get('tipo_profissional', '-')).title()])
+            nome = str(d.get('nome') or d.get('nome_prestador') or '-').upper()
+            registro = str(d.get('registro') or '-')
+            telefone = str(d.get('telefone') or d.get('telefone_prestador') or '-')
+            tipo = str(d.get('tipo_profissional', '')).title()
+            turno = str(d.get('turno_atuacao', '')).title()
+            tipo_turno = f"{tipo}\n({turno})" if tipo else '-'
+            vinculo = str(d.get('modulo_vinculado') or 'Múltiplos / Geral').upper()
+            table_data.append([registro, nome, telefone, tipo_turno, vinculo])
 
-        t_obj = Table(table_data, colWidths=[80, 200, 100, 150])
+        if len(docentes) == 0:
+            table_data.append(['Nenhum docente encontrado para os critérios de busca.', '', '', '', ''])
+
+        t_obj = Table(table_data, colWidths=[60, 160, 80, 90, 145])
         t_obj.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1'))
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'), ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8), ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'), ('ALIGN', (2, 1), (3, -1), 'CENTER'),
+            ('ALIGN', (4, 1), (4, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
         ]))
+
+        if len(docentes) == 0:
+            t_obj.setStyle(TableStyle([('SPAN', (0, 1), (-1, 1)), ('ALIGN', (0, 1), (-1, 1), 'CENTER')]))
+
         elements.append(t_obj)
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(f"Total de registros encontrados: {len(docentes)}",
+                                  ParagraphStyle('TotalText', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                                 fontSize=9, textColor=colors.HexColor('#334155'))))
+
+        data_atual = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(f"Documento gerado em {data_atual} via Sistema SIGA UNIVEAS",
+                                  ParagraphStyle('FooterText', parent=styles['Normal'], fontName='Helvetica-Oblique',
+                                                 fontSize=8, textColor=colors.gray, alignment=TA_CENTER)))
+
         pdf.build(elements)
         buffer.seek(0)
         return Response(content=buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=Relatorio_Docentes.pdf"})
+                        headers={"Content-Disposition": "attachment; filename=Relatorio_Docentes_UNIVEAS.pdf"})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
 @app.get("/api/v1/alunos/pdf")
 async def gerar_relatorio_alunos_pdf(q: str = None):
     try:
         checar_db()
+        sys_ref = db.collection("sistema").document("configuracoes").get()
+        sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+            "nome_instituicao": "UNIVEAS",
+            "cnpj": "53.199.321/0001-23",
+            "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+        }
+
         docs = db.collection("alunos").stream()
         alunos = [{"id": d.id, **d.to_dict()} for d in docs]
 
         if q:
             q_lower = q.lower()
-            alunos = [a for a in alunos if
-                      q_lower in str(a.get("nome", "")).lower() or q_lower in str(a.get("matricula", "")).lower()]
+            alunos = [
+                a for a in alunos
+                if q_lower in str(a.get("nome", "")).lower() or
+                   q_lower in str(a.get("matricula", "")).lower() or
+                   q_lower in str(a.get("cpf", "")).lower()
+            ]
 
         buffer = io.BytesIO()
         pdf = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=40)
+
         elements = []
         styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14,
+                                     alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e'))
+        subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=9,
+                                        alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155'))
 
-        elements.append(Paragraph("<b>RELATÓRIO DE ALUNOS MATRICULADOS</b>",
-                                  ParagraphStyle('Title', parent=styles['Normal'], fontName='Helvetica-Bold',
-                                                 fontSize=14, alignment=TA_CENTER, spaceAfter=20)))
+        elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
+        elements.append(
+            Paragraph(f"CNPJ: {sys_dados.get('cnpj', '')} | {sys_dados.get('endereco', '')}", subtitle_style))
+        elements.append(Paragraph("<b>RELATÓRIO GERAL DE ALUNOS MATRICULADOS</b>",
+                                  ParagraphStyle('ReportTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                                 fontSize=12, alignment=TA_CENTER, spaceAfter=15,
+                                                 textColor=colors.HexColor('#0f172a'))))
 
-        table_data = [['MATRÍCULA', 'NOME', 'TELEFONE', 'STATUS']]
+        if q:
+            elements.append(Paragraph(f"<i>Filtro aplicado: '{q}'</i>",
+                                      ParagraphStyle('FilterText', parent=styles['Normal'],
+                                                     fontName='Helvetica-Oblique', fontSize=9, alignment=TA_CENTER,
+                                                     spaceAfter=15, textColor=colors.HexColor('#64748b'))))
+
+        table_data = [['MATRÍCULA', 'NOME DO ALUNO', 'CPF', 'TELEFONE', 'STATUS']]
         for a in alunos:
-            table_data.append(
-                [str(a.get('matricula', '-')), str(a.get('nome', '-')).upper(), str(a.get('telefone', '-')),
-                 str(a.get('status', 'Ativo')).upper()])
+            nome = str(a.get('nome') or '-').upper()
+            matricula = str(a.get('matricula') or '-')
+            cpf = str(a.get('cpf') or '-')
+            telefone = str(a.get('telefone') or '-')
+            status = str(a.get('status') or 'Pendente').upper()
+            table_data.append([matricula, nome, cpf, telefone, status])
 
-        t_obj = Table(table_data, colWidths=[90, 220, 100, 120])
+        if len(alunos) == 0:
+            table_data.append(['Nenhum aluno encontrado para os critérios de busca.', '', '', '', ''])
+
+        t_obj = Table(table_data, colWidths=[75, 175, 90, 90, 105])
         t_obj.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1'))
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'), ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8), ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'), ('ALIGN', (2, 1), (4, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'), ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
         ]))
+
+        if len(alunos) == 0:
+            t_obj.setStyle(TableStyle([('SPAN', (0, 1), (-1, 1)), ('ALIGN', (0, 1), (-1, 1), 'CENTER')]))
+
         elements.append(t_obj)
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph(f"Total de registros encontrados: {len(alunos)}",
+                                  ParagraphStyle('TotalText', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                                 fontSize=9, textColor=colors.HexColor('#334155'))))
+
+        data_atual = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(f"Documento gerado em {data_atual} via Sistema SIGA UNIVEAS",
+                                  ParagraphStyle('FooterText', parent=styles['Normal'], fontName='Helvetica-Oblique',
+                                                 fontSize=8, textColor=colors.gray, alignment=TA_CENTER)))
+
         pdf.build(elements)
         buffer.seek(0)
         return Response(content=buffer.getvalue(), media_type="application/pdf",
-                        headers={"Content-Disposition": "attachment; filename=Relatorio_Alunos.pdf"})
+                        headers={"Content-Disposition": "attachment; filename=Relatorio_Alunos_UNIVEAS.pdf"})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.delete("/api/v1/docente/material/{material_id}")
-async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
-    checar_db()
-    validar_token_docente(authorization)
-    db.collection("materiais_didaticos").document(material_id).delete()
-    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
-
-
-@app.put("/api/v1/docente/material/{material_id}")
-async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
-    checar_db()
-    validar_token_docente(authorization)
-    db.collection("materiais_didaticos").document(material_id).update({
-        "titulo": payload.titulo,
-        "url_arquivo": payload.url_arquivo
-    })
-    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
-
-
-@app.put("/api/v1/docente/perfil/atualizar")
-async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-    db.collection("docentes").document(docente_id).update({
-        "email": payload.email,
-        "telefone": payload.telefone
-    })
-    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
 # ==========================================
@@ -1347,7 +1469,7 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
     return {
         "media_geral": media_geral,
         "faltas_totais": total_faltas,
-        "status_financeiro": "Regular" if aluno_dados.get("possui_pendencia_financeira") != "Sim" else "Pendente",
+        "status_financeiro": "Regular" if aluno_dados.get("status") == "Ativo" else "Pendente",
         "disciplinas_atuais": disciplinas_atuais[:3]
     }
 
@@ -1489,13 +1611,15 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
 @app.get("/api/v1/aluno/materiais/{curso_id}")
 async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None)):
     checar_db()
-    validar_token_aluno(authorization)
+    aluno_id = validar_token_aluno(authorization)
+
     materiais = []
     docs = db.collection("materiais_didaticos").stream()
     for doc in docs:
         m = doc.to_dict()
         if curso_id in m.get("turma_id", ""):
             materiais.append({"id": doc.id, **m})
+
     return materiais
 
 
@@ -1509,23 +1633,13 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
 
     dados = doc.to_dict()
+
     valor_mensalidade = 350.0
     curso_id = dados.get("curso")
-
     if curso_id:
         c_doc = db.collection("cursos").document(curso_id).get()
         if c_doc.exists:
-            c_info = c_doc.to_dict()
-            if c_info.get("promocao_ativa") == "Sim" and c_info.get("valor_promocional"):
-                try:
-                    valor_mensalidade = float(c_info.get("valor_promocional"))
-                except:
-                    pass
-            else:
-                try:
-                    valor_mensalidade = float(c_info.get("valor_mensalidade", 350.0))
-                except:
-                    pass
+            valor_mensalidade = c_doc.to_dict().get("valor_mensalidade", 350.0)
 
     return {
         "cpf": dados.get("cpf"),
@@ -1534,7 +1648,7 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
         "endereco": dados.get("endereco"),
         "dia_vencimento": dados.get("dia_vencimento", 10),
         "valor_mensalidade": valor_mensalidade,
-        "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não")
+        "possui_pendencia_financeira": "Sim" if dados.get("status") == "Pendente" else "Não"
     }
 
 
