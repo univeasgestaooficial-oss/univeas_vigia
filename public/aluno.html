@@ -903,12 +903,6 @@ async function renderizarDashboardAluno() {
         return;
     }
 
-    // Busca segura pela capa padrão do curso atual sem depender do elemento DOM instável
-    const selectBoletimEl = document.getElementById('select-curso-boletim');
-    const cursoIdAtivo = selectBoletimEl ? selectBoletimEl.value : (cursosDoAluno[0]?.id || '');
-    const cursoAtualObj = cursosDoAluno.find(c => c.id === cursoIdAtivo) || cursosDoAluno[0];
-    const fotoCapaCursoPadrao = cursoAtualObj?.foto_capa || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
-
     const semestres = {};
     let semestreAtivo = null;
 
@@ -941,8 +935,11 @@ async function renderizarDashboardAluno() {
         let cardsHTML = '';
 
         semObj.disciplinas.forEach(d => {
-            // Se o módulo tem foto própria usa ela, senão herda a capa do curso do admin.html
-            const foto = (d.foto_modulo && d.foto_modulo.trim() !== '') ? d.foto_modulo : fotoCapaCursoPadrao;
+            // CORREÇÃO: Pega estritamente a foto da disciplina específica (`d.foto_modulo`). Se não houver, usa a padrão neutra do Unsplash.
+            const foto = (d.foto_modulo && d.foto_modulo.trim() !== '') 
+                ? d.foto_modulo 
+                : 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=500&auto=format&fit=crop';
+            
             let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
 
             if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
