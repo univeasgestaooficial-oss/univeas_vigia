@@ -3,12 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNIVEAS - Educação Técnica e Superior </title>
+    <title>UNIVEAS - UNIÃO VIGIENSE DE ENSINO E ASSISTÊNCIA EM SAÚDE</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animações Suaves ao Rolar a Página */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1), transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform;
+        }
+        .reveal-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .reveal-delay-1 { transition-delay: 0.12s; }
+        .reveal-delay-2 { transition-delay: 0.24s; }
+        .reveal-delay-3 { transition-delay: 0.36s; }
 
         /* Modo Alto Contraste (e-MAG) */
         body.alto-contraste,
@@ -41,21 +56,21 @@
     <!-- ==========================================
          BARRA DE ACESSIBILIDADE INSTITUCIONAL
          ========================================== -->
-    <div class="bg-slate-950 text-gray-200 text-xs py-2 px-6 border-b border-slate-800 fixed top-0 left-0 right-0 z-50">
-        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center space-x-4">
+    <div class="bg-slate-950 text-gray-200 text-xs py-1.5 sm:py-2 px-4 sm:px-6 border-b border-slate-800 fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-3 sm:space-x-4 text-[11px] sm:text-xs">
                 <a href="#conteudo-principal" class="hover:text-teal-400 transition underline">Conteúdo [1]</a>
                 <a href="#secao-video" class="hover:text-teal-400 transition underline hidden sm:inline">Diferenciais [2]</a>
-                <a href="#cursos" class="hover:text-teal-400 transition underline hidden sm:inline">Cursos [3]</a>
+                <a href="#credenciamento-mec" class="hover:text-teal-400 transition underline hidden sm:inline">Selo MEC [3]</a>
             </div>
-            <div class="flex items-center space-x-2">
-                <span class="text-[11px] text-gray-400 uppercase font-bold mr-1 hidden sm:inline">Acessibilidade:</span>
-                <button onclick="alterarTamanhoFonte(-1)" title="Diminuir fonte" class="px-2 py-0.5 bg-slate-800 hover:bg-teal-600 text-white rounded font-bold transition">A-</button>
-                <button onclick="resetarTamanhoFonte()" title="Fonte padrão" class="px-2 py-0.5 bg-slate-800 hover:bg-teal-600 text-white rounded font-bold transition">A</button>
-                <button onclick="alterarTamanhoFonte(1)" title="Aumentar fonte" class="px-2 py-0.5 bg-slate-800 hover:bg-teal-600 text-white rounded font-bold transition">A+</button>
+            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                <span class="text-[11px] text-gray-400 uppercase font-bold mr-1 hidden md:inline">Acessibilidade:</span>
+                <button onclick="alterarTamanhoFonte(-1)" title="Diminuir fonte" class="px-2 py-0.5 bg-slate-800 hover:bg-teal-600 text-white rounded font-bold transition text-[11px]">A-</button>
+                <button onclick="resetarTamanhoFonte()" title="Fonte padrão" class="px-2 py-0.5 bg-slate-800 hover:bg-teal-600 text-white rounded font-bold transition text-[11px]">A</button>
+                <button onclick="alterarTamanhoFonte(1)" title="Aumentar fonte" class="px-2 py-0.5 bg-slate-800 hover:bg-teal-600 text-white rounded font-bold transition text-[11px]">A+</button>
                 <span class="text-slate-600">|</span>
-                <button onclick="alternarAltoContraste()" title="Alto Contraste" class="px-2.5 py-0.5 bg-slate-800 hover:bg-yellow-500 hover:text-black text-white rounded font-bold transition flex items-center gap-1">
-                    <i data-feather="eye" class="w-3 h-3"></i> Contraste
+                <button onclick="alternarAltoContraste()" title="Alto Contraste" class="px-2 sm:px-2.5 py-0.5 bg-slate-800 hover:bg-yellow-500 hover:text-black text-white rounded font-bold transition flex items-center gap-1 text-[11px]">
+                    <i data-feather="eye" class="w-3 h-3"></i> <span class="hidden xs:inline">Contraste</span>
                 </button>
             </div>
         </div>
@@ -64,38 +79,59 @@
     <!-- ==========================================
          HEADER / MENU + BOTÕES DE ACESSO E INSCRIÇÃO
          ========================================== -->
-    <header class="fixed top-9 left-0 right-0 bg-white/100 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <a href="index.html" class="flex items-center space-x-3 shrink-0 group">
-                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-12 w-auto object-contain">
-                <div class="flex flex-col leading-tight border-l border-gray-200 pl-3">
-                    <span class="text-lg sm:text-xl font-black text-gray-900 tracking-tight group-hover:text-teal-600 transition-colors">
+    <header class="fixed top-8 sm:top-9 left-0 right-0 bg-white/100 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
+            <a href="#secao-video" class="flex items-center space-x-2.5 sm:space-x-3 shrink-0 group min-w-0">
+                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-10 sm:h-12 w-auto object-contain shrink-0">
+                <div class="flex flex-col leading-tight border-l border-gray-200 pl-2.5 sm:pl-3">
+                    <span class="text-base sm:text-xl font-black text-gray-900 tracking-tight group-hover:text-teal-600 transition-colors">
                         UNIVEAS
                     </span>
-                    <span class="text-[10px] sm:text-xs font-bold text-teal-600 uppercase tracking-wider">
-                        Educação Técnica e Superior
+                    <span class="text-[8px] sm:text-[11px] font-bold text-teal-600 uppercase tracking-wider leading-tight">
+                        UNIÃO VIGIENSE DE ENSINO <br>E ASSISTÊNCIA EM SAÚDE
                     </span>
                 </div>
             </a>
 
             <nav class="hidden lg:flex items-center space-x-7 text-sm font-bold text-gray-600">
-                <a href="#secao-video" class="hover:text-teal-600 transition-colors">A UNIVEAS</a>
-                <a href="#cursos" class="hover:text-teal-600 transition-colors">Cursos</a>
+                <a href="#secao-video" class="hover:text-teal-600 transition-colors">Diferenciais</a>
                 <a href="#credenciamento-mec" class="hover:text-teal-600 transition-colors">Selo MEC</a>
                 <a href="#aplicativos" class="hover:text-teal-600 transition-colors text-teal-600">Baixar App</a>
                 <a href="#localizacao" class="hover:text-teal-600 transition-colors">Contato</a>
             </nav>
 
-            <div class="flex items-center space-x-2.5">
+            <div class="flex items-center space-x-2 shrink-0">
                 <a href="aluno.html" class="hidden sm:inline-flex items-center px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider hover:border-teal-500 hover:text-teal-600 transition">
                     Área do Aluno
                 </a>
                 <a href="professor.html" class="hidden md:inline-flex items-center px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider hover:border-teal-500 hover:text-teal-600 transition">
                     Docente
                 </a>
-                <button onclick="abrirModalInscricao()" class="px-5 py-2.5 rounded-xl bg-teal-600 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-teal-600/20 hover:bg-teal-700 hover:-translate-y-0.5 transition flex items-center gap-1.5">
-                    <i data-feather="user-plus" class="w-4 h-4"></i> Inscreva-se
+                <button onclick="abrirModalInscricao()" class="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-teal-600 text-white font-black text-[11px] sm:text-xs uppercase tracking-wider shadow-md shadow-teal-600/20 hover:bg-teal-700 active:scale-95 transition flex items-center gap-1.5">
+                    <i data-feather="user-plus" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> <span>Inscreva-se</span>
                 </button>
+                <!-- Botão Menu Mobile -->
+                <button onclick="alternarMenuMobile()" aria-label="Abrir menu" class="lg:hidden p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
+                    <i id="icon-menu-mobile" data-feather="menu" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Gaveta de Navegação Mobile -->
+        <div id="menu-mobile" class="hidden lg:hidden bg-white border-t border-gray-100 px-6 py-5 shadow-xl space-y-4">
+            <nav class="flex flex-col space-y-3 text-sm font-bold text-gray-700">
+                <a href="#secao-video" onclick="fecharMenuMobile()" class="py-1.5 hover:text-teal-600 transition">Diferenciais da Escola</a>
+                <a href="#credenciamento-mec" onclick="fecharMenuMobile()" class="py-1.5 hover:text-teal-600 transition">Certificação e Selo MEC</a>
+                <a href="#aplicativos" onclick="fecharMenuMobile()" class="py-1.5 text-teal-600 transition">Baixar Aplicativo UNIVEAS</a>
+                <a href="#localizacao" onclick="fecharMenuMobile()" class="py-1.5 hover:text-teal-600 transition">Onde Estamos / Contato</a>
+            </nav>
+            <div class="pt-3 border-t border-gray-100 grid grid-cols-2 gap-3">
+                <a href="aluno.html" class="py-2.5 px-3 rounded-xl border border-teal-500 text-teal-700 font-black text-xs uppercase text-center hover:bg-teal-50 transition">
+                    Área do Aluno
+                </a>
+                <a href="professor.html" class="py-2.5 px-3 rounded-xl bg-slate-900 text-white font-black text-xs uppercase text-center hover:bg-slate-800 transition">
+                    Portal Docente
+                </a>
             </div>
         </div>
     </header>
@@ -103,74 +139,63 @@
     <main id="conteudo-principal">
 
         <!-- ==========================================
-             1. SLIDES / CARROSSEL PRINCIPAL (CONFORME RASCUNHO)
+             1. SLIDES / CARROSSEL PRINCIPAL
              ========================================== -->
-        <section class="relative pt-36 pb-16 md:pt-44 md:pb-24 bg-slate-900 text-white overflow-hidden">
-            <div class="max-w-7xl mx-auto px-6 relative z-10">
-                <!-- Container do Slide Ativo -->
-                <div id="slider-hero" class="relative rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl min-h-[430px] flex items-center">
-                    <!-- Fundo dinâmico do slide -->
+        <section class="relative pt-28 pb-12 sm:pt-36 sm:pb-16 md:pt-44 md:pb-24 bg-slate-900 text-white overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+                <div id="slider-hero" class="relative rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl min-h-[410px] sm:min-h-[440px] flex items-center">
                     <img id="slide-bg" src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1600&auto=format&fit=crop" alt="Banner UNIVEAS" class="absolute inset-0 w-full h-full object-cover opacity-35 transition-all duration-700">
-                    <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-900/40"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-900/50"></div>
 
-                    <div class="relative z-10 p-8 md:p-14 max-w-3xl space-y-5">
-                        <!-- Selo superior -->
-                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 text-xs font-black uppercase tracking-widest">
-                            <i data-feather="shield" class="w-3.5 h-3.5"></i>
+                    <div class="relative z-10 p-6 sm:p-10 md:p-14 pb-20 sm:pb-14 max-w-3xl space-y-4 sm:space-y-5">
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 text-[10px] sm:text-xs font-black uppercase tracking-widest">
+                            <i data-feather="shield" class="w-3.5 h-3.5 shrink-0"></i>
                             <span id="slide-tag">Instituição Autorizada pelo MEC</span>
                         </div>
 
-                        <!-- Chamada Principal -->
-                        <p class="text-teal-400 font-bold text-sm md:text-base uppercase tracking-wider">
+                        <p class="text-teal-400 font-bold text-xs sm:text-sm md:text-base uppercase tracking-wider">
                             Transforme seu futuro com educação técnica
                         </p>
 
-                        <!-- Título do Curso / Destaque do Slide -->
-                        <h1 id="slide-titulo" class="text-3xl md:text-5xl font-black tracking-tight leading-tight text-white">
+                        <h1 id="slide-titulo" class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight text-white">
                             Curso Técnico em Enfermagem
                         </h1>
 
-                        <!-- Subtítulo / Oferta -->
-                        <p id="slide-subtitulo" class="text-gray-300 text-base md:text-lg font-medium leading-relaxed">
-                            Matricule-se com desconto especial de lançamento! Formação completa com estágios supervisionados e certificação nacional.
+                        <p id="slide-subtitulo" class="text-gray-300 text-sm sm:text-base md:text-lg font-medium leading-relaxed">
+                            Matricule-se com desconto especial! Aulas práticas em laboratório, cenários realistas e estágios supervisionados.
                         </p>
 
-                        <!-- Ações do Slide -->
-                        <div class="pt-3 flex flex-wrap items-center gap-4">
-                            <button id="slide-btn-acao" onclick="abrirModalInscricao('Técnico em Enfermagem')" class="bg-teal-500 hover:bg-teal-400 text-slate-950 font-black py-3.5 px-7 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-teal-500/30 transition flex items-center gap-2">
-                                <i data-feather="check-circle" class="w-4 h-4"></i> Matricule-se com Desconto
+                        <div class="pt-2 sm:pt-3 flex flex-wrap items-center gap-4">
+                            <button id="slide-btn-acao" onclick="abrirModalInscricao('Técnico em Enfermagem')" class="w-full sm:w-auto justify-center bg-teal-500 hover:bg-teal-400 active:scale-95 text-slate-950 font-black py-3.5 px-7 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-teal-500/30 transition flex items-center gap-2">
+                                <i data-feather="check-circle" class="w-4 h-4"></i> Matricule-se AGORA!
                             </button>
-                            <a href="#cursos" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold py-3.5 px-6 rounded-xl text-xs uppercase tracking-wider transition">
-                                Ver Grade Curricular
-                            </a>
                         </div>
                     </div>
 
-                    <!-- Controles do Carrossel (Anterior / Próximo e Indicadores) -->
-                    <div class="absolute bottom-6 right-6 z-20 flex items-center gap-3">
-                        <div id="slide-dots" class="flex items-center gap-2 mr-2"></div>
-                        <button onclick="mudarSlide(-1)" aria-label="Slide anterior" class="p-2.5 rounded-full bg-white/10 hover:bg-teal-500 hover:text-slate-950 text-white border border-white/20 transition">
-                            <i data-feather="chevron-left" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="mudarSlide(1)" aria-label="Próximo slide" class="p-2.5 rounded-full bg-white/10 hover:bg-teal-500 hover:text-slate-950 text-white border border-white/20 transition">
-                            <i data-feather="chevron-right" class="w-4 h-4"></i>
-                        </button>
+                    <div class="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 left-4 sm:left-auto z-20 flex items-center justify-between sm:justify-end gap-3">
+                        <div id="slide-dots" class="flex items-center gap-2"></div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="mudarSlide(-1)" aria-label="Slide anterior" class="p-2 sm:p-2.5 rounded-full bg-white/10 hover:bg-teal-500 hover:text-slate-950 text-white border border-white/20 transition">
+                                <i data-feather="chevron-left" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="mudarSlide(1)" aria-label="Próximo slide" class="p-2 sm:p-2.5 rounded-full bg-white/10 hover:bg-teal-500 hover:text-slate-950 text-white border border-white/20 transition">
+                                <i data-feather="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- ==========================================
-             2. VÍDEO INSTITUCIONAL + PILARES (CONFORME RASCUNHO)
+             2. VÍDEO INSTITUCIONAL + PILARES
              ========================================== -->
-        <section id="secao-video" class="py-20 bg-white border-b border-gray-100">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <section id="secao-video" class="py-16 sm:py-20 bg-white border-b border-gray-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
 
-                    <!-- Player de Vídeo (Esquerda / Destaque) -->
-                    <div class="lg:col-span-7 space-y-5">
+                    <div class="lg:col-span-7 space-y-5 reveal-on-scroll">
                         <div class="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-100 bg-slate-900 aspect-video group">
-                            <!-- Substitua o src abaixo pelo link embed do YouTube ou vídeo institucional da UNIVEAS -->
                             <iframe
                                 class="w-full h-full"
                                 src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0"
@@ -181,16 +206,14 @@
                             </iframe>
                         </div>
 
-                        <!-- Botão centralizado abaixo do vídeo conforme desenho -->
                         <div class="flex justify-center pt-2">
-                            <a href="#cursos" class="inline-flex items-center gap-2 bg-slate-900 hover:bg-teal-600 text-white font-black py-3.5 px-8 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all">
-                                <i data-feather="grid" class="w-4 h-4 text-teal-400"></i> Explorar Outros Cursos
-                            </a>
+                            <button onclick="abrirModalInscricao('Técnico em Enfermagem')" class="w-full sm:w-auto justify-center inline-flex items-center gap-2 bg-slate-900 hover:bg-teal-600 active:scale-95 text-white font-black py-3.5 px-8 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all">
+                                <i data-feather="user-plus" class="w-4 h-4 text-teal-400"></i> Fazer Minha Pré-Matrícula
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Lista de Pilares / Diferenciais (Direita / Abaixo conforme desenho) -->
-                    <div class="lg:col-span-5 space-y-6">
+                    <div class="lg:col-span-5 space-y-6 reveal-on-scroll reveal-delay-1">
                         <div>
                             <span class="text-xs font-black text-teal-600 uppercase tracking-widest">Por que escolher a UNIVEAS?</span>
                             <h2 class="text-2xl md:text-3xl font-black text-gray-900 mt-1">
@@ -198,8 +221,8 @@
                             </h2>
                         </div>
 
-                        <ul class="space-y-4">
-                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-teal-50/60 border border-teal-100">
+                        <ul class="space-y-3.5 sm:space-y-4">
+                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-teal-50/60 border border-teal-100 hover:shadow-md transition">
                                 <div class="p-3 bg-teal-600 text-white rounded-xl shrink-0 shadow-sm">
                                     <i data-feather="award" class="w-5 h-5"></i>
                                 </div>
@@ -209,7 +232,7 @@
                                 </div>
                             </li>
 
-                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition">
                                 <div class="p-3 bg-teal-600 text-white rounded-xl shrink-0 shadow-sm">
                                     <i data-feather="tool" class="w-5 h-5"></i>
                                 </div>
@@ -219,7 +242,7 @@
                                 </div>
                             </li>
 
-                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition">
                                 <div class="p-3 bg-teal-600 text-white rounded-xl shrink-0 shadow-sm">
                                     <i data-feather="briefcase" class="w-5 h-5"></i>
                                 </div>
@@ -229,7 +252,7 @@
                                 </div>
                             </li>
 
-                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                            <li class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition">
                                 <div class="p-3 bg-teal-600 text-white rounded-xl shrink-0 shadow-sm">
                                     <i data-feather="activity" class="w-5 h-5"></i>
                                 </div>
@@ -248,19 +271,19 @@
         <!-- ==========================================
              3. SEÇÃO DE CREDENCIAMENTO E SELO MEC
              ========================================== -->
-        <section id="credenciamento-mec" class="py-14 bg-teal-950 text-white">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="bg-teal-900/50 border border-teal-700/60 rounded-3xl p-8 flex flex-col lg:flex-row items-center justify-between gap-8 shadow-xl">
-                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-                        <div class="bg-white p-3 rounded-2xl shadow-md shrink-0 flex items-center justify-center w-32 h-32 border-2 border-teal-400 overflow-hidden">
+        <section id="credenciamento-mec" class="py-12 sm:py-14 bg-teal-950 text-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 reveal-on-scroll">
+                <div class="bg-teal-900/50 border border-teal-700/60 rounded-3xl p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 sm:gap-8 shadow-xl">
+                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 text-center sm:text-left">
+                        <div class="bg-white p-3 rounded-2xl shadow-md shrink-0 flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 border-2 border-teal-400 overflow-hidden">
                             <img src="https://www.rgolden.com.br/wp-content/uploads/2025/05/SELO-MEC-RGOLDEN.png"
                                  alt="Selo Oficial MEC"
                                  class="w-full h-full object-contain">
                         </div>
                         <div class="space-y-2 max-w-2xl">
                             <span class="text-xs font-bold text-teal-300 uppercase tracking-widest">Autorização Oficial • Validade Nacional</span>
-                            <h2 class="text-2xl md:text-3xl font-black text-white">Certificação Reconhecida pelo MEC</h2>
-                            <p class="text-sm text-teal-100 leading-relaxed">
+                            <h2 class="text-xl sm:text-2xl md:text-3xl font-black text-white">Certificação Reconhecida pelo MEC</h2>
+                            <p class="text-xs sm:text-sm text-teal-100 leading-relaxed">
                                 Os cursos técnicos e profissionalizantes da UNIVEAS seguem rigorosamente as diretrizes do Ministério da Educação, garantindo diploma válido em todo o Brasil para concursos públicos e mercado privado.
                             </p>
                         </div>
@@ -275,72 +298,18 @@
         </section>
 
         <!-- ==========================================
-             4. CATÁLOGO DE CURSOS COM INSCRIÇÃO DIRETA
+             4. SEÇÃO DE DOWNLOAD DOS APLICATIVOS
              ========================================== -->
-        <section id="cursos" class="py-24 bg-slate-50">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-                    <span class="text-xs font-black text-teal-600 uppercase tracking-widest">Catálogo 2026.2</span>
-                    <h3 class="text-3xl md:text-4xl font-black text-gray-900">Escolha seu Curso e Inscreva-se</h3>
-                    <p class="text-gray-500 text-sm">Faça sua pré-matrícula online agora mesmo e garanta seu desconto.</p>
-                </div>
+        <section id="aplicativos" class="py-16 sm:py-20 bg-gradient-to-br from-slate-900 via-teal-950 to-slate-950 text-white border-t border-slate-800 relative overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
 
-                <div id="container-cursos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
-            </div>
-        </section>
-
-        <!-- ==========================================
-             5. LOCALIZAÇÃO E CONTATO
-             ========================================== -->
-        <section id="localizacao" class="py-20 bg-white border-t border-gray-100">
-            <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div class="space-y-6">
-                    <span class="text-xs font-bold text-teal-600 uppercase tracking-widest">Onde Estamos</span>
-                    <h3 class="text-3xl font-black text-gray-900">Secretaria e Campus UNIVEAS</h3>
-                    <div class="space-y-4">
-                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4"><i data-feather="map-pin" class="w-6 h-6"></i></div>
-                            <div>
-                                <p class="text-xs font-bold text-gray-400 uppercase">Endereço</p>
-                                <p class="text-sm font-bold text-gray-800 mt-0.5">Av. Lauro Sodré, Centro, Vigia de Nazaré - PA</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4"><i data-feather="phone-call" class="w-6 h-6"></i></div>
-                            <div>
-                                <p class="text-xs font-bold text-gray-400 uppercase">WhatsApp / Atendimento</p>
-                                <p class="text-sm font-bold text-gray-800 mt-0.5">(91) 98325-2639</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-100 rounded-3xl overflow-hidden h-[340px] border border-gray-200 shadow-inner">
-                    <iframe
-                        title="Mapa UNIVEAS Vigia de Nazaré"
-                        src="https://www.google.com/maps?q=Vigia+de+Nazare,+PA&output=embed"
-                        class="w-full h-full border-0"
-                        loading="lazy">
-                    </iframe>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- ==========================================
-             4.5 SEÇÃO DE DOWNLOAD DOS APLICATIVOS (ALUNO E DOCENTE)
-             ========================================== -->
-        <section id="aplicativos" class="py-20 bg-gradient-to-br from-slate-900 via-teal-950 to-slate-950 text-white border-t border-slate-800 relative overflow-hidden">
-            <div class="max-w-7xl mx-auto px-6 relative z-10">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-
-                    <!-- Coluna de Texto e Botões de Download -->
-                    <div class="lg:col-span-7 space-y-6">
+                    <div class="lg:col-span-7 space-y-6 reveal-on-scroll">
                         <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-xs font-black uppercase tracking-widest">
                             <i data-feather="smartphone" class="w-3.5 h-3.5"></i> Mobilidade Acadêmica
                         </div>
 
-                        <h2 class="text-3xl md:text-4xl font-black tracking-tight leading-tight">
+                        <h2 class="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight">
                             Acompanhe suas notas, frequências e aulas direto pelo celular.
                         </h2>
 
@@ -348,9 +317,7 @@
                             Baixe o aplicativo oficial do <strong>Portal UNIVEAS</strong> e tenha acesso rápido ao seu boletim, materiais didáticos, comprovantes financeiros e notificações de cronograma em tempo real.
                         </p>
 
-                        <!-- Botões de Download: App do Aluno e App do Docente -->
                         <div class="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
-                            <!-- Card App Aluno -->
                             <div class="bg-white/5 border border-white/10 hover:border-teal-400/60 p-4 rounded-2xl transition flex flex-col justify-between gap-4">
                                 <div>
                                     <span class="text-[10px] font-black text-teal-400 uppercase tracking-wider">Para Estudantes</span>
@@ -362,7 +329,6 @@
                                 </a>
                             </div>
 
-                            <!-- Card App Docente -->
                             <div class="bg-white/5 border border-white/10 hover:border-teal-400/60 p-4 rounded-2xl transition flex flex-col justify-between gap-4">
                                 <div>
                                     <span class="text-[10px] font-black text-amber-400 uppercase tracking-wider">Para Professores</span>
@@ -375,25 +341,17 @@
                             </div>
                         </div>
 
-                        <p class="text-[11px] text-gray-400 flex items-center gap-1.5 pt-1">
-                            <i data-feather="shield" class="w-3.5 h-3.5 text-teal-400 shrink-0"></i>
-                            Usuário iPhone (iOS)? Acesse <a href="aluno.html" class="text-teal-300 underline font-bold">aluno.html</a> pelo Safari e toque em "Adicionar à Tela de Início".
+                        <p class="text-[11px] text-gray-400 flex items-start sm:items-center gap-1.5 pt-1">
+                            <i data-feather="shield" class="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5 sm:mt-0"></i>
+                            <span>Usuário iPhone (iOS)? Acesse <a href="aluno.html" class="text-teal-300 underline font-bold"> LINK </a> pelo Safari e toque em "Adicionar à Tela de Início".</span>
                         </p>
                     </div>
 
-                    <!-- Coluna Visual (Mockup Celular + QR Code) -->
-                    <div class="lg:col-span-5 flex flex-col sm:flex-row lg:flex-col items-center justify-center gap-6">
-                        <div class="bg-white p-5 rounded-3xl shadow-2xl border-4 border-teal-500/40 text-center max-w-xs w-full">
-                            <div class="bg-slate-50 p-3 rounded-2xl border border-gray-200 inline-block mb-3">
-                                <!-- QR Code gerado automaticamente apontando para o portal do aluno -->
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://univeasvigia.vercel.app/aluno.html"
-                                     alt="QR Code para acessar ou baixar o App UNIVEAS"
-                                     class="w-36 h-36 mx-auto">
-                            </div>
-                            <p class="text-xs font-black text-gray-900 uppercase tracking-wider">Aponte a Câmera</p>
-                            <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                                Escaneie o QR Code com seu celular para abrir o aplicativo oficial na hora.
-                            </p>
+                    <div class="lg:col-span-5 flex items-center justify-center reveal-on-scroll reveal-delay-1">
+                        <div class="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-teal-500/30 max-w-md w-full">
+                            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000&auto=format&fit=crop"
+                                 alt="Estudante acessando o aplicativo UNIVEAS pelo celular"
+                                 class="w-full h-[280px] sm:h-[380px] object-cover">
                         </div>
                     </div>
 
@@ -401,32 +359,110 @@
             </div>
         </section>
 
+        <!-- ==========================================
+             5. LOCALIZAÇÃO E CONTATO
+             ========================================== -->
+        <section id="localizacao" class="py-16 sm:py-20 bg-white border-t border-gray-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+                <div class="space-y-6 reveal-on-scroll">
+                    <span class="text-xs font-bold text-teal-600 uppercase tracking-widest">Onde Estamos</span>
+                    <h3 class="text-2xl sm:text-3xl font-black text-gray-900">Secretaria e Campus UNIVEAS</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4 shrink-0"><i data-feather="map-pin" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase">Endereço</p>
+                                <p class="text-sm font-bold text-gray-800 mt-0.5">Rua Trinta e Um de Agosto, 442 – Arapiranga, Vigia - PA, 68780-000</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4 shrink-0"><i data-feather="phone-call" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase">WhatsApp / Atendimento</p>
+                                <a href="https://wa.me/5591992608879" target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-teal-700 hover:underline mt-0.5 inline-block">
+                                    (91) 99260-8879
+                                </a>
+                            </div>
+                        </div>
+                        <div class="flex items-start p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div class="p-3 bg-teal-50 text-teal-600 rounded-xl mr-4 shrink-0"><i data-feather="clock" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-400 uppercase">Horário de Funcionamento</p>
+                                <p class="text-sm font-bold text-gray-800 mt-0.5">Segunda a Sexta, a partir das 08:00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-100 rounded-3xl overflow-hidden h-[300px] sm:h-[360px] border border-gray-200 shadow-inner reveal-on-scroll reveal-delay-1">
+                    <iframe
+                        title="Mapa UNIVEAS Vigia de Nazaré"
+                        src="https://www.google.com/maps?q=Rua+Trinta+e+Um+de+Agosto+442,+Arapiranga,+Vigia+-+PA,+68780-000&output=embed"
+                        class="w-full h-full border-0"
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==========================================
+         CARD FLUTUANTE DE DIVERSIDADE E INCLUSÃO
+         ========================================== -->
+    <div id="card-diversidade" class="fixed top-28 sm:top-32 right-4 sm:right-6 z-40 max-w-sm w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] rounded-2xl shadow-2xl overflow-hidden border border-white/20 transition-all duration-700 ease-out opacity-0 translate-x-full pointer-events-none bg-slate-900">
+        <img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=800&auto=format&fit=crop"
+             alt="Diversidade e Inclusão UNIVEAS"
+             class="absolute inset-0 w-full h-full object-cover opacity-40">
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/80 to-slate-900/60"></div>
+
+        <div class="relative z-10 h-1.5 w-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-blue-500 to-purple-600"></div>
+
+        <div class="relative z-10 p-4 sm:p-5 flex items-start gap-3.5 text-white">
+            <div class="p-2.5 rounded-xl bg-white/15 backdrop-blur-sm text-teal-300 shrink-0 mt-0.5">
+                <i data-feather="heart" class="w-5 h-5 fill-current"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-[10px] font-black text-teal-300 uppercase tracking-widest mb-1">Compromisso Institucional</p>
+                <p class="text-xs sm:text-sm font-bold text-white leading-snug">
+                    Somos uma empresa que apoia a diversidade e a comunidade LGBTQ+
+                </p>
+            </div>
+            <button onclick="fecharCardDiversidade()" aria-label="Fechar aviso" class="text-gray-300 hover:text-white p-1 rounded-lg transition shrink-0">
+                <i data-feather="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- ==========================================
          RODAPÉ
          ========================================== -->
     <footer class="bg-slate-950 text-white py-12 border-t border-slate-900">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-            <div>
-                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-10 w-auto object-contain brightness-0 invert mx-auto md:mx-0 mb-3">
-                <p class="text-xs text-gray-400">© 2026 UNIVEAS. Todos os direitos reservados. Instituição autorizada pelo MEC.</p>
-            </div>
-            <div class="flex flex-wrap justify-center items-center gap-6 text-xs text-gray-400">
-                <a href="aluno.html" class="hover:text-teal-400 transition-colors">Área do Aluno</a>
-                <a href="professor.html" class="hover:text-teal-400 transition-colors">Portal Docente</a>
-                <a href="admin.html" class="hover:text-teal-400 transition-colors font-bold text-teal-500">Painel Administrativo</a>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+                <div class="space-y-1">
+                    <p class="text-xs sm:text-sm font-semibold text-gray-300">UNIVEAS | Mantenedora: Razão Social Ltda. – CNPJ: 00.000.000/0001-00</p>
+                    <p class="text-xs text-gray-400">Código INEP: 00000000 | Autorização de Funcionamento: Portaria CEE/PA nº 000/202X</p>
+                    <p class="text-xs text-gray-400 pt-1">© 2026 UNIVEAS. Todos os direitos reservados.</p>
+                </div>
+                <div class="flex flex-wrap justify-center items-center gap-6 text-xs text-gray-400">
+                    <a href="aluno.html" class="hover:text-teal-400 transition-colors">Área do Aluno</a>
+                    <a href="professor.html" class="hover:text-teal-400 transition-colors">Portal Docente</a>
+                    <a href="admin.html" class="hover:text-teal-400 transition-colors font-bold text-teal-500">Painel Administrativo</a>
+                </div>
             </div>
         </div>
     </footer>
 
     <!-- ==========================================
-         MODAL DE INSCRIÇÃO ONLINE DO ALUNO
-         (MESMO PADRÃO DO CADASTRO DO ADMIN + AVISO)
+         MODAL DE PRÉ-MATRÍCULA RÁPIDA (WHATSAPP)
          ========================================== -->
     <div id="modal-inscricao" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border-t-4 border-teal-500 my-8 animate-fade-in">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border-t-4 border-teal-500 my-8">
             <div class="px-6 py-5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                    <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Pré-Matrícula Online</span>
+                    <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Atendimento Rápido</span>
                     <h3 class="text-xl font-black text-gray-900">Inscreva-se na UNIVEAS</h3>
                 </div>
                 <button onclick="fecharModalInscricao()" class="p-2 text-gray-400 hover:text-red-500 rounded-xl hover:bg-gray-100 transition">
@@ -436,68 +472,46 @@
 
             <form id="form-inscricao-aluno" onsubmit="enviarInscricaoAluno(event)" class="p-6 space-y-4">
                 <div class="bg-teal-50 border border-teal-100 p-3.5 rounded-2xl flex items-start gap-3">
-                    <i data-feather="info" class="w-4 h-4 text-teal-600 shrink-0 mt-0.5"></i>
+                    <i data-feather="message-circle" class="w-4 h-4 text-teal-600 shrink-0 mt-0.5"></i>
                     <p class="text-xs text-teal-800 leading-relaxed">
-                        Preencha seus dados abaixo. Sua inscrição será enviada diretamente para a <strong>Secretaria Acadêmica</strong>, que validará seu desconto e liberará seu acesso ao Portal do Aluno.
+                        Informe seus dados básicos abaixo. Nossa equipe receberá seu contato pelo <strong>WhatsApp</strong> e retornará com todas as informações e condições de desconto.
                     </p>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Curso Desejado *</label>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Curso de Interesse *</label>
                     <select id="insc-curso" required class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 focus:outline-none focus:border-teal-500 bg-white">
                         <!-- Preenchido via JS -->
                     </select>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nome Completo *</label>
-                        <input type="text" id="insc-nome" required placeholder="Seu nome completo" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">CPF (Apenas números) *</label>
-                        <input type="text" id="insc-cpf" required maxlength="14" placeholder="000.000.000-00" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
-                    </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Seu Nome Completo *</label>
+                    <input type="text" id="insc-nome" required placeholder="Digite seu nome" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Data de Nascimento *</label>
-                        <input type="date" id="insc-nascimento" required class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">WhatsApp / Telefone *</label>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Seu WhatsApp *</label>
                         <input type="tel" id="insc-telefone" required placeholder="(91) 90000-0000" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
                     </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">E-mail</label>
-                        <input type="email" id="insc-email" placeholder="seuemail@exemplo.com" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Turno de Preferência *</label>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Melhor Turno *</label>
                         <select id="insc-turno" required class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 bg-white">
                             <option value="Manhã">Manhã</option>
                             <option value="Tarde">Tarde</option>
                             <option value="Noite">Noite</option>
-                            <option value="Sábado (Intensivo)">Sábado (Intensivo)</option>
+                            <option value="Sábado">Sábado</option>
                         </select>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Endereço / Bairro / Cidade *</label>
-                    <input type="text" id="insc-endereco" required placeholder="Rua, Nº, Bairro, Vigia - PA" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500">
-                </div>
-
                 <div class="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
-                    <button type="button" onclick="fecharModalInscricao()" class="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 uppercase tracking-wider transition">
+                    <button type="button" onclick="fecharModalInscricao()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 uppercase tracking-wider transition">
                         Cancelar
                     </button>
-                    <button type="submit" id="btn-enviar-inscricao" class="bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-7 rounded-xl text-xs uppercase tracking-wider shadow-md transition flex items-center gap-2">
-                        <i data-feather="send" class="w-4 h-4"></i> Finalizar Inscrição
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-black py-3 px-6 rounded-xl text-xs uppercase tracking-wider shadow-md transition flex items-center gap-2">
+                        <i data-feather="message-circle" class="w-4 h-4"></i> Enviar no WhatsApp
                     </button>
                 </div>
             </form>
@@ -519,11 +533,10 @@
     </script>
 
     <!-- ==========================================
-         SCRIPTS DO SITE (SLIDES, CURSOS, MODAL E ACESSIBILIDADE)
+         SCRIPTS DO SITE (SLIDES, MENU MOBILE, SCROLL REVEAL E MODAL)
          ========================================== -->
     <script>
-        const API_BASE_URL = "https://univeasvigia.vercel.app/api/v1";
-        const WHATSAPP_SECRETARIA = "5591983252639";
+        const WHATSAPP_SECRETARIA = "5591992608879";
 
         // 1. SLIDES DO BANNER PRINCIPAL (CARROSSEL)
         const SLIDES_UNIVEAS = [
@@ -531,58 +544,43 @@
                 tag: "Instituição Autorizada pelo MEC",
                 titulo: "Curso Técnico em Enfermagem",
                 subtitulo: "Matricule-se com desconto especial! Aulas práticas em laboratório, cenários realistas e estágios supervisionados.",
-                botaoTexto: "Matricule-se com Desconto",
+                botaoTexto: "Matricule-se AGORA!",
                 cursoRelacionado: "Técnico em Enfermagem",
                 imagem: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1600&auto=format&fit=crop"
             },
             {
                 tag: "Diploma Reconhecido Nacionalmente",
-                titulo: "Curso Técnico em Informática",
-                subtitulo: "Domine manutenção de computadores, redes, programação e suporte técnico com alta empregabilidade.",
-                botaoTexto: "Garantir Vaga com Desconto",
-                cursoRelacionado: "Técnico em Informática e Sistemas",
-                imagem: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1600&auto=format&fit=crop"
+                titulo: "Vem estudar na escola que acredita em você",
+                subtitulo: "Práticas em cenário hospitalar desde os primeiros módulos, preparando você para atuar com segurança na área da saúde.",
+                botaoTexto: "Garanta sua vaga AGORA!",
+                cursoRelacionado: "Técnico em Enfermagem",
+                imagem: "https://images.unsplash.com/photo-1584515933487-779824d29309?q=80&w=1600&auto=format&fit=crop"
             },
             {
                 tag: "Inscrições Abertas 2026.2",
-                titulo: "Curso Técnico em Administração",
-                subtitulo: "Prepare-se para liderar setores financeiros, RH e logística empresarial com certificação MEC.",
-                botaoTexto: "Inscrever-se Agora",
-                cursoRelacionado: "Técnico em Administração",
-                imagem: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1600&auto=format&fit=crop"
+                titulo: "Vem descobrir todas as vantagens de estudar aqui",
+                subtitulo: "Estágios supervisionados garantidos, professores atuantes na saúde e certificação válida em todo o Brasil pelo MEC.",
+                botaoTexto: "Inscrever-se AGORA!",
+                cursoRelacionado: "Técnico em Enfermagem",
+                imagem: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=1600&auto=format&fit=crop"
             }
         ];
 
-        // 2. CATÁLOGO DE CURSOS EXIBIDOS NO SITE
+        // 2. CATÁLOGO DE CURSOS PARA O SELECT DO MODAL
         const CURSOS_UNIVEAS = [
-            {
-                nome: "Técnico em Enfermagem",
-                categoria: "Saúde • Autorizado pelo MEC",
-                modalidade: "Presencial",
-                carga_horaria: "1.800h",
-                valor: "249,90",
-                capa: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=600&auto=format&fit=crop",
-                descricao: "Diploma reconhecido, aulas práticas em cenário realista e estágios supervisionados."
-            },
-            {
-                nome: "Técnico em Informática e Sistemas",
-                categoria: "Tecnologia • Autorizado pelo MEC",
-                modalidade: "Presencial",
-                carga_horaria: "1.200h",
-                valor: "219,90",
-                capa: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=600&auto=format&fit=crop",
-                descricao: "Manutenção de hardware, redes estruturadas, desenvolvimento de sistemas e suporte."
-            },
-            {
-                nome: "Técnico em Administração",
-                categoria: "Gestão • Autorizado pelo MEC",
-                modalidade: "Presencial / Semipresencial",
-                carga_horaria: "1.000h",
-                valor: "199,90",
-                capa: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop",
-                descricao: "Gestão financeira, rotinas administrativas, departamento pessoal e empreendedorismo."
-            }
+            { nome: "Técnico em Enfermagem" }
         ];
+
+        // CONTROLE DE MENU MOBILE
+        function alternarMenuMobile() {
+            const menu = document.getElementById('menu-mobile');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+        function fecharMenuMobile() {
+            const menu = document.getElementById('menu-mobile');
+            if (menu) menu.classList.add('hidden');
+        }
 
         // CONTROLE DE SLIDES
         let slideAtual = 0;
@@ -603,7 +601,7 @@
 
             const dotsContainer = document.getElementById('slide-dots');
             dotsContainer.innerHTML = SLIDES_UNIVEAS.map((_, i) => `
-                <button onclick="irParaSlide(${i})" class="h-2.5 rounded-full transition-all ${i === index ? 'w-8 bg-teal-400' : 'w-2.5 bg-white/40 hover:bg-white/70'}"></button>
+                <button onclick="irParaSlide(${i})" aria-label="Ir para slide ${i + 1}" class="h-2.5 rounded-full transition-all ${i === index ? 'w-8 bg-teal-400' : 'w-2.5 bg-white/40 hover:bg-white/70'}"></button>
             `).join('');
 
             feather.replace();
@@ -649,53 +647,18 @@
             document.body.classList.toggle('alto-contraste');
         }
 
-        // RENDERIZAÇÃO DE CURSOS E SELECT DO MODAL
+        // POPULA O SELECT DE CURSOS NO MODAL DE INSCRIÇÃO
         function renderizarCursosSite() {
-            const container = document.getElementById('container-cursos');
             const selectModal = document.getElementById('insc-curso');
-
             if (selectModal) {
                 selectModal.innerHTML = CURSOS_UNIVEAS.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
             }
-
-            if (!container) return;
-            container.innerHTML = '';
-
-            CURSOS_UNIVEAS.forEach(curso => {
-                container.innerHTML += `
-                    <article class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group flex flex-col">
-                        <div class="relative h-52 bg-gray-100 overflow-hidden">
-                            <img src="${curso.capa}"
-                                 alt="Capa ${curso.nome}"
-                                 onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop';"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            <span class="absolute top-4 left-4 bg-teal-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">${curso.modalidade}</span>
-                            <span class="absolute bottom-3 right-3 bg-slate-900/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">${curso.carga_horaria}</span>
-                        </div>
-                        <div class="p-6 flex-1 flex flex-col justify-between">
-                            <div>
-                                <p class="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1">${curso.categoria}</p>
-                                <h4 class="font-black text-gray-900 text-xl group-hover:text-teal-600 transition-colors">${curso.nome}</h4>
-                                <p class="text-xs text-gray-500 mt-2 leading-relaxed">${curso.descricao}</p>
-                            </div>
-                            <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                                <div>
-                                    <p class="text-[10px] text-gray-400 font-bold uppercase">Mensalidade</p>
-                                    <p class="text-lg font-black text-gray-900">R$ ${curso.valor}</p>
-                                </div>
-                                <button onclick="abrirModalInscricao('${curso.nome}')" class="bg-teal-50 hover:bg-teal-600 text-teal-700 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5">
-                                    <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Inscreva-se
-                                </button>
-                            </div>
-                        </div>
-                    </article>
-                `;
-            });
             feather.replace();
         }
 
-        // MODAL DE INSCRIÇÃO DO ALUNO (ENVIA PARA O ADMIN)
+        // MODAL DE INSCRIÇÃO DO ALUNO (WHATSAPP)
         function abrirModalInscricao(cursoPreSelecionado = '') {
+            fecharMenuMobile();
             const modal = document.getElementById('modal-inscricao');
             const select = document.getElementById('insc-curso');
             if (cursoPreSelecionado && select) {
@@ -712,59 +675,73 @@
             modal.classList.remove('flex');
         }
 
-        async function enviarInscricaoAluno(event) {
+        function enviarInscricaoAluno(event) {
             event.preventDefault();
-            const btn = document.getElementById('btn-enviar-inscricao');
-            const textoOriginal = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = 'Enviando inscrição...';
 
-            const dadosInscricao = {
-                nome: document.getElementById('insc-nome').value.trim(),
-                cpf: document.getElementById('insc-cpf').value.replace(/\D/g, ''),
-                data_nascimento: document.getElementById('insc-nascimento').value,
-                telefone: document.getElementById('insc-telefone').value.trim(),
-                email: document.getElementById('insc-email').value.trim(),
-                endereco: document.getElementById('insc-endereco').value.trim(),
-                curso_interesse: document.getElementById('insc-curso').value,
-                turno: document.getElementById('insc-turno').value,
-                origem: 'Site Institucional',
-                status: 'Pré-Matrícula Pendente'
-            };
+            const curso = document.getElementById('insc-curso').value;
+            const nome = document.getElementById('insc-nome').value.trim();
+            const telefone = document.getElementById('insc-telefone').value.trim();
+            const turno = document.getElementById('insc-turno').value;
 
-            try {
-                // Envia para a rota pública de pré-matrícula que gera o aviso no painel do Admin
-                const response = await fetch(`${API_BASE_URL}/public/inscricao-aluno`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dadosInscricao)
-                });
+            const mensagem = encodeURIComponent(
+                `Olá, UNIVEAS! Gostaria de garantir minha vaga com desconto:\n\n` +
+                `*Nome:* ${nome}\n` +
+                `*Curso:* ${curso}\n` +
+                `*Turno de preferência:* ${turno}\n` +
+                `*Meu WhatsApp:* ${telefone}`
+            );
 
-                if (response.ok) {
-                    alert(`Parabéns, ${dadosInscricao.nome}! Sua pré-matrícula para ${dadosInscricao.curso_interesse} foi enviada com sucesso. A secretaria já recebeu seu aviso e entrará em contato!`);
-                    document.getElementById('form-inscricao-aluno').reset();
-                    fecharModalInscricao();
-                } else {
-                    throw new Error('Rota ainda não ativada no servidor');
-                }
-            } catch (error) {
-                // Fallback inteligente: caso o backend ainda não tenha a rota pública publicada, direciona o protocolo via WhatsApp da Secretaria
-                const msgFallback = encodeURIComponent(
-                    `*NOVA PRÉ-MATRÍCULA VIA SITE UNIVEAS*\n` +
-                    `• *Aluno:* ${dadosInscricao.nome}\n` +
-                    `• *CPF:* ${dadosInscricao.cpf}\n` +
-                    `• *Curso:* ${dadosInscricao.curso_interesse} (${dadosInscricao.turno})\n` +
-                    `• *Telefone:* ${dadosInscricao.telefone}\n` +
-                    `• *Endereço:* ${dadosInscricao.endereco}`
-                );
-                alert("Recebemos seus dados! Clique em OK para confirmar o protocolo de inscrição junto à nossa secretaria.");
-                window.open(`https://wa.me/${WHATSAPP_SECRETARIA}?text=${msgFallback}`, '_blank');
-                fecharModalInscricao();
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = textoOriginal;
-                feather.replace();
+            window.open(`https://wa.me/${WHATSAPP_SECRETARIA}?text=${mensagem}`, '_blank');
+            document.getElementById('form-inscricao-aluno').reset();
+            fecharModalInscricao();
+        }
+
+        // CARD FLUTUANTE DE DIVERSIDADE E INCLUSÃO
+        let timerCardDiversidade = null;
+
+        function iniciarCardDiversidade() {
+            const card = document.getElementById('card-diversidade');
+            if (!card) return;
+
+            setTimeout(() => {
+                card.classList.remove('opacity-0', 'translate-x-full', 'pointer-events-none');
+                card.classList.add('opacity-100', 'translate-x-0');
+
+                timerCardDiversidade = setTimeout(() => {
+                    fecharCardDiversidade();
+                }, 7000);
+            }, 1500);
+        }
+
+        function fecharCardDiversidade() {
+            const card = document.getElementById('card-diversidade');
+            if (!card) return;
+            clearTimeout(timerCardDiversidade);
+            card.classList.remove('opacity-100', 'translate-x-0');
+            card.classList.add('opacity-0', 'translate-x-full', 'pointer-events-none');
+        }
+
+        // ANIMAÇÕES SUAVES AO ROLAR A PÁGINA (INTERSECTION OBSERVER)
+        function iniciarAnimacoesRolagem() {
+            const elementos = document.querySelectorAll('.reveal-on-scroll');
+            if (!('IntersectionObserver' in window)) {
+                elementos.forEach(el => el.classList.add('is-visible'));
+                return;
             }
+
+            const observador = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        obs.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.12,
+                rootMargin: '0px 0px -40px 0px'
+            });
+
+            elementos.forEach(el => observador.observe(el));
         }
 
         // INICIALIZAÇÃO
@@ -772,6 +749,8 @@
             renderizarSlide(0);
             reiniciarAutoPlaySlide();
             renderizarCursosSite();
+            iniciarCardDiversidade();
+            iniciarAnimacoesRolagem();
         });
     </script>
 </body>
