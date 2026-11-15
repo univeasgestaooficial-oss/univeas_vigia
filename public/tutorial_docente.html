@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial Completo do Docente - SIGA UNIVEAS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media print {
+            aside, header, .no-print { display: none !important; }
+            body, main { height: auto !important; overflow: visible !important; background: white !important; }
+            section { break-inside: avoid; border: 1px solid #d1d5db !important; box-shadow: none !important; margin-bottom: 16px !important; }
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-slate-50 text-gray-800 antialiased flex h-screen overflow-hidden">
+
+    <!-- BACKDROP MOBILE -->
+    <div id="backdrop-mobile" onclick="fecharMenuMobile()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden lg:hidden"></div>
+
+    <!-- ==========================================
+         MENU LATERAL DE NAVEGAÇÃO
+         ========================================== -->
+    <aside id="sidebar-tutorial" class="fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 transform -translate-x-full lg:relative lg:translate-x-0 shrink-0 shadow-xl lg:shadow-none">
+        <div class="h-20 flex items-center justify-between px-5 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-11 w-auto object-contain">
+                <div class="leading-tight border-l border-gray-200 pl-3">
+                    <span class="block text-sm font-black text-gray-900 tracking-tight">SIGA • UNIVEAS</span>
+                    <span class="block text-[10px] font-bold text-teal-600 uppercase tracking-widest">Guia do Docente</span>
+                </div>
+            </div>
+            <button onclick="fecharMenuMobile()" class="lg:hidden text-gray-400 hover:text-red-500 p-1.5 rounded-lg">
+                <i data-feather="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Filtro de Busca -->
+        <div class="p-4 border-b border-gray-100">
+            <div class="relative">
+                <input type="text" id="busca-tutorial" oninput="filtrarSecoesTutorial()" placeholder="Pesquisar função ou dúvida..." class="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-teal-500 focus:bg-white transition">
+                <i data-feather="search" class="w-4 h-4 text-gray-400 absolute left-3 top-2.5"></i>
+            </div>
+        </div>
+
+        <!-- Índice Completo -->
+        <nav class="flex-1 overflow-y-auto no-scrollbar p-3 space-y-1 text-xs font-bold">
+            <p class="px-3 text-[10px] text-gray-400 uppercase tracking-widest mb-1 mt-1">Primeiros Passos</p>
+            <a href="#cap-1" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-teal-700 bg-teal-50 border-l-4 border-teal-500">
+                <i data-feather="log-in" class="w-4 h-4 mr-2.5 shrink-0"></i> 1. Acesso ao Portal & Registro
+            </a>
+            <a href="#cap-2" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="grid" class="w-4 h-4 mr-2.5 shrink-0"></i> 2. Painel Principal & Cronograma
+            </a>
+
+            <p class="px-3 text-[10px] text-gray-400 uppercase tracking-widest mb-1 mt-4">Rotina em Sala de Aula</p>
+            <a href="#cap-3" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="users" class="w-4 h-4 mr-2.5 shrink-0"></i> 3. Minhas Turmas & Planejamento
+            </a>
+            <a href="#cap-4" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="edit-3" class="w-4 h-4 mr-2.5 shrink-0"></i> 4. Diário Eletrônico & Notas
+            </a>
+            <a href="#cap-5" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="folder" class="w-4 h-4 mr-2.5 shrink-0"></i> 5. Material Didático (Drive/YT)
+            </a>
+
+            <p class="px-3 text-[10px] text-gray-400 uppercase tracking-widest mb-1 mt-4">Dados & Suporte</p>
+            <a href="#cap-6" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="user" class="w-4 h-4 mr-2.5 shrink-0"></i> 6. Meu Perfil & Vínculos
+            </a>
+            <a href="#cap-7" onclick="selecionarCapitulo(this)" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="help-circle" class="w-4 h-4 mr-2.5 shrink-0"></i> 7. Solução de Dúvidas Comuns
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <a href="docente.html" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center shadow-sm transition">
+                <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i> Voltar ao Portal Docente
+            </a>
+        </div>
+    </aside>
+
+    <!-- ==========================================
+         ÁREA PRINCIPAL DO TUTORIAL
+         ========================================== -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+
+        <!-- TOPBAR -->
+        <header class="h-16 sm:h-20 bg-white border-b border-gray-100 px-4 sm:px-8 flex items-center justify-between shrink-0 z-10 shadow-xs">
+            <div class="flex items-center gap-3 min-w-0">
+                <button onclick="abrirMenuMobile()" class="lg:hidden p-2 rounded-xl bg-gray-50 text-gray-700 hover:text-teal-600">
+                    <i data-feather="menu" class="w-5 h-5"></i>
+                </button>
+                <div class="min-w-0">
+                    <h1 class="text-base sm:text-xl font-black text-gray-900 tracking-tight truncate">Tutorial Completo do Docente</h1>
+                    <p class="text-[11px] text-gray-500 hidden sm:block">Manual operacional do Portal do Professor • SIGA - UNIVEAS</p>
+                </div>
+            </div>
+            <button onclick="window.print()" class="no-print bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 transition">
+                <i data-feather="printer" class="w-4 h-4"></i> <span class="hidden sm:inline">Imprimir / Salvar PDF</span>
+            </button>
+        </header>
+
+        <!-- CONTEÚDO ROLÁVEL -->
+        <main class="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 max-w-5xl mx-auto w-full pb-24">
+
+            <!-- CAPA DO MANUAL -->
+            <div class="bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-lg border border-teal-800/40">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <span class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-black uppercase tracking-widest">
+                        Portal & App Docente • v2026
+                    </span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-gray-300 text-[10px] font-bold uppercase tracking-widest">
+                        Professores • Instrutores • Preceptores
+                    </span>
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-black tracking-tight leading-tight">Guia Prático de Operação do Portal do Professor</h2>
+                <p class="text-sm text-gray-300 mt-2.5 leading-relaxed max-w-3xl">
+                    Aprenda como acessar suas disciplinas alocadas, configurar cronogramas de aulas e avaliações, lançar chamadas e notas ponderadas no Diário Eletrônico e disponibilizar materiais didáticos aos alunos do <strong>SIGA - UNIVEAS</strong>.
+                </p>
+            </div>
+
+            <!-- CAPÍTULO 1: LOGIN E AUTENTICAÇÃO -->
+            <section id="cap-1" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="log-in" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 01 • Autenticação</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Como Acessar o Portal do Professor</h3>
+                    </div>
+                </div>
+                <div class="space-y-3 text-sm text-gray-600">
+                    <p><strong>1. Credenciais de Acesso:</strong> Na tela inicial do aplicativo ou do portal web, informe os dois dados fornecidos pela secretaria no ato do seu cadastro:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><strong>Nº de Registro Docente:</strong> Código identificador institucional (ex.: <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">#PR001</code>).</li>
+                        <li><strong>CPF:</strong> Digite <strong>apenas os 11 números</strong> do seu CPF, sem pontos ou traços.</li>
+                    </ul>
+                    <p><strong>2. Sessão Conectada:</strong> Após clicar em <strong>Entrar no Portal</strong>, sua sessão permanece salva no dispositivo até que você clique em <strong>Sair do Portal</strong> no rodapé do menu lateral.</p>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 2: PAINEL PRINCIPAL -->
+            <section id="cap-2" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="grid" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 02 • Visão Geral</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Painel Principal, Cronograma e Regras</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    Logo após o login, o <strong>Painel Principal</strong> apresenta um resumo rápido das suas atividades:
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="font-black text-teal-700 uppercase block mb-1">Indicadores Rápidos</span>
+                        Clique nos cartões de <strong>Turmas Ativas</strong>, <strong>Diários Pendentes</strong> ou <strong>Aulas na Semana</strong> para saltar direto para a tela correspondente.
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="font-black text-teal-700 uppercase block mb-1">Cronograma e Avaliações</span>
+                        Exibe os dias da semana, horários de aula e as datas previstas de todas as provas e seminários de cada disciplina.
+                    </div>
+                    <div class="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-950">
+                        <span class="font-black text-teal-800 uppercase block mb-1">Média de Aprovação: 8,0</span>
+                        O sistema calcula a média ponderada automaticamente com base nos pesos definidos na matriz curricular da disciplina.
+                    </div>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 3: MINHAS TURMAS -->
+            <section id="cap-3" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-5">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="users" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 03 • Organização Pedagógica</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Minhas Turmas e Configuração da Disciplina</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    Na aba <strong>Minhas Turmas</strong>, cada cartão representa um módulo/disciplina vinculado ao seu registro pela secretaria, exibindo dois botões de ação:
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2">
+                        <h4 class="font-black text-gray-900 uppercase">Botão "Gerenciar" (Planejamento do Módulo)</h4>
+                        <p class="text-gray-600">Abre o painel completo de configuração da disciplina onde você pode ajustar:</p>
+                        <ul class="list-disc pl-4 space-y-1 text-gray-600">
+                            <li><strong>Datas de Início e Fim:</strong> Definem quais datas ficarão liberadas para chamada no Diário Eletrônico.</li>
+                            <li><strong>Ementa e Carga Horária:</strong> Teoria, Prática e Estágio (com soma automática).</li>
+                            <li><strong>Dias e Horários:</strong> Marque os dias da semana (Seg a Sáb) e o horário da aula.</li>
+                            <li><strong>Calendário de Avaliações e Pesos:</strong> Adicione provas ou trabalhos, definindo o peso, data e horário.</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2 text-amber-950">
+                        <h4 class="font-black uppercase flex items-center gap-1.5"><i data-feather="bell" class="w-4 h-4 text-amber-600"></i> Justificativa & Alerta aos Alunos</h4>
+                        <p>Sempre que alterar dias de aula, horários ou datas de avaliações no modal <strong>Gerenciar</strong>, preencha o campo <strong>Justificativa de Alteração</strong> antes de clicar em <strong>Salvar Alterações</strong>.</p>
+                        <p>O sistema disparará automaticamente um aviso no <strong>Portal do Aluno</strong> informando a mudança e o motivo.</p>
+                    </div>
+                </div>
+            </section>
