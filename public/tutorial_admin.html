@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial Completo do Administrador - SIGA UNIVEAS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media print {
+            aside, header, .no-print { display: none !important; }
+            body, main { height: auto !important; overflow: visible !important; background: white !important; }
+            section { break-inside: avoid; border: 1px solid #d1d5db !important; box-shadow: none !important; margin-bottom: 16px !important; }
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-slate-50 text-gray-800 antialiased flex h-screen overflow-hidden">
+
+    <!-- BACKDROP MOBILE -->
+    <div id="backdrop-mobile" onclick="fecharMenuMobile()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden lg:hidden"></div>
+
+    <!-- ==========================================
+         MENU LATERAL DE NAVEGAÇÃO
+         ========================================== -->
+    <aside id="sidebar-tutorial" class="fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 transform -translate-x-full lg:relative lg:translate-x-0 shrink-0 shadow-xl lg:shadow-none">
+        <div class="h-20 flex items-center justify-between px-5 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" class="h-11 w-auto object-contain">
+                <div class="leading-tight border-l border-gray-200 pl-3">
+                    <span class="block text-sm font-black text-gray-900 tracking-tight">SIGA • UNIVEAS</span>
+                    <span class="block text-[10px] font-bold text-teal-600 uppercase tracking-widest">Guia do Administrador</span>
+                </div>
+            </div>
+            <button onclick="fecharMenuMobile()" class="lg:hidden text-gray-400 hover:text-red-500 p-1.5 rounded-lg">
+                <i data-feather="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Filtro de Busca -->
+        <div class="p-4 border-b border-gray-100">
+            <div class="relative">
+                <input type="text" id="busca-tutorial" oninput="filtrarSecoesTutorial()" placeholder="Pesquisar passo ou função..." class="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-teal-500 focus:bg-white transition">
+                <i data-feather="search" class="w-4 h-4 text-gray-400 absolute left-3 top-2.5"></i>
+            </div>
+        </div>
+
+        <!-- Índice Completo -->
+        <nav class="flex-1 overflow-y-auto no-scrollbar p-3 space-y-1 text-xs font-bold">
+            <p class="px-3 text-[10px] text-gray-400 uppercase tracking-widest mb-1 mt-1">Visão Geral & Implantação</p>
+            <a href="#cap-1" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-teal-700 bg-teal-50 border-l-4 border-teal-500">
+                <i data-feather="layers" class="w-4 h-4 mr-2.5 shrink-0"></i> 1. Fluxo Obrigatório de Uso
+            </a>
+            <a href="#cap-2" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="shield" class="w-4 h-4 mr-2.5 shrink-0"></i> 2. Login Master & Segurança
+            </a>
+            <a href="#cap-3" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="grid" class="w-4 h-4 mr-2.5 shrink-0"></i> 3. Dashboard & Pré-Matrículas
+            </a>
+
+            <p class="px-3 text-[10px] text-gray-400 uppercase tracking-widest mb-1 mt-4">Módulos Acadêmicos</p>
+            <a href="#cap-4" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="book-open" class="w-4 h-4 mr-2.5 shrink-0"></i> 4. Cursos, Módulos & Pesos
+            </a>
+            <a href="#cap-5" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="briefcase" class="w-4 h-4 mr-2.5 shrink-0"></i> 5. Corpo Docente & Vínculos
+            </a>
+            <a href="#cap-6" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="users" class="w-4 h-4 mr-2.5 shrink-0"></i> 6. Alunos & Matrículas
+            </a>
+
+            <p class="px-3 text-[10px] text-gray-400 uppercase tracking-widest mb-1 mt-4">Operação & Secretaria</p>
+            <a href="#cap-7" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="edit-3" class="w-4 h-4 mr-2.5 shrink-0"></i> 7. Diário Eletrônico & Notas
+            </a>
+            <a href="#cap-8" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="file-text" class="w-4 h-4 mr-2.5 shrink-0"></i> 8. Emissão de Documentos PDF
+            </a>
+            <a href="#cap-9" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="dollar-sign" class="w-4 h-4 mr-2.5 shrink-0"></i> 9. Gestão Financeira & NF
+            </a>
+            <a href="#cap-10" onclick="fecharMenuMobile()" class="nav-link flex items-center px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-teal-600 transition">
+                <i data-feather="settings" class="w-4 h-4 mr-2.5 shrink-0"></i> 10. Configurações & Checklist
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <a href="admin.html" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center shadow-sm transition">
+                <i data-feather="arrow-left" class="w-4 h-4 mr-2"></i> Voltar ao Painel Admin
+            </a>
+        </div>
+    </aside>
+
+    <!-- ==========================================
+         ÁREA PRINCIPAL DO TUTORIAL
+         ========================================== -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+
+        <!-- TOPBAR -->
+        <header class="h-16 sm:h-20 bg-white border-b border-gray-100 px-4 sm:px-8 flex items-center justify-between shrink-0 z-10 shadow-xs">
+            <div class="flex items-center gap-3 min-w-0">
+                <button onclick="abrirMenuMobile()" class="lg:hidden p-2 rounded-xl bg-gray-50 text-gray-700 hover:text-teal-600">
+                    <i data-feather="menu" class="w-5 h-5"></i>
+                </button>
+                <div class="min-w-0">
+                    <h1 class="text-base sm:text-xl font-black text-gray-900 tracking-tight truncate">Tutorial Completo do Administrador</h1>
+                    <p class="text-[11px] text-gray-500 hidden sm:block">Manual operacional passo a passo • SIGA - UNIVEAS (Vigia de Nazaré - PA)</p>
+                </div>
+            </div>
+            <button onclick="window.print()" class="no-print bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 transition">
+                <i data-feather="printer" class="w-4 h-4"></i> <span class="hidden sm:inline">Imprimir / Salvar PDF</span>
+            </button>
+        </header>
+
+        <!-- CONTEÚDO ROLÁVEL -->
+        <main class="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 max-w-5xl mx-auto w-full pb-24">
+
+            <!-- CAPA DO MANUAL -->
+            <div class="bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-lg border border-teal-800/40">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <span class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-black uppercase tracking-widest">
+                        Módulo Administrativo • v2026
+                    </span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-gray-300 text-[10px] font-bold uppercase tracking-widest">
+                        Secretaria • Coordenação • Diretoria
+                    </span>
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-black tracking-tight leading-tight">Manual Completo de Operação do Painel Administrativo</h2>
+                <p class="text-sm text-gray-300 mt-2.5 leading-relaxed max-w-3xl">
+                    Este tutorial reúne todos os procedimentos oficiais para administrar cursos, matrizes curriculares, professores, matrículas, diário eletrônico consolidado, emissão de documentos em PDF e controle financeiro no <strong>SIGA - UNIVEAS</strong>.
+                </p>
+            </div>
+
+            <!-- CAPÍTULO 1: FLUXO OBRIGATÓRIO -->
+            <section id="cap-1" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-5">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="layers" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 01 • Arquitetura Relacional</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Ordem Obrigatória de Cadastro no Sistema</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    O SIGA interliga automaticamente os dados entre Secretaria, Professores e Alunos. Para evitar erros de vínculo ou pautas vazias, siga rigorosamente estas <strong>5 etapas</strong> na abertura de cada turma ou semestre:
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="text-[10px] font-black text-teal-600 uppercase">Etapa 1</span>
+                        <h4 class="font-black text-gray-900 text-xs mt-1">Configurações Base</h4>
+                        <p class="text-[11px] text-gray-600 mt-1">Definir CNPJ, endereço e telefone que saem nos cabeçalhos dos PDFs.</p>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="text-[10px] font-black text-teal-600 uppercase">Etapa 2</span>
+                        <h4 class="font-black text-gray-900 text-xs mt-1">Cursos & Matrizes</h4>
+                        <p class="text-[11px] text-gray-600 mt-1">Criar curso, módulos, cargas horárias, dias de aula e pesos das notas.</p>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="text-[10px] font-black text-teal-600 uppercase">Etapa 3</span>
+                        <h4 class="font-black text-gray-900 text-xs mt-1">Corpo Docente</h4>
+                        <p class="text-[11px] text-gray-600 mt-1">Cadastrar professores e vinculá-los aos seus cursos e módulos.</p>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="text-[10px] font-black text-teal-600 uppercase">Etapa 4</span>
+                        <h4 class="font-black text-gray-900 text-xs mt-1">Alunos & Matrículas</h4>
+                        <p class="text-[11px] text-gray-600 mt-1">Matricular alunos com status <strong>Ativo</strong> nos cursos criados.</p>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-teal-50 border border-teal-200">
+                        <span class="text-[10px] font-black text-teal-700 uppercase">Etapa 5</span>
+                        <h4 class="font-black text-teal-950 text-xs mt-1">Diário & Financeiro</h4>
+                        <p class="text-[11px] text-teal-800 mt-1">Acompanhar lançamentos, emitir PDFs e baixar mensalidades.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 2: ACESSO MASTER -->
+            <section id="cap-2" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="shield" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 02 • Autenticação e Sessão</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Acesso Restrito (Senha Master) e Segurança</h3>
+                    </div>
+                </div>
+                <div class="space-y-3 text-sm text-gray-600">
+                    <p><strong>1. Autenticação:</strong> Ao abrir o aplicativo ou acessar <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">admin.html</code>, digite a <strong>Senha Master</strong> e clique em <strong>Desbloquear Sistema</strong>.</p>
+                    <p><strong>2. Persistência Segura:</strong> Uma vez validado, o sistema armazena uma credencial criptografada no navegador (<code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">token_siga</code>), mantendo o painel desbloqueado enquanto a sessão estiver válida.</p>
+                    <p><strong>3. Bloqueio Automático e Logout:</strong> Caso o token expire no servidor ou você clique em <strong>Sair do Sistema</strong> (botão vermelho na base do menu lateral), a sessão é limpa imediatamente e a tela retorna ao bloqueio Master.</p>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 3: DASHBOARD & NOTIFICAÇÕES -->
+            <section id="cap-3" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="grid" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 03 • Painel Inicial</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Dashboard Executivo e Triagem de Pré-Matrículas</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    O Dashboard consolida quatro métricas em tempo real: <strong>Total Docentes</strong>, <strong>Alunos Ativos</strong>, <strong>Turmas Ativas</strong> e o saldo total de <strong>Inadimplência (R$)</strong>.
+                </p>
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-950 space-y-2">
+                    <p class="font-black uppercase flex items-center gap-1.5"><i data-feather="bell" class="w-4 h-4 text-amber-600"></i> Central de Notificações (Pré-Matrículas do Site):</p>
+                    <p>Sempre que um candidato preencher o formulário de interesse no site institucional (<code class="bg-white px-1.5 py-0.5 rounded">index.html</code>), um alerta aparecerá no painel:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><strong>Botão "Atenção":</strong> Marca a solicitação como atendida e abre diretamente a tela de <em>Alunos & Matrículas</em> para efetivar a inscrição.</li>
+                        <li><strong>Botão "Ignorar":</strong> Descarta o alerta caso seja um contato duplicado ou teste.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 4: CURSOS & MATRIZES -->
+            <section id="cap-4" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-5">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="book-open" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 04 • Estrutura Pedagógica</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Cursos, Módulos, Carga Horária e Avaliações com Peso</h3>
+                    </div>
+                </div>
+                <div class="space-y-3 text-sm text-gray-600">
+                    <p><strong>Passo A — Dados Gerais do Curso:</strong> Informe <em>Código</em>, <em>Categoria</em> (Técnico ou Profissionalizante), <em>Nome do Curso</em>, <em>Modalidade</em>, <em>Duração em Meses</em>, <em>Taxa de Matrícula</em> e <em>Mensalidade Base</em>.</p>
+                    <p><strong>Passo B — Política Promocional:</strong> Se desejar aplicar bolsa ou desconto de campanha, selecione <strong>Promoção Ativa? = Sim</strong> e preencha o <strong>Valor Promocional</strong>. O módulo financeiro passará a cobrar automaticamente o valor reduzido para os alunos matriculados.</p>
+                    <p><strong>Passo C — Grade Curricular e Módulos:</strong> Clique em <strong>+ Adicionar Módulo</strong> para cadastrar cada disciplina ou bloco temático:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-1.5 text-xs">
+                            <h4 class="font-black text-gray-900 uppercase">Soma Automática de Carga Horária</h4>
+                            <p>Digite as horas de <strong>Teoria</strong>, <strong>Prática</strong> e <strong>Estágio</strong> em cada módulo. O sistema calcula o subtotal do módulo e atualiza automaticamente o campo <strong>CH Total</strong> do curso.</p>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-teal-50/70 border border-teal-200 space-y-1.5 text-xs">
+                            <h4 class="font-black text-teal-900 uppercase">Avaliações e Pesos no Diário</h4>
+                            <p>Dentro de cada módulo, adicione as avaliações (ex.: <em>Prova Teórica — Peso 2</em>, <em>Seminário — Peso 1</em>). São exatamente essas avaliações que criarão as colunas de notas no <strong>Diário Eletrônico</strong> e no <strong>Portal do Professor</strong>.</p>
+                        </div>
+                    </div>
+                    <p><strong>Passo D — Gestão dos Cursos Salvos:</strong> Clique no botão <strong>Ver Cursos Cadastrados</strong> (canto superior direito) para visualizar a matriz completa, editar, excluir ou gerar o <strong>PDF da Matriz Curricular</strong>.</p>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 5: CORPO DOCENTE -->
+            <section id="cap-5" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="briefcase" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 05 • Professores & Instrutores</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Cadastro Docente e Vínculo com Módulos</h3>
+                    </div>
+                </div>
+                <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-600">
+                    <li>Preencha <strong>Nome Completo</strong>, <strong>CPF</strong> (usado pelo docente para acessar o Portal/App do Professor), <strong>Formação/Titulação</strong>, <strong>E-mail</strong> e <strong>WhatsApp</strong>.</li>
+                    <li>Na seção <strong>Vincular Cursos e Módulos</strong>, selecione o Curso e o Módulo correspondente. Caso o docente ministre mais de uma disciplina, clique em <strong>+ Add Vínculo</strong> para adicionar quantas forem necessárias.</li>
+                    <li>Informe os <strong>Dados Bancários / Chave PIX</strong> para controle administrativo de pagamentos e clique em <strong>Salvar Docente</strong>.</li>
+                </ol>
+                <div class="bg-blue-50 border border-blue-200 p-3.5 rounded-2xl text-xs text-blue-900">
+                    <strong>Importante:</strong> Sem o vínculo explícito entre Docente e Módulo nesta tela, o professor não visualizará a turma em seu aplicativo para fazer chamadas e lançar notas.
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 6: ALUNOS & MATRÍCULAS -->
+            <section id="cap-6" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="users" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 06 • Registro Acadêmico</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Matrícula de Alunos, Status e Ficha Cadastral</h3>
+                    </div>
+                </div>
+                <div class="space-y-2.5 text-sm text-gray-600">
+                    <p><strong>1. Dados Pessoais e Credenciais:</strong> Cadastre Nome, CPF, Data de Nascimento, Contato, Endereço e defina uma <strong>Senha de Acesso</strong> para o Portal/App do Aluno.</p>
+                    <p><strong>2. Cursos Vinculados:</strong> Selecione o curso desejado. Se o aluno estiver matriculado em dois cursos ao mesmo tempo, clique em <strong>+ Add Curso</strong>.</p>
+                    <p><strong>3. Impacto do Status da Matrícula:</strong></p>
+                    <ul class="pl-5 list-disc space-y-1 text-xs">
+                        <li><span class="font-bold text-green-700">Ativo:</span> Aluno habilitado no Diário Eletrônico, na chamada do professor e na geração de mensalidades.</li>
+                        <li><span class="font-bold text-amber-700">Pendente / Trancado:</span> Aluno fica oculto das pautas de lançamento de notas até que a secretaria reative a matrícula.</li>
+                        <li><span class="font-bold text-blue-700">Concluído:</span> Apto para emissão de <em>Histórico de Conclusão</em> e <em>Certificado</em>.</li>
+                    </ul>
+                    <p><strong>4. Consulta e Relatórios:</strong> Utilize a barra de pesquisa e o filtro por curso na tabela inferior para localizar qualquer estudante, abrir sua <strong>Ficha Detalhada (ícone de Olho)</strong>, <strong>Editar (ícone de Lápis)</strong> ou exportar a lista em <strong>PDF</strong>.</p>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 7: DIÁRIO ELETRÔNICO -->
+            <section id="cap-7" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-5">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="edit-3" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 07 • Notas e Frequência</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Diário Eletrônico Consolidado (Auditoria da Secretaria)</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    O Diário Consolidado exibe em tempo real as notas e faltas lançadas pelos professores, permitindo também que a coordenação realize ajustes ou lançamentos extraordinários:
+                </p>
+                <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-600">
+                    <li>Selecione <strong>1. Curso</strong>, <strong>2. Módulo/Disciplina</strong> e <strong>3. Etapa/Período</strong> e clique em <strong>Carregar</strong>.</li>
+                    <li>O cabeçalho exibirá automaticamente o <strong>Docente Responsável</strong>, a <strong>Carga Horária</strong> e os <strong>Dias/Horários</strong> do módulo.</li>
+                    <li>Digite ou ajuste as <strong>Faltas</strong> e as <strong>Notas (0 a 10)</strong> em cada avaliação.</li>
+                    <li><strong>Cálculo Automático da Média Ponderada:</strong> O sistema aplica a fórmula <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">Σ(Nota × Peso) ÷ Σ(Pesos)</code>:
+                        <span class="inline-block ml-1 px-2 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-black">MÉDIA &ge; 8,0 = APROVADO</span>
+                        <span class="inline-block ml-1 px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-black">MÉDIA &lt; 8,0 = EM RECUPERAÇÃO</span>
+                    </li>
+                    <li>Clique no botão verde <strong>Salvar Lançamentos</strong> para gravar no banco de dados e atualizar instantaneamente o boletim do aluno.</li>
+                </ol>
+            </section>
+
+            <!-- CAPÍTULO 8: CENTRAL DE DOCUMENTOS -->
+            <section id="cap-8" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="file-text" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 08 • Secretaria Escolar</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Emissão Oficial de Declarações, Históricos e Certificados</h3>
+                    </div>
+                </div>
+                <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-600">
+                    <li>No campo <strong>Buscar Aluno</strong>, digite o nome, CPF ou número de matrícula e <strong>clique sobre o aluno na lista suspensa</strong>.</li>
+                    <li>Escolha o modelo oficial: <strong>Histórico Escolar Parcial</strong>, <strong>Declaração de Vínculo/Matrícula</strong>, <strong>Histórico Escolar Conclusão</strong> ou <strong>Certificado de Conclusão</strong>.</li>
+                    <li>Clique em <strong>Gerar Documento PDF</strong>. O sistema monta o documento timbrado com os dados da instituição, notas consolidadas e carga horária, iniciando o download e salvando o protocolo na tabela de <em>Documentos Emitidos</em>.</li>
+                </ol>
+            </section>
+
+            <!-- CAPÍTULO 9: GESTÃO FINANCEIRA -->
+            <section id="cap-9" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="dollar-sign" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 09 • Tesouraria & Mensalidades</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Fluxo de Pagamentos, Comprovantes e Nota Fiscal</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    O painel financeiro soma automaticamente o valor das mensalidades de todos os cursos ativos do aluno (respeitando valores promocionais cadastrados) e permite gerenciar três estados:
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div class="p-4 rounded-2xl bg-yellow-50 border border-yellow-200 text-yellow-950">
+                        <span class="font-black uppercase block mb-1">1. Pendente</span>
+                        Mensalidade em aberto. Clique no botão amarelo para registrar o pagamento recebido.
+                    </div>
+                    <div class="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-950">
+                        <span class="font-black uppercase block mb-1">2. Comprovante Enviado</span>
+                        O aluno anexou o comprovante PIX/transferência pelo Portal do Aluno. Confira o extrato bancário e altere o status para <strong>Pago / Regular</strong>.
+                    </div>
+                    <div class="p-4 rounded-2xl bg-green-50 border border-green-200 text-green-950">
+                        <span class="font-black uppercase block mb-1">3. Pago & Nota Fiscal</span>
+                        Após confirmar o pagamento, clique no ícone da <strong>Nota Fiscal (NF)</strong> na coluna de ações para registrar o número do recibo ou NF-e emitida.
+                    </div>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 10: CONFIGURAÇÕES & SOLUÇÃO DE PROBLEMAS -->
+            <section id="cap-10" class="tutorial-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 space-y-5">
+                <div class="flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div class="p-2.5 bg-teal-50 text-teal-600 rounded-xl"><i data-feather="settings" class="w-5 h-5"></i></div>
+                    <div>
+                        <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest">Capítulo 10 • Suporte Rápido</span>
+                        <h3 class="text-lg sm:text-xl font-black text-gray-900">Configurações Base e Resolução de Dúvidas Comuns</h3>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600">
+                    Em <strong>Configurações Base</strong>, mantenha sempre atualizados o <em>Nome da Instituição</em>, <em>CNPJ</em>, <em>Telefone</em> e <em>Endereço Completo</em> — esses dados assinam todos os relatórios e declarações emitidos pela secretaria.
+                </p>
+                <div class="overflow-x-auto border border-gray-200 rounded-2xl">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-gray-50 text-gray-700 font-black uppercase border-b border-gray-200">
+                            <tr>
+                                <th class="p-3.5">Situação Identificada</th>
+                                <th class="p-3.5">Causa Provável e Solução Imediata</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-gray-600">
+                            <tr>
+                                <td class="p-3.5 font-bold text-gray-900">Aluno não aparece no Diário Eletrônico</td>
+                                <td class="p-3.5">Verifique em <em>Alunos & Matrículas</em> se o aluno está vinculado exatamente ao curso selecionado e se o <strong>Status</strong> está marcado como <strong>Ativo</strong>.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-bold text-gray-900">Professor não vê a turma no App Docente</td>
+                                <td class="p-3.5">Acesse <em>Corpo Docente</em>, edite o cadastro do professor e confirme se existe um vínculo ativo para o <strong>Curso + Módulo</strong> correspondente.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-bold text-gray-900">Diário sem colunas de avaliação</td>
+                                <td class="p-3.5">Edite o curso em <em>Cursos & Matrizes</em> e adicione pelo menos uma avaliação com peso dentro do módulo correspondente.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-bold text-gray-900">Valor da mensalidade incorreto</td>
+                                <td class="p-3.5">Confira no cadastro do curso se o campo <strong>Promoção Ativa?</strong> está marcado corretamente e se o aluno não possui dois cursos ativos vinculados.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+        });
+
+        function abrirMenuMobile() {
+            document.getElementById('sidebar-tutorial').classList.remove('-translate-x-full');
+            document.getElementById('backdrop-mobile').classList.remove('hidden');
+        }
+
+        function fecharMenuMobile() {
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar-tutorial').classList.add('-translate-x-full');
+                document.getElementById('backdrop-mobile').classList.add('hidden');
+            }
+        }
+
+        function filtrarSecoesTutorial() {
+            const termo = (document.getElementById('busca-tutorial').value || '').toLowerCase().trim();
+            document.querySelectorAll('.tutorial-card').forEach(card => {
+                card.style.display = card.innerText.toLowerCase().includes(termo) ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
