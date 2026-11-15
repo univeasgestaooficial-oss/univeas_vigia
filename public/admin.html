@@ -120,10 +120,16 @@
             </button>
         </div>
 
-        <div class="p-4 border-t border-gray-100">
-            <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-bold">
-                <i data-feather="log-out" class="h-5 w-5 mr-3 shrink-0"></i>
-                <span class="text-sm">Sair do Sistema</span>
+        <!-- BLOCO DE SUPORTE + SAIR DO SISTEMA -->
+        <div class="p-4 border-t border-gray-100 space-y-2">
+            <a href="tutorial_admin.html" class="w-full flex items-center justify-center px-4 py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+                <i data-feather="help-circle" class="h-4 w-4 mr-2 shrink-0"></i>
+                <span>Manual & Tutorial</span>
+            </a>
+
+            <button onclick="logoutSistema()" class="w-full flex items-center justify-center px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+                <i data-feather="log-out" class="h-4 w-4 mr-2 shrink-0"></i>
+                <span>Sair do Sistema</span>
             </button>
         </div>
     </aside>
