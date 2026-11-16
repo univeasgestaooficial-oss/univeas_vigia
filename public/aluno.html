@@ -85,12 +85,6 @@
             </button>
         </div>
 
-    <!-- BOTÃO TUTORIAL DO ALUNO -->
-            <a href="tutorial_aluno.html" class="menu-btn w-full flex items-center px-4 py-2.5 text-blue-700 bg-blue-50/60 border-l-4 border-transparent hover:bg-blue-50 hover:border-blue-500 font-bold rounded-r-lg transition-colors mt-2">
-                <i data-feather="help-circle" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Tutorial do Aluno</span>
-            </a>
-
         <div class="p-4 border-t border-gray-100">
             <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
                 <i data-feather="log-out" class="h-5 w-5 mr-3"></i>
@@ -141,14 +135,14 @@
                 <!-- AVISOS E ALTERAÇÕES DE CRONOGRAMA DO PROFESSOR -->
                 <div id="container-notificacoes-aluno" class="hidden mb-6 space-y-3"></div>
 
-                
+
                 <!-- CARROSSÉIS DE DISCIPLINAS POR SEMESTRE -->
                 <div id="container-semestres-dash" class="space-y-8 mt-4">
                     <div class="text-center py-10">
                         <p class="text-gray-400 text-sm animate-pulse">Carregando matriz curricular...</p>
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
@@ -178,9 +172,9 @@
                         </div>
                     </div>
                 </div>
-                
 
-                
+
+
             </div>
 
             <!-- ==========================================
@@ -1368,72 +1362,6 @@ function formatarCronogramaDisciplina(d) {
     return 'Horário a definir';
 }
 
-
-// Variável global para guardar os dados completos do aluno logado
-let dadosAlunoLogado = null;
-
-// 1. Chame esta função logo após carregar os dados do aluno logado (ex: após o fetch('/aluno/perfil'))
-function inicializarSeletorCursosAluno(alunoData) {
-    dadosAlunoLogado = alunoData;
-    const wrapper = document.getElementById('wrapper-seletor-curso');
-    const select = document.getElementById('select-curso-ativo-aluno');
-
-    if (!wrapper || !select) return;
-
-    // Extrai os cursos do aluno (suporta o formato novo 'cursos_json' ou o antigo 'curso_id')
-    let listaCursos = [];
-    try {
-        if (alunoData.cursos_json) {
-            listaCursos = typeof alunoData.cursos_json === 'string' ? JSON.parse(alunoData.cursos_json) : alunoData.cursos_json;
-        } else if (alunoData.curso_id) {
-            listaCursos = [{ curso_id: alunoData.curso_id, nome_curso: alunoData.nome_curso || 'Curso Principal' }];
-        }
-    } catch (e) {
-        console.error("Erro ao ler cursos do aluno:", e);
-    }
-
-    // Se o aluno tiver apenas 1 curso ou nenhum, esconde o seletor para não poluir a tela
-    if (listaCursos.length <= 1) {
-        wrapper.classList.add('hidden');
-        if (listaCursos.length === 1) {
-            localStorage.setItem('curso_ativo_id', listaCursos[0].curso_id);
-        }
-        return;
-    }
-
-    // Se tiver mais de 1 curso, exibe o seletor e preenche as opções
-    wrapper.classList.remove('hidden');
-
-    let cursoAtivoSalvo = localStorage.getItem('curso_ativo_id') || listaCursos[0].curso_id;
-
-    let optionsHtml = '';
-    listaCursos.forEach(c => {
-        // Tenta buscar o nome do curso pelo ID se não vier direto no objeto
-        let nomeExibicao = c.nome_curso || `Curso ID: ${c.curso_id}`;
-        let selected = String(c.curso_id) === String(cursoAtivoSalvo) ? 'selected' : '';
-        optionsHtml += `<option value="${c.curso_id}" ${selected}>${nomeExibicao}</option>`;
-    });
-
-    select.innerHTML = optionsHtml;
-
-    // Garante que o ID salvo é o atual
-    localStorage.setItem('curso_ativo_id', select.value);
-    if (window.feather) feather.replace();
-}
-
-// 2. Executado toda vez que o aluno troca de curso no <select>
-function mudarCursoAtivoAluno(novoCursoId) {
-    localStorage.setItem('curso_ativo_id', novoCursoId);
-
-    // Dispara a atualização das telas do aluno filtrando pelo novo curso
-    if (typeof carregarNotasE_FrequenciasAluno === 'function') {
-        carregarNotasE_FrequenciasAluno(novoCursoId);
-    } else {
-        // Se a função específica não existir, recarrega a página aplicando o contexto
-        location.reload();
-    }
-}
-
 async function abrirTelaDisciplina(indexBoletim) {
     const d = dadosBoletimAtual[indexBoletim];
     if (!d) return;
@@ -1543,10 +1471,11 @@ async function abrirTelaDisciplina(indexBoletim) {
         const mats = await apiRequest(`/aluno/materiais/${cursoId}`);
 
         containerMat.innerHTML = '';
-        if (mats && mats.length > 0) {
-            let filtrados = mats.filter(m => (m.disciplina || '').trim().toUpperCase() === nomeDisc.trim().toUpperCase());
-            if (filtrados.length === 0) filtrados = mats;
+        const filtrados = Array.isArray(mats)
+            ? mats.filter(m => (m.disciplina || '').trim().toUpperCase() === nomeDisc.trim().toUpperCase())
+            : [];
 
+        if (filtrados.length > 0) {
             filtrados.forEach(m => {
                 containerMat.innerHTML += `
                     <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl">
