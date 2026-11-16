@@ -175,7 +175,9 @@ async def matricular_aluno(
         forma_pagamento: str = Form(None),
         pcd: str = Form(None),
         status: str = Form("Ativo"),
-        aceite_termos: str = Form(None)
+        aceite_termos: str = Form(None),
+        possui_pendencia_financeira: str = Form(None),
+        detalhes_pendencia_financeira: str = Form("")
 ):
     checar_db()
     matricula_gerada = f"#{datetime.now().strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
@@ -188,6 +190,10 @@ async def matricular_aluno(
     curso_principal = curso_id or curso or (lista_cursos[0].get("curso_id") if lista_cursos else None)
     if not lista_cursos and curso_principal:
         lista_cursos = [{"curso_id": curso_principal}]
+
+    status_final = status or "Ativo"
+    is_pendente = (status_final == "Pendente") or (possui_pendencia_financeira == "Sim")
+    mes_ref = datetime.now().strftime("%Y-%m")
 
     novo_aluno = {
         "matricula": matricula_gerada,
@@ -204,9 +210,9 @@ async def matricular_aluno(
         "forma_pagamento": forma_pagamento,
         "pcd": pcd,
         "aceite_termos": aceite_termos,
-        "status": status or "Ativo",
-        "possui_pendencia_financeira": "Não",
-        "detalhes_pendencia_financeira": "",
+        "status": status_final,
+        "possui_pendencia_financeira": "Sim" if is_pendente else "Não",
+        "detalhes_pendencia_financeira": (detalhes_pendencia_financeira or f"Matrícula / Mensalidade ({mes_ref})") if is_pendente else "",
         "numero_nf": "",
         "status_comprovante": "Nenhum",
         "data_cadastro": datetime.now().isoformat()
@@ -214,7 +220,6 @@ async def matricular_aluno(
 
     _, doc_ref = db.collection("alunos").add(novo_aluno)
     return {"sucesso": True, "id": doc_ref.id, "matricula": matricula_gerada}
-
 
 @app.put("/api/v1/alunos/{aluno_id}")
 async def alterar_aluno(
@@ -1016,7 +1021,7 @@ async def obter_indicadores_dashboard():
     total_inadimplencia = sum(
         calcular_valor_mensal_aluno(a, cursos_map)
         for a in alunos_docs
-        if a.get("possui_pendencia_financeira") == "Sim"
+        if a.get("status") not in ["Trancado", "Concluído"] and aluno_esta_pendente_financeiro(a)
     )
 
     notificacoes = []
@@ -1915,35 +1920,18 @@ async def visualizar_comprovante_aluno(aluno_id: str):
     }
 
 
+def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
+    flag = aluno_dict.get("possui_pendencia_financeira")
+    if flag == "Sim":
+        return True
+    if aluno_dict.get("status") == "Pendente" and flag != "Não":
+        return True
+    return False
+
 
 # Helper reutilizável para calcular o valor mensal real do aluno (considerando múltiplos cursos e promoções)
 def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
     ids_cursos = set()
-    if aluno_dict.get("curso_id"):
-        ids_cursos.add(str(aluno_dict["curso_id"]))
-    elif aluno_dict.get("curso"):
-        ids_cursos.add(str(aluno_dict["curso"]))
-
-    c_json = aluno_dict.get("cursos_json", [])
-    if isinstance(c_json, str):
-        try:
-            c_json = json.loads(c_json)
-        except Exception:
-            c_json = []
-    if isinstance(c_json, list):
-        for item in c_json:
-            if isinstance(item, dict) and item.get("curso_id"):
-                ids_cursos.add(str(item["curso_id"]))
-
-    total = 0.0
-    for cid in ids_cursos:
-        c = cursos_map.get(cid)
-        if c:
-            if c.get("promocao_ativa") == "Sim" and c.get("valor_promocional"):
-                total += float(c.get("valor_promocional") or 0)
-            else:
-                total += float(c.get("valor_mensalidade") or 0)
-    return total
 
 
 @app.get("/api/v1/financeiro/indicadores")
@@ -1961,7 +1949,7 @@ async def obter_indicadores_financeiros():
         if a.get("status") in ["Trancado", "Concluído"]:
             continue
         valor = calcular_valor_mensal_aluno(a, cursos_map)
-        if a.get("possui_pendencia_financeira") == "Sim":
+        if aluno_esta_pendente_financeiro(a):
             total_receber += valor
             inadimplencia_qtd += 1
         else:
@@ -1975,7 +1963,6 @@ async def obter_indicadores_financeiros():
         "pagamentos_mes": pagamentos_mes_qtd
     }
 
-
 @app.post("/api/v1/alunos/{aluno_id}/pendencia")
 async def atualizar_pendencia_aluno(
         aluno_id: str,
@@ -1985,8 +1972,12 @@ async def atualizar_pendencia_aluno(
 ):
     checar_db()
     ref = db.collection("alunos").document(aluno_id)
-    if not ref.get().exists:
+    doc_snap = ref.get()
+    if not doc_snap.exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    aluno_atual = doc_snap.to_dict() or {}
+    status_atual = aluno_atual.get("status", "Pendente")
 
     update_data = {
         "possui_pendencia_financeira": possui_pendencia_financeira,
@@ -1994,12 +1985,18 @@ async def atualizar_pendencia_aluno(
         "numero_nf": numero_nf,
         "data_atualizacao_financeira": datetime.now().isoformat()
     }
-    # Se o Admin quitou a pendência, limpa o status de comprovante em análise
+
+    # Regra de negócio: Ao quitar no financeiro ("Não"), ativa o aluno na íntegra
     if possui_pendencia_financeira == "Não":
         update_data["status_comprovante"] = "Aprovado"
+        if status_atual not in ["Trancado", "Concluído"]:
+            update_data["status"] = "Ativo"
+    else:
+        if status_atual == "Ativo":
+            update_data["status"] = "Pendente"
 
     ref.update(update_data)
-    return {"sucesso": True, "mensagem": "Situação financeira atualizada."}
+    return {"sucesso": True, "mensagem": "Situação financeira e status do aluno atualizados."}
 
 
 @app.post("/api/v1/alunos/{aluno_id}/nf")
@@ -2215,3 +2212,4 @@ async def atualizar_perfil_aluno(payload: PerfilAlunoUpdatePayload, authorizatio
         ref.update(dados_update)
 
     return {"sucesso": True, "mensagem": "Dados cadastrais atualizados com sucesso!"}
+
