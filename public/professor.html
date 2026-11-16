@@ -82,12 +82,12 @@
             </button>
         </div>
 
-        
-    
-        <a href="tutorial_docente.html" class="menu-btn w-full flex items-center px-4 py-2.5 text-teal-700 bg-teal-50/60 border-l-4 border-transparent hover:bg-teal-50 hover:border-teal-500 font-bold rounded-r-lg transition-colors mt-2">
-            <i data-feather="help-circle" class="h-5 w-5 mr-3"></i>
-            <span class="text-sm">Tutorial do Docente</span>
-        </a>
+        <div class="px-2 mt-2">
+            <a href="tutorial_docente.html" class="menu-btn w-full flex items-center px-4 py-2.5 text-teal-700 bg-teal-50/60 border-l-4 border-transparent hover:bg-teal-50 hover:border-teal-500 font-bold rounded-r-lg transition-colors">
+                <i data-feather="help-circle" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Tutorial do Docente</span>
+            </a>
+        </div>
         <div class="p-4 border-t border-gray-100">
             <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
                 <i data-feather="log-out" class="h-5 w-5 mr-3"></i>
@@ -408,6 +408,11 @@ const API_BASE_URL = "/api/v1";
 let turmasProfessor = [];
 let avaliacoesAtuaisDiario = [];
 
+function getTurmaIdSeguro(turma) {
+    if (!turma) return '';
+    return String(turma.id || turma.turma_id || turma.vinculo_id || '');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
 
@@ -656,9 +661,7 @@ async function loadTurmas() {
         turmasProfessor.forEach(turma => {
             const nomeCurso = turma.curso_pai || turma.curso || 'Curso Padrão';
             const nomeDisciplina = turma.nome_disciplina || turma.modulo || turma.disciplina || 'Disciplina Não Nomeada';
-            const idTurma = turma.id || turma.turma_id || turma.vinculo_id;
-
-            const turmaJsonSafe = encodeURIComponent(JSON.stringify(turma));
+            const idTurma = getTurmaIdSeguro(turma);
 
             const card = `
                 <div class="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow group relative bg-gray-50 flex flex-col h-full">
@@ -671,7 +674,7 @@ async function loadTurmas() {
                         <p class="text-sm text-gray-500 font-medium uppercase">${nomeCurso}</p>
                     </div>
                     <div class="mt-5 grid grid-cols-2 gap-2">
-                        <button onclick="abrirModalDisciplina('${idTurma}', '${turmaJsonSafe}')" class="w-full bg-white border border-teal-200 text-teal-700 font-bold py-2 rounded-xl text-[10px] uppercase hover:bg-teal-50 transition flex items-center justify-center">
+                        <button onclick="abrirModalDisciplina('${idTurma}')" class="w-full bg-white border border-teal-200 text-teal-700 font-bold py-2 rounded-xl text-[10px] uppercase hover:bg-teal-50 transition flex items-center justify-center">
                             <i data-feather="settings" class="w-3 h-3 mr-1.5"></i> Gerenciar
                         </button>
                         <button onclick="prepararDiario('${idTurma}')" class="w-full bg-teal-500 text-white font-bold py-2 rounded-xl text-[10px] uppercase hover:bg-teal-600 shadow-sm transition flex items-center justify-center">
@@ -716,6 +719,8 @@ async function loadTurmas() {
             containerPerfilTurmas.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Nenhuma turma alocada para este registro de docente.</p>';
         }
     }
+
+    inicializarSeletorTurmasProfessor({ turmas_vinculadas: turmasProfessor });
     renderizarCronogramaDashboard();
 }
 
@@ -749,6 +754,17 @@ function calcularMediaPonderadaDocente(notasObj, avaliacoesConfig) {
 }
 
 function recalcularLinhaDiarioDocente(inputElement) {
+    if (inputElement && inputElement.value !== '') {
+        let valNum = parseFloat(inputElement.value);
+        if (!isNaN(valNum)) {
+            if (valNum > 10) {
+                inputElement.value = '10';
+            } else if (valNum < 0) {
+                inputElement.value = '0';
+            }
+        }
+    }
+
     const tr = inputElement.closest('tr');
     if (!tr) return;
 
@@ -791,13 +807,13 @@ function recalcularLinhaDiarioDocente(inputElement) {
 // LÓGICA DO DIÁRIO ELETRÔNICO (DATA AUTOMÁTICA E AVALIAÇÕES)
 // =========================================================
 function prepararDiario(idTurma) {
-    document.getElementById('select-turma-diario').value = idTurma;
+    document.getElementById('select-turma-diario').value = String(idTurma);
     mudarTela('diario');
     processarTurmaDiario();
 }
 
 function processarTurmaDiario() {
-    const turmaId = document.getElementById('select-turma-diario').value;
+    const turmaId = String(document.getElementById('select-turma-diario').value || '');
     const selectData = document.getElementById('data-aula-diario');
 
     if (!turmaId) {
@@ -805,7 +821,7 @@ function processarTurmaDiario() {
         return;
     }
 
-    const turma = turmasProfessor.find(t => t.id === turmaId);
+    const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === turmaId);
 
     if (!turma || !turma.detalhes || !turma.detalhes.data_inicio) {
         selectData.innerHTML = '<option value="">Datas não definidas pela secretaria.</option>';
@@ -833,8 +849,8 @@ function processarTurmaDiario() {
 function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
     if (!dataInicioStr || !diasAulaStrArray || diasAulaStrArray.length === 0) return [];
 
-    const mapaDias = {'Dom': 0, 'Seg': 1, 'Ter': 2, 'Qua': 3, 'Qui': 4, 'Sex': 5, 'Sáb': 6};
-    const diasValidos = diasAulaStrArray.map(d => mapaDias[d]);
+    const mapaDias = {'Dom': 0, 'Seg': 1, 'Ter': 2, 'Qua': 3, 'Qui': 4, 'Sex': 5, 'Sáb': 6, 'Sab': 6};
+    const diasValidos = diasAulaStrArray.map(d => mapaDias[d]).filter(v => v !== undefined);
 
     const inicio = new Date(dataInicioStr + 'T00:00:00');
     const hoje = new Date();
@@ -863,7 +879,7 @@ function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
 }
 
 async function carregarChamada() {
-    const turmaId = document.getElementById('select-turma-diario').value;
+    const turmaId = String(document.getElementById('select-turma-diario').value || '');
     const tbody = document.getElementById('tbody-alunos-diario');
     const thead = document.getElementById('thead-diario');
 
@@ -872,7 +888,7 @@ async function carregarChamada() {
     tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-teal-600 font-bold"><i data-feather="loader" class="w-5 h-5 inline animate-spin mr-2"></i> Processando diário...</td></tr>';
     feather.replace();
 
-    const turma = turmasProfessor.find(t => t.id === turmaId);
+    const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === turmaId);
     const avaliacoes = (turma && turma.detalhes && Array.isArray(turma.detalhes.avaliacoes) && turma.detalhes.avaliacoes.length > 0)
         ? turma.detalhes.avaliacoes
         : [{ tipo: 'Nota Final', peso: 1 }];
@@ -900,7 +916,7 @@ async function carregarChamada() {
     thead.innerHTML = thHTML;
 
     // 2. BUSCA OS ALUNOS E AS NOTAS SALVAS
-    const cursoId = turmaId.split('_')[0];
+    const cursoId = String(turma?.curso_id || turma?.curso || turmaId.split('_')[0]);
     const [alunos, pautaSalvaResp] = await Promise.all([
         apiRequest('/alunos'),
         apiRequest(`/docente/diario/${encodeURIComponent(turmaId)}`)
@@ -1048,15 +1064,19 @@ function toggleMenuMobile() {
 
 let turmaAtualEditando = null;
 
-function abrirModalDisciplina(idTurma, turmaJsonEncodada) {
+function abrirModalDisciplina(idTurma) {
     const modal = document.getElementById('modal-editar-disciplina');
-    const turma = JSON.parse(decodeURIComponent(turmaJsonEncodada));
+    const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === String(idTurma));
+    if (!turma) {
+        alert("Não foi possível localizar os dados desta disciplina.");
+        return;
+    }
     const det = turma.detalhes || {};
 
     turmaAtualEditando = turma;
 
-    document.getElementById('modal-titulo-disciplina').innerText = turma.nome_disciplina || 'Disciplina';
-    document.getElementById('modal-subtitulo-curso').innerText = turma.curso_pai || 'Curso';
+    document.getElementById('modal-titulo-disciplina').innerText = turma.nome_disciplina || turma.modulo || turma.disciplina || 'Disciplina';
+    document.getElementById('modal-subtitulo-curso').innerText = turma.curso_pai || turma.curso || 'Curso';
     document.getElementById('edit-turma-id').value = idTurma;
 
     document.getElementById('edit-data-inicio').value = det.data_inicio || turma.data_inicio || '';
@@ -1214,7 +1234,9 @@ async function carregarAcervoDocente() {
 
     container.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Buscando materiais publicados...</p>';
 
-    const data = await apiRequest('/docente/materiais');
+    const registroProf = localStorage.getItem('registro_docente');
+    const endpoint = registroProf ? `/docente/materiais?registro=${encodeURIComponent(registroProf)}` : '/docente/materiais';
+    const data = await apiRequest(endpoint);
     const lista = Array.isArray(data) ? data : (data?.materiais || []);
 
     if (lista.length > 0) {
@@ -1309,7 +1331,8 @@ function inicializarSeletorTurmasProfessor(professorData) {
     if (listaTurmas.length <= 1) {
         wrapper.classList.add('hidden');
         if (listaTurmas.length === 1) {
-            localStorage.setItem('turma_ativa_id', listaTurmas[0].turma_id);
+            const idUnico = getTurmaIdSeguro(listaTurmas[0]);
+            localStorage.setItem('turma_ativa_id', idUnico);
         }
         return;
     }
@@ -1317,24 +1340,36 @@ function inicializarSeletorTurmasProfessor(professorData) {
     // Se tiver mais de 1 turma, exibe o seletor para alternar
     wrapper.classList.remove('hidden');
 
-    let turmaSalva = localStorage.getItem('turma_ativa_id') || listaTurmas[0].turma_id;
+    let turmaSalva = localStorage.getItem('turma_ativa_id') || getTurmaIdSeguro(listaTurmas[0]);
 
     let optionsHtml = '';
     listaTurmas.forEach(t => {
-        let label = `${t.nome_curso} - ${t.disciplina} (${t.modulo})`;
-        let selected = String(t.turma_id) === String(turmaSalva) ? 'selected' : '';
-        optionsHtml += `<option value="${t.turma_id}" ${selected}>${label}</option>`;
+        const idT = getTurmaIdSeguro(t);
+        const curso = t.nome_curso || t.curso_pai || t.curso || 'Curso';
+        const disc = t.nome_disciplina || t.disciplina || t.modulo || 'Disciplina';
+        let label = `${curso} - ${disc}`;
+        let selected = idT === String(turmaSalva) ? 'selected' : '';
+        optionsHtml += `<option value="${idT}" ${selected}>${label}</option>`;
     });
 
     select.innerHTML = optionsHtml;
     localStorage.setItem('turma_ativa_id', select.value);
+
+    const selectDiario = document.getElementById('select-turma-diario');
+    const selectMaterial = document.getElementById('select-turma-material');
+    if (selectDiario && select.value) selectDiario.value = select.value;
+    if (selectMaterial && select.value) selectMaterial.value = select.value;
+
     if (window.feather) feather.replace();
 }
 
 function mudarTurmaAtivaProfessor(novaTurmaId) {
-    localStorage.setItem('turma_ativa_id', novaTurmaId);
-    // Recarrega a listagem de alunos e diário da nova turma selecionada
-    carregarDiarioEAlunosDaTurma(novaTurmaId);
+    localStorage.setItem('turma_ativa_id', String(novaTurmaId));
+    const selectDiario = document.getElementById('select-turma-diario');
+    const selectMaterial = document.getElementById('select-turma-material');
+    if (selectDiario) selectDiario.value = String(novaTurmaId);
+    if (selectMaterial) selectMaterial.value = String(novaTurmaId);
+    processarTurmaDiario();
 }
 
 function renderizarCronogramaDashboard() {
