@@ -62,7 +62,7 @@
 <div id="app-container" class="hidden h-full w-full flex-1 flex relative">
 
     <!-- BACKDROP MOBILE (Fecha o menu ao tocar fora) -->
-    <div id="mobile-backdrop" onclick="fecharMenuMobile()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
+    <div id="mobile-backdrop" onclick="fecharMenuMobile()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 hidden md:hidden transition-opacity"></div>
 
     <!-- ==========================================
          MENU LATERAL RESPONSIVO (OFF-CANVAS NO MOBILE)
@@ -127,7 +127,7 @@
                 <span>Manual & Tutorial</span>
             </a>
 
-            <button onclick="logoutSistema()" class="w-full flex items-center justify-center px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+            <button onclick="fazerLogout()" class="w-full flex items-center justify-center px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
                 <i data-feather="log-out" class="h-4 w-4 mr-2 shrink-0"></i>
                 <span>Sair do Sistema</span>
             </button>
@@ -436,7 +436,7 @@
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Lista de Documentos Emitidos</p>
                             <div class="flex space-x-2 w-full sm:w-auto">
                                 <div class="relative flex-1 sm:w-64">
-                                    <input type="text" placeholder="Nome, Tipo, Matrícula..." class="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                    <input type="text" id="filtro-docs-emitidos" oninput="filtrarTabelaDocumentosEmitidos()" placeholder="Nome, Tipo, Matrícula..." class="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-univeas-orange">
                                     <i data-feather="search" class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"></i>
                                 </div>
                                 <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
@@ -587,7 +587,8 @@
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-5">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Registro (Auto)</label>
-                                    <input type="text" name="registro" value="#PR014" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400 font-mono">
+                                        <input type="hidden" id="docente_id_edit" value="">
+                                        <input type="text" id="docente-registro-auto" value="#PR001" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-mono">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF do Prestador</label>
@@ -732,7 +733,7 @@
                         </div>
                         <div class="md:col-span-4">
                             <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">2. Módulo / Disciplina</label>
-                            <select id="diario-select-modulo" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-teal-500 font-medium">
+                            <select id="diario-select-modulo" onchange="onTrocaModuloDiario()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none">
                                 <option value="">Selecione um curso primeiro...</option>
                             </select>
                         </div>
@@ -1199,6 +1200,10 @@ function atualizarModulosDiario() {
 
     if (!cursoId) {
         selectModulo.innerHTML = '<option value="">Selecione um curso primeiro...</option>';
+        pautaAtualDiario = [];
+        document.getElementById('diario-info-bar')?.classList.add('hidden');
+        document.getElementById('tabela-diario').innerHTML =
+            '<tr><td colspan="7" class="py-12 text-center text-gray-400 text-xs">Selecione o curso, o módulo e clique em <strong>Carregar</strong> para auditar ou lançar notas e frequências.</td></tr>';
         return;
     }
 
@@ -1213,16 +1218,17 @@ function atualizarModulosDiario() {
 
     if (!grade || grade.length === 0) {
         selectModulo.innerHTML = '<option value="Geral">Módulo Geral / Único</option>';
-        return;
+    } else {
+        let opts = '';
+        grade.forEach((mod, idx) => {
+            const nomeMod = mod.nome || `Módulo ${idx + 1}`;
+            const sem = mod.semestre ? ` (${mod.semestre})` : '';
+            opts += `<option value="${nomeMod}">${nomeMod}${sem}</option>`;
+        });
+        selectModulo.innerHTML = opts;
     }
 
-    let opts = '';
-    grade.forEach((mod, idx) => {
-        const nomeMod = mod.nome || `Módulo ${idx + 1}`;
-        const sem = mod.semestre ? ` (${mod.semestre})` : '';
-        opts += `<option value="${nomeMod}">${nomeMod}${sem}</option>`;
-    });
-    selectModulo.innerHTML = opts;
+    onTrocaModuloDiario();
 }
 
 function obterConfigAvaliacoesModulo(cursoId, moduloNome) {
@@ -1787,6 +1793,12 @@ async function loadDocentes() {
     if (!tbody || !docentes) return;
 
     docentesGlobais = Array.isArray(docentes) ? docentes : (docentes.dados || []);
+
+    const regAuto = document.getElementById('docente-registro-auto');
+    if (regAuto && !document.getElementById('docente_id_edit')?.value) {
+        regAuto.value = '#PR' + String(docentesGlobais.length + 1).padStart(3, '0');
+    }
+
     tbody.innerHTML = '';
 
     docentesGlobais.forEach(doc => {
@@ -1835,12 +1847,20 @@ async function loadFinanceiro() {
     if (cursosGlobais.length === 0) await loadCursos();
 
     const resposta = await apiRequest('/alunos');
-    const lista = Array.isArray(resposta) ? resposta : (resposta.dados || []);
+    const listaBruta = Array.isArray(resposta) ? resposta : (resposta.dados || []);
+    const mesSelecionado = inputMes ? inputMes.value : '';
+
+    const lista = mesSelecionado
+        ? listaBruta.filter(item => {
+            const ref = String(item.mes_referencia || item.detalhes_pendencia_financeira || '');
+            return !ref || ref.includes(mesSelecionado);
+        })
+        : listaBruta;
 
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum registro encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum registro encontrado para o período selecionado.</td></tr>`;
         return;
     }
 
@@ -1909,7 +1929,6 @@ async function loadFinanceiro() {
     filtrarFinanceiro();
     feather.replace();
 }
-
 async function carregarIndicadoresFinanceiros() {
     const dados = await apiRequest('/financeiro/indicadores');
     if (dados && !dados.detail) {
@@ -2041,7 +2060,7 @@ document.getElementById('form-docente')?.addEventListener('submit', async (e) =>
         contadorVinculosDocente = 0;
         adicionarVinculoDocente();
 
-        loadDocentes();
+        await loadDocentes();
     } else {
         alert(result?.detail || "Erro ao salvar os dados do docente.");
         btnSubmit.innerText = textoOriginal;
@@ -2063,17 +2082,12 @@ function editarDocente(id_firebase) {
     if (!doc) return alert("Erro ao carregar dados do docente.");
 
     const form = document.getElementById('form-docente');
-    let inputId = document.getElementById('docente_id_edit');
-    if (!inputId) {
-        inputId = document.createElement('input');
-        inputId.type = 'hidden';
-        inputId.id = 'docente_id_edit';
-        inputId.name = 'docente_id_edit';
-        form.appendChild(inputId);
-    }
-    inputId.value = doc.id;
+    const inputId = document.getElementById('docente_id_edit');
+    if (inputId) inputId.value = doc.id;
 
-    form.registro.value = doc.registro || '';
+    const regAuto = document.getElementById('docente-registro-auto');
+    if (regAuto) regAuto.value = doc.registro || '#PR001';
+
     form.cpf_prestador.value = doc.cpf_prestador || doc.cpf || '';
     form.nome_prestador.value = doc.nome_prestador || doc.nome || '';
     form.data_nascimento_prestador.value = doc.data_nascimento_prestador || doc.data_nascimento || '';
@@ -2823,11 +2837,8 @@ function imprimirCardCurso(id_firebase) {
 }
 
 async function loadDocumentos() {
-    if (!window.alunosCache || window.alunosCache.length === 0) {
-        const respAlunos = await apiRequest('/alunos');
-        if (respAlunos && !respAlunos.detail) {
-            window.alunosCache = Array.isArray(respAlunos) ? respAlunos : (respAlunos.dados || []);
-        }
+    if (!alunosGlobais || alunosGlobais.length === 0) {
+        await loadAlunos();
     }
 
     const documentos = await apiRequest('/documentos');
@@ -2872,7 +2883,6 @@ async function loadDocumentos() {
     });
     feather.replace();
 }
-
 
 // Abre o modal rápido para editar o tipo ou observação do documento emitido
 function abrirModalEditarDocumento(idDoc, tipoAtual, obsAtual) {
@@ -2950,20 +2960,29 @@ async function excluirDocumentoEmitido(idDoc) {
 }
 
 async function emitirNovoDocumento() {
-    const inputBusca = document.querySelector('#tela-documentos input[placeholder*="Matrícula"]').value;
-    const tipoDoc = document.querySelector('#tela-documentos select').value;
+    const inputBusca = document.getElementById('doc-busca-aluno').value.trim();
+    const alunoIdSelecionado = document.getElementById('doc-aluno-id-selecionado').value;
+    const tipoDoc = document.getElementById('doc-tipo-select').value;
 
-    if (!inputBusca) {
-        alert("Digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
+    if (!inputBusca && !alunoIdSelecionado) {
+        alert("Selecione ou digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
         return;
     }
 
-    const alunos = await apiRequest('/alunos');
-    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos?.dados || []);
-    const aluno = listaAlunos.find(a => a.matricula === inputBusca || a.cpf === inputBusca || a.nome.toLowerCase().includes(inputBusca.toLowerCase()));
+    if (!alunosGlobais || alunosGlobais.length === 0) {
+        await loadAlunos();
+    }
+
+    const aluno = alunoIdSelecionado
+        ? alunosGlobais.find(a => String(a.id) === String(alunoIdSelecionado))
+        : alunosGlobais.find(a =>
+            String(a.matricula || '').toLowerCase() === inputBusca.toLowerCase() ||
+            String(a.cpf || '') === inputBusca ||
+            String(a.nome || '').toLowerCase() === inputBusca.toLowerCase()
+        );
 
     if (!aluno) {
-        alert("Aluno não encontrado na base de dados.");
+        alert("Selecione um aluno válido na lista suspensa.");
         return;
     }
 
@@ -3010,10 +3029,6 @@ function baixarDocumentoPDF(id_documento, tipo_doc) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const btnGerarDoc = document.getElementById('btn-gerar-documento');
-    if (btnGerarDoc) btnGerarDoc.addEventListener('click', emitirNovoDocumento);
-});
 
 document.getElementById('busca-docente')?.addEventListener('input', function (e) {
     const termo = e.target.value.toLowerCase();
@@ -3278,6 +3293,11 @@ document.querySelector('#form-docente button[type="reset"]')?.addEventListener('
     const inputEdit = document.getElementById('docente_id_edit');
     if (inputEdit) inputEdit.value = '';
 
+    const regAuto = document.getElementById('docente-registro-auto');
+    if (regAuto) {
+        regAuto.value = '#PR' + String((docentesGlobais?.length || 0) + 1).padStart(3, '0');
+    }
+
     const btnSubmit = document.querySelector('#form-docente button[type="submit"]');
     btnSubmit.innerText = 'Salvar Prestador';
     btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
@@ -3338,9 +3358,10 @@ async function abrirModalSistema() {
 }
 
 function filtrarAlunosDocumento() {
+    document.getElementById('doc-aluno-id-selecionado').value = '';
     const termo = (document.getElementById('doc-busca-aluno').value || '').trim().toLowerCase();
     const dropdown = document.getElementById('doc-dropdown-alunos');
-    const listaBase = typeof listaAlunosGlobal !== 'undefined' ? listaAlunosGlobal : (window.alunosCache || []);
+    const listaBase = alunosGlobais || [];
 
     if (termo.length < 2) {
         dropdown.classList.add('hidden');
@@ -3379,7 +3400,7 @@ function filtrarAlunosDocumento() {
 }
 
 function selecionarAlunoDocumento(alunoId) {
-    const listaBase = typeof listaAlunosGlobal !== 'undefined' ? listaAlunosGlobal : (window.alunosCache || []);
+    const listaBase = alunosGlobais || [];
     const aluno = listaBase.find(a => String(a.id) === String(alunoId));
     if (!aluno) return;
 
@@ -3408,6 +3429,24 @@ document.addEventListener('click', (e) => {
         dropdown.classList.add('hidden');
     }
 });
+
+function filtrarTabelaDocumentosEmitidos() {
+    const termo = (document.getElementById('filtro-docs-emitidos')?.value || '').toLowerCase();
+    document.querySelectorAll('#tabela-documentos-emitidos tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+}
+
+function onTrocaModuloDiario() {
+    pautaAtualDiario = [];
+    const cursoId = document.getElementById('diario-select-curso').value;
+    if (cursoId) {
+        carregarPautaDiario();
+    } else {
+        document.getElementById('tabela-diario').innerHTML =
+            '<tr><td colspan="7" class="py-10 text-center text-slate-400">Selecione um curso e módulo para lançar notas.</td></tr>';
+    }
+}
 
 function fecharModalSistema() {
     const modal = document.getElementById('modal-sistema');
