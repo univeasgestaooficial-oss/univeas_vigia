@@ -1886,7 +1886,8 @@ async function loadFinanceiro() {
 
         const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        const isPendente = item.possui_pendencia_financeira === 'Sim';
+        const isPendente = item.possui_pendencia_financeira === 'Sim' ||
+            (item.status === 'Pendente' && item.possui_pendencia_financeira !== 'Não');
         const emAnalise = item.status_comprovante === 'Em Análise';
         const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
         const safeDetalhes = (item.detalhes_pendencia_financeira || '').replace(/'/g, "\\'");
@@ -1894,11 +1895,11 @@ async function loadFinanceiro() {
 
         let statusHtml = '';
         if (!isPendente) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '', '${item.numero_nf || ''}')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '', '${item.numero_nf || ''}', false)" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
         } else if (emAnalise) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${item.ultimo_comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}', true)" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${item.ultimo_comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
         } else {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}', true)" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
         }
 
         let idComprovante = item.numero_nf || `#FIN-${item.matricula || '000'}`;
@@ -1966,7 +1967,6 @@ function filtrarFinanceiro() {
 
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-
     const blocosCursoAluno = document.querySelectorAll('.item-curso-aluno');
     let arrayCursosAluno = [];
     blocosCursoAluno.forEach(bloco => {
@@ -1974,15 +1974,23 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
         if (curso_id) arrayCursosAluno.push({ curso_id: curso_id });
     });
     document.getElementById('cursos_aluno_json').value = JSON.stringify(arrayCursosAluno);
-
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
-
     formData.append('curso_id', arrayCursosAluno.length > 0 ? arrayCursosAluno[0].curso_id : '');
-
     const termosCheck = document.getElementById('termos_aluno');
+
     if (termosCheck) formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
 
+    const statusAluno = formData.get('status');
+
+    if (!idEdit && statusAluno === 'Pendente') {
+        const hoje = new Date();
+        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        formData.set('possui_pendencia', 'Sim');
+        formData.set('possui_pendencia_financeira', 'Sim');
+        formData.set('detalhes_pendencia', `Matrícula / Mensalidade (${mesAtual})`);
+        formData.set('detalhes_pendencia_financeira', `Matrícula / Mensalidade (${mesAtual})`);
+    }
     const btnSubmit = e.target.querySelector('button[type="submit"]');
     const textoOriginal = btnSubmit.innerText;
     btnSubmit.innerText = "Salvando...";
@@ -3100,7 +3108,7 @@ function imprimirListaAlunos() {
     });
 }
 
-function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais, nfAtual = '') {
+function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais, nfAtual = '', isPendenteAtual = false) {
     let modal = document.getElementById('modal-pendencia-financeira');
     if (modal) modal.remove();
 
@@ -3148,9 +3156,9 @@ function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais, nfAtual = '') {
     const select = document.getElementById('select-possui-pendencia');
     const textarea = document.getElementById('input-detalhes-pendencia');
 
-    if (detalhesAtuais && detalhesAtuais !== 'undefined' && detalhesAtuais !== '') {
+    if (isPendenteAtual || (detalhesAtuais && detalhesAtuais !== 'undefined' && detalhesAtuais !== '')) {
         select.value = "Sim";
-        textarea.value = detalhesAtuais;
+        textarea.value = (detalhesAtuais && detalhesAtuais !== 'undefined') ? detalhesAtuais : "";
         document.getElementById('bloco-detalhes-pendencia').classList.remove('hidden');
     } else {
         select.value = "Não";
