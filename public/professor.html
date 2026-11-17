@@ -585,6 +585,15 @@ function mudarTela(idTela) {
         btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border-teal-500', 'font-bold');
     }
 
+    const wrapperSeletor = document.getElementById('wrapper-seletor-turma-prof');
+    if (wrapperSeletor) {
+        if ((idTela === 'diario' || idTela === 'material') && turmasProfessor.length > 1) {
+            wrapperSeletor.classList.remove('hidden');
+        } else {
+            wrapperSeletor.classList.add('hidden');
+        }
+    }
+
     const titulos = {
         'dashboard': 'Painel Principal',
         'turmas': 'Minhas Turmas e Disciplinas',
@@ -914,6 +923,7 @@ function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
 
     const inicio = new Date(dataInicioStr + 'T00:00:00');
     const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
 
     const datas = [];
     let atual = new Date(inicio);
@@ -1110,6 +1120,8 @@ async function salvarDiario(btnElement) {
 
     if (result && result.sucesso) {
         alert("Diário sincronizado! Notas e médias ponderadas disponíveis no Admin e no Portal do Aluno.");
+        document.getElementById('conteudo-aula-diario').value = '';
+        loadDashboardDocente();
         carregarChamada();
     } else {
         alert("Falha ao salvar diário: " + (result?.detail || 'Tente novamente.'));
