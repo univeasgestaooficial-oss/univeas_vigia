@@ -2689,3 +2689,60 @@ async def gerar_recibo_mensalidade_admin_pdf(aluno_id: str, competencia: str):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao gerar recibo PDF: {str(e)}")
+
+
+@app.get("/api/v1/aluno/mensalidades")
+def listar_mensalidades_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+
+    # 1. Tenta buscar da coleção dedicada 'mensalidades'
+    docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
+    lista = []
+    for d in docs:
+        item = d.to_dict()
+        item["id"] = d.id
+        lista.append(item)
+
+    # 2. Se não houver documentos na coleção, busca do campo 'mensalidades_json' dentro do próprio documento do aluno
+    if not lista:
+        aluno_doc = db.collection("alunos").document(str(aluno_id)).get()
+        if aluno_doc.exists:
+            aluno_dados = aluno_doc.to_dict()
+            mensalidades_json = aluno_dados.get("mensalidades_json")
+
+            if mensalidades_json:
+                if isinstance(mensalidades_json, str):
+                    try:
+                        mensalidades_json = json.loads(mensalidades_json)
+                    except:
+                        mensalidades_json = {}
+
+                # Transforma o dicionário do JSON em uma lista para o front-end
+                for comp, val in mensalidades_json.items():
+                    if isinstance(val, dict):
+                        val["competencia"] = comp
+                        lista.append(val)
+                    else:
+                        lista.append({
+                            "competencia": comp,
+                            "status": "Pago" if val == "Pago" else "Pendente",
+                            "valor": aluno_dados.get("valor_mensalidade", 0)
+                        })
+
+    # 3. Fallback de segurança: se ainda estiver vazio, gera o mês atual para a tabela nunca quebrar
+    if not lista:
+        hoje = datetime.now()
+        mes_atual_key = f"{hoje.year}-{str(hoje.month).zfill(2)}"
+        aluno_doc = db.collection("alunos").document(str(aluno_id)).get()
+        aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
+
+        fallback_item = {
+            "competencia": mes_atual_key,
+            "referencia_label": f"Mensalidade {hoje.strftime('%B/%Y')}",
+            "status": "Pendente" if aluno_dados.get("possui_pendencia_financeira") == "Sim" else "Pago",
+            "valor": float(aluno_dados.get("valor_mensalidade", 0))
+        }
+        lista.append(fallback_item)
+
+    return lista
