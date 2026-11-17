@@ -415,42 +415,6 @@ async def obter_curso(curso_id: str):
     return {"id": doc.id, **doc.to_dict()}
 
 
-@app.put("/api/v1/cursos/{curso_id}")
-async def atualizar_curso(
-        curso_id: str,
-        codigo: str = Form(...),
-        nome_curso: str = Form(...),
-        categoria: str = Form(...),
-        modalidade: str = Form(...),
-        valor_matricula: float = Form(...),
-        valor_mensalidade: float = Form(...),
-        descricao: str = Form(""),
-        foto_capa: str = Form(""),
-        disciplinas_json: str = Form("[]")
-):
-    checar_db()
-    try:
-        grade = json.loads(disciplinas_json)
-    except Exception:
-        grade = []
-
-    dados_atualizados = {
-        "codigo": codigo,
-        "nome_curso": nome_curso.upper(),
-        "categoria": categoria,
-        "modalidade": modalidade,
-        "valor_matricula": valor_matricula,
-        "valor_mensalidade": valor_mensalidade,
-        "descricao": descricao,
-        "foto_capa": foto_capa,
-        "grade_curricular": grade,
-        "data_atualizacao": datetime.now().isoformat()
-    }
-
-    db.collection("cursos").document(curso_id).update(dados_atualizados)
-    return {"sucesso": True, "mensagem": "Curso atualizado com sucesso"}
-
-
 @app.post("/api/v1/cursos")
 async def registrar_curso(
         codigo: str = Form(...),
@@ -2128,25 +2092,39 @@ async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form("")):
 
     ref.update({"numero_nf": numero_nf})
     return {"sucesso": True, "mensagem": "Nota Fiscal atualizada."}
+
+
 class DiarioAdminItem(BaseModel):
     aluno_id: str
     curso_id: str
     disciplina: str
+    periodo: Optional[str] = "Módulo Único"
+    matricula: Optional[str] = None
+    nome: Optional[str] = None
     faltas: int = 0
     notas: dict = {}
+    media: Optional[float] = None
+    situacao: Optional[str] = None
 
 
 class DiarioAdminPayload(BaseModel):
-    registros: List[DiarioAdminItem]
+    curso_id: Optional[str] = None
+    modulo: Optional[str] = None
+    periodo: Optional[str] = None
+    lancamentos: List[DiarioAdminItem] = []
+    registros: Optional[List[DiarioAdminItem]] = None
 
 
 @app.get("/api/v1/diario")
-async def listar_diario_consolidado_admin():
+async def listar_diario_consolidado_admin(
+    curso_id: Optional[str] = None,
+    modulo: Optional[str] = None,
+    periodo: Optional[str] = None
+):
     checar_db()
     alunos = [{"id": d.id, **d.to_dict()} for d in db.collection("alunos").stream()]
     cursos = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
 
-    # Agrega todos os diários lançados por (aluno_id, curso_id, disciplina_upper)
     agregado = {}
     diarios_lista = [doc.to_dict() for doc in db.collection("diarios").stream()]
     diarios_lista.sort(key=lambda x: x.get("data_registro", ""))
@@ -2155,7 +2133,11 @@ async def listar_diario_consolidado_admin():
         if "_" not in t_id:
             continue
         c_id, disc_nome = t_id.split("_", 1)
+        if curso_id and str(c_id) != str(curso_id):
+            continue
         disc_key = disc_nome.strip().upper()
+        if modulo and disc_key != modulo.strip().upper():
+            continue
 
         for lanc in d.get("avaliacoes", []):
             aid = str(lanc.get("aluno_id"))
@@ -2167,7 +2149,7 @@ async def listar_diario_consolidado_admin():
 
     resultado = []
     for a in alunos:
-        if a.get("status") in ["Trancado", "Concluído"]:
+        if a.get("status") in ["Trancado", "Concluído", "Cancelado"]:
             continue
 
         ids_cursos = set()
@@ -2185,6 +2167,8 @@ async def listar_diario_consolidado_admin():
                     ids_cursos.add(str(item["curso_id"]))
 
         for cid in ids_cursos:
+            if curso_id and str(cid) != str(curso_id):
+                continue
             curso_obj = cursos.get(cid)
             if not curso_obj:
                 continue
@@ -2202,6 +2186,8 @@ async def listar_diario_consolidado_admin():
                     nome_disc = disc.get("nome") or disc.get("disciplina")
                     if not nome_disc:
                         continue
+                    if modulo and nome_disc.strip().upper() != modulo.strip().upper():
+                        continue
 
                     dados_lanc = agregado.get((a["id"], cid, nome_disc.strip().upper()), {"faltas": 0, "notas": {}})
                     avals = [
@@ -2211,11 +2197,14 @@ async def listar_diario_consolidado_admin():
 
                     resultado.append({
                         "aluno_id": a["id"],
+                        "nome": a.get("nome", "Aluno"),
                         "nome_aluno": a.get("nome", "Aluno"),
                         "matricula": a.get("matricula", "S/N"),
                         "curso_id": cid,
                         "nome_curso": nome_curso,
                         "disciplina": nome_disc,
+                        "modulo": nome_disc,
+                        "periodo": periodo or "Módulo Único",
                         "avaliacoes_previstas": avals,
                         "faltas": dados_lanc["faltas"],
                         "notas": dados_lanc["notas"]
@@ -2227,10 +2216,10 @@ async def listar_diario_consolidado_admin():
 @app.post("/api/v1/diario/salvar")
 async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
     checar_db()
+    lista_itens = payload.lancamentos if payload.lancamentos else (payload.registros or [])
 
-    for reg in payload.registros:
+    for reg in lista_itens:
         turma_id = f"{reg.curso_id}_{reg.disciplina}"
-        # Remove lançamentos anteriores desse aluno nessa disciplina para evitar soma duplicada
         docs_existentes = db.collection("diarios").where("turma_id", "==", turma_id).stream()
         for doc in docs_existentes:
             d = doc.to_dict()
@@ -2241,7 +2230,6 @@ async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
                 else:
                     doc.reference.delete()
 
-        # Grava o estado consolidado oficial da secretaria
         doc_id = f"ADMIN__{reg.curso_id}__{reg.disciplina.strip().upper()}__{reg.aluno_id}".replace("/", "-")
         db.collection("diarios").document(doc_id).set({
             "docente_id": "SECRETARIA_ADMIN",
@@ -2258,6 +2246,77 @@ async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
         })
 
     return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
+
+
+@app.put("/api/v1/documentos/{documento_id}")
+async def atualizar_documento_emitido(
+    documento_id: str,
+    tipo_documento: str = Form(...),
+    observacao: str = Form("")
+):
+    checar_db()
+    ref = db.collection("documentos").document(documento_id)
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+    ref.update({
+        "tipo_documento": tipo_documento,
+        "observacao": observacao,
+        "data_atualizacao": datetime.now().isoformat()
+    })
+    return {"sucesso": True, "mensagem": "Documento atualizado com sucesso."}
+
+
+@app.delete("/api/v1/documentos/{documento_id}")
+async def excluir_documento_emitido(documento_id: str):
+    checar_db()
+    ref = db.collection("documentos").document(documento_id)
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+    ref.delete()
+    return {"sucesso": True, "mensagem": "Documento excluído com sucesso."}
+@app.put("/api/v1/cursos/{curso_id}")
+async def atualizar_curso(
+        curso_id: str,
+        codigo: str = Form(...),
+        nome_curso: str = Form(...),
+        categoria: str = Form("Técnico"),
+        modalidade: str = Form("Presencial"),
+        duracao: str = Form(None),
+        valor_matricula: float = Form(0.0),
+        valor_mensalidade: float = Form(...),
+        promocao_ativa: str = Form("Não"),
+        valor_promocional: str = Form(None),
+        descricao: str = Form(""),
+        foto_capa: str = Form(""),
+        disciplinas_json: str = Form("[]")
+):
+    checar_db()
+    try:
+        grade = json.loads(disciplinas_json)
+    except Exception:
+        grade = []
+
+    dados_atualizados = {
+        "codigo": codigo,
+        "nome_curso": nome_curso.upper(),
+        "categoria": categoria,
+        "modalidade": modalidade,
+        "duracao": duracao,
+        "valor_matricula": valor_matricula,
+        "valor_mensalidade": valor_mensalidade,
+        "promocao_ativa": promocao_ativa,
+        "valor_promocional": valor_promocional,
+        "descricao": descricao,
+        "foto_capa": foto_capa,
+        "grade_curricular": grade,
+        "data_atualizacao": datetime.now().isoformat()
+    }
+
+    db.collection("cursos").document(curso_id).update(dados_atualizados)
+    return {"sucesso": True, "mensagem": "Curso atualizado com sucesso"}
+
 
 @app.get("/api/v1/aluno/notificacoes")
 async def listar_notificacoes_aluno(authorization: str = Header(None)):
