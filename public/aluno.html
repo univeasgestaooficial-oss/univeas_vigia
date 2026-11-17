@@ -481,11 +481,27 @@ function getIniciais(nome) {
     return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
+
+
 function obterFaltas(d) {
     if (!d) return 0;
     const raw = d.faltas ?? d.faltas_totais ?? d.total_faltas ?? d.qtd_faltas ?? 0;
     const num = parseInt(raw, 10);
     return isNaN(num) ? 0 : num;
+}
+
+function extrairNotaAluno(notasObj, tipo, idx) {
+    if (!notasObj || typeof notasObj !== 'object') return null;
+    const chaveIndexada = `av_${idx}_${tipo}`;
+    if (notasObj[chaveIndexada] !== undefined && notasObj[chaveIndexada] !== null && notasObj[chaveIndexada] !== '') {
+        return parseFloat(notasObj[chaveIndexada]);
+    }
+    if (notasObj[tipo] !== undefined && notasObj[tipo] !== null && notasObj[tipo] !== '') {
+        return parseFloat(notasObj[tipo]);
+    }
+    const chaveSufixo = Object.keys(notasObj).find(k => k.endsWith(`_${tipo}`) && notasObj[k] !== '' && notasObj[k] !== null);
+    if (chaveSufixo) return parseFloat(notasObj[chaveSufixo]);
+    return null;
 }
 
 function calcularMediaDisciplina(d) {
@@ -499,20 +515,17 @@ function calcularMediaDisciplina(d) {
     const pesosObj = d.pesos_avaliacoes || {};
     const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
         ? d.avaliacoes_previstas
-        : Object.keys(notasObj);
+        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
 
     let somaPonderada = 0;
     let somaPesos = 0;
 
-    avalPrevistas.forEach(tipo => {
-        const val = notasObj[tipo];
-        if (val !== undefined && val !== null && val !== '') {
-            const num = parseFloat(val);
-            const peso = parseFloat(pesosObj[tipo] ?? 1) || 1;
-            if (!isNaN(num)) {
-                somaPonderada += num * peso;
-                somaPesos += peso;
-            }
+    avalPrevistas.forEach((tipo, idx) => {
+        const num = extrairNotaAluno(notasObj, tipo, idx);
+        if (num !== null && !isNaN(num)) {
+            const peso = parseFloat(pesosObj[`av_${idx}_${tipo}`] ?? pesosObj[tipo] ?? 1) || 1;
+            somaPonderada += num * peso;
+            somaPesos += peso;
         }
     });
 
@@ -520,19 +533,33 @@ function calcularMediaDisciplina(d) {
     return somaPonderada / somaPesos;
 }
 
-function extrairNotaAluno(notasObj, tipo, idx) {
-    if (!notasObj || typeof notasObj !== 'object') return null;
-    const chaveIndexada = `av_${idx}_${tipo}`;
-    if (notasObj[chaveIndexada] !== undefined && notasObj[chaveIndexada] !== null && notasObj[chaveIndexada] !== '') {
-        return parseFloat(notasObj[chaveIndexada]);
+function calcularMediaDisciplina(d) {
+    if (!d) return null;
+    if (d.media_final !== undefined && d.media_final !== null && d.media_final !== '') {
+        const mf = parseFloat(d.media_final);
+        if (!isNaN(mf)) return mf;
     }
-    if (notasObj[tipo] !== undefined && notasObj[tipo] !== null && notasObj[tipo] !== '') {
-        return parseFloat(notasObj[tipo]);
-    }
-    // Fallback caso exista alguma chave terminando com _tipo
-    const chaveSufixo = Object.keys(notasObj).find(k => k.endsWith(`_${tipo}`) && notasObj[k] !== '' && notasObj[k] !== null);
-    if (chaveSufixo) return parseFloat(notasObj[chaveSufixo]);
-    return null;
+
+    const notasObj = d.notas || {};
+    const pesosObj = d.pesos_avaliacoes || {};
+    const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
+        ? d.avaliacoes_previstas
+        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
+
+    let somaPonderada = 0;
+    let somaPesos = 0;
+
+    avalPrevistas.forEach((tipo, idx) => {
+        const num = extrairNotaAluno(notasObj, tipo, idx);
+        if (num !== null && !isNaN(num)) {
+            const peso = parseFloat(pesosObj[`av_${idx}_${tipo}`] ?? pesosObj[tipo] ?? 1) || 1;
+            somaPonderada += num * peso;
+            somaPesos += peso;
+        }
+    });
+
+    if (somaPesos === 0) return null;
+    return somaPonderada / somaPesos;
 }
 
 function calcularMediaDisciplina(d) {
@@ -812,14 +839,15 @@ function renderizarDisciplinaSelecionada() {
     const pesosObj = n.pesos_avaliacoes || {};
     const tiposAvaliacoes = Array.isArray(n.avaliacoes_previstas) && n.avaliacoes_previstas.length > 0
         ? n.avaliacoes_previstas
-        : Object.keys(notasObj);
+        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
 
     let thHTML = `
         <th class="py-3 px-4">Disciplina / Módulo</th>
         <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
     `;
-    tiposAvaliacoes.forEach(tipo => {
-        const pesoLabel = pesosObj[tipo] ? ` <span class="text-[10px] text-gray-400 font-normal">(Peso ${pesosObj[tipo]})</span>` : '';
+    tiposAvaliacoes.forEach((tipo, idx) => {
+        const pesoVal = pesosObj[`av_${idx}_${tipo}`] ?? pesosObj[tipo];
+        const pesoLabel = pesoVal ? ` <span class="text-[10px] text-gray-400 font-normal">(Peso ${pesoVal})</span>` : '';
         thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}${pesoLabel}</th>`;
     });
     thHTML += `
@@ -833,7 +861,7 @@ function renderizarDisciplinaSelecionada() {
     let labelsGrafico = [];
     let dadosGrafico = [];
 
-   tiposAvaliacoes.forEach((tipo, idx) => {
+    tiposAvaliacoes.forEach((tipo, idx) => {
         const valNota = extrairNotaAluno(notasObj, tipo, idx);
 
         if (valNota !== null && !isNaN(valNota)) {
@@ -993,55 +1021,183 @@ function filtrarMateriaisPorDisciplina() {
 }
 
 async function loadPerfilFinanceiro() {
-    const dados = await apiRequest('/aluno/perfil');
+    const [dados, parcelasColecao] = await Promise.all([
+        apiRequest('/aluno/perfil'),
+        apiRequest('/aluno/mensalidades')
+    ]);
+
     if (dados) {
         document.getElementById('perfil-cpf').value = dados.cpf || '';
         document.getElementById('perfil-email').value = dados.email || '';
         document.getElementById('perfil-telefone').value = dados.telefone || '';
         document.getElementById('perfil-endereco').value = dados.endereco || '';
+    }
 
-        const tbody = document.getElementById('tbody-financeiro');
-        const isPendente = dados.possui_pendencia_financeira === 'Sim';
-        const emAnalise = dados.status_comprovante === 'Em Análise';
-        const detalhesPendencia = dados.detalhes_pendencia_financeira || 'Mensalidade Atual';
-        const valorCurso = dados.valor_mensalidade || 0;
+    const tbody = document.getElementById('tbody-financeiro');
+    const diaVenc = String(dados?.dia_vencimento || '10').padStart(2, '0');
+    const valorBaseCurso = parseFloat(dados?.valor_mensalidade || 0);
 
-        tbody.innerHTML = '';
+    let mapaMeses = {};
+    try {
+        if (dados?.mensalidades_json) {
+            mapaMeses = typeof dados.mensalidades_json === 'string'
+                ? JSON.parse(dados.mensalidades_json)
+                : { ...dados.mensalidades_json };
+        }
+    } catch (e) {}
 
-        const hoje = new Date();
-        const mesRef = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-        const valorFormatado = parseFloat(valorCurso).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (Array.isArray(parcelasColecao)) {
+        parcelasColecao.forEach(p => {
+            if (p.competencia && !mapaMeses[p.competencia]) {
+                mapaMeses[p.competencia] = p;
+            }
+        });
+    }
+
+    const hoje = new Date();
+    const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    if (!mapaMeses[mesAtualKey]) {
+        mapaMeses[mesAtualKey] = {
+            competencia: mesAtualKey,
+            status: dados?.possui_pendencia_financeira === 'Não' ? 'Pago' : 'Pendente',
+            valor: valorBaseCurso,
+            numero_nf: dados?.numero_nf || ''
+        };
+    }
+
+    const competencias = Object.keys(mapaMeses).sort().reverse();
+    const temAlgumaPendente = competencias.some(k => mapaMeses[k].status === 'Pendente');
+
+    const statusFin = document.getElementById('dash-financeiro');
+    if (statusFin) {
+        if (temAlgumaPendente) {
+            statusFin.innerText = 'PENDENTE';
+            statusFin.className = 'text-xl font-black text-red-500 mt-1';
+            statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
+        } else {
+            statusFin.innerText = 'REGULAR';
+            statusFin.className = 'text-xl font-black text-green-500 mt-1';
+            statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
+        }
+    }
+
+    tbody.innerHTML = '';
+    competencias.forEach(comp => {
+        const p = mapaMeses[comp];
+        const [ano, mes] = comp.split('-');
+        const nomeMes = (ano && mes)
+            ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+            : comp;
+
+        const valorNum = parseFloat(p.valor || valorBaseCurso || 0);
+        const valorFormatado = valorNum > 0
+            ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+            : 'Conforme Contrato';
+
+        const vencFmt = p.vencimento && p.vencimento.includes('-')
+            ? p.vencimento.split('-').reverse().join('/')
+            : `Dia ${diaVenc}/${mes}/${ano}`;
 
         let statusBadge = '';
         let acaoBtn = '';
 
-        if (isPendente) {
-            statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Atrasada / Pendente</span><p class="text-[10px] text-gray-400 mt-1">${detalhesPendencia}</p>`;
-            if (emAnalise) {
-                acaoBtn = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline mr-1"></i> Em Análise pela Secretaria</span>`;
-            } else {
-                acaoBtn = `
-                    <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
-                        <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
-                        <input type="file" class="hidden" onchange="enviarComprovante(this)">
-                    </label>
-                `;
-            }
+        if (p.status === 'Pago') {
+            const nfTexto = p.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${p.numero_nf}</p>` : '';
+            statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>${nfTexto}`;
+            acaoBtn = `
+                <button onclick="baixarReciboPdf('${comp}', this)" class="bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition px-3.5 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto">
+                    <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Baixar Recibo
+                </button>
+            `;
+        } else if (p.status === 'Em Análise') {
+            statusBadge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Análise</span>`;
+            acaoBtn = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline mr-1"></i> Aguardando Baixa</span>`;
         } else {
-            const nfTexto = dados.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${dados.numero_nf}</p>` : '';
-            statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga / Regular</span>${nfTexto}`;
-            acaoBtn = `<span class="text-xs text-gray-400 font-bold"><i data-feather="check" class="w-4 h-4 inline text-green-500"></i> Tudo Certo</span>`;
+            statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Pendente</span>`;
+            acaoBtn = `
+                <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
+                    <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
+                    <input type="file" class="hidden" onchange="enviarComprovante(this, '${comp}')">
+                </label>
+            `;
         }
 
-        tbody.innerHTML = `
+        tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 font-bold text-gray-900 capitalize">${mesRef}<br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Venc. Dia ${dados.dia_vencimento || 10}</span></td>
+                <td class="py-4 px-4 font-bold text-gray-900 capitalize">
+                    ${p.referencia_label || nomeMes}
+                    <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${vencFmt}</span>
+                </td>
                 <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
                 <td class="py-4 px-4 text-center">${statusBadge}</td>
                 <td class="py-4 px-4 text-right">${acaoBtn}</td>
             </tr>
         `;
-        feather.replace();
+    });
+    feather.replace();
+}
+
+async function baixarReciboPdf(competencia, btnElement) {
+    const textoOriginal = btnElement ? btnElement.innerHTML : '';
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = 'Gerando PDF...';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/aluno/financeiro/recibo/${encodeURIComponent(competencia)}/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}`
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            alert(err.detail || 'Não foi possível gerar o recibo deste mês.');
+            return;
+        }
+
+        const blob = await response.blob();
+        const urlBlob = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = urlBlob;
+        a.download = `Recibo_UNIVEAS_${competencia}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(urlBlob);
+    } catch (e) {
+        alert('Erro de conexão ao baixar o recibo PDF.');
+    } finally {
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = textoOriginal;
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+    }
+}
+
+async function enviarComprovante(inputElement, competencia) {
+    if (inputElement.files.length === 0) return;
+
+    const file = inputElement.files[0];
+    const formData = new FormData();
+    formData.append('comprovante', file);
+    formData.append('competencia', competencia);
+
+    const labelParent = inputElement.parentElement;
+    const textOriginal = labelParent.innerHTML;
+    labelParent.innerHTML = "Enviando...";
+
+    const result = await apiRequest('/aluno/financeiro/comprovante', 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Comprovante enviado com sucesso! A secretaria analisará este mês em breve.");
+        await loadPerfilFinanceiro();
+    } else {
+        alert("Erro ao enviar comprovante. Tente novamente.");
+        labelParent.innerHTML = textOriginal;
     }
 }
 
@@ -1077,28 +1233,6 @@ async function salvarPerfilAluno(event) {
     }
 }
 
-async function enviarComprovante(inputElement) {
-    if (inputElement.files.length === 0) return;
-
-    const file = inputElement.files[0];
-    const formData = new FormData();
-    formData.append('comprovante', file);
-
-    const labelParent = inputElement.parentElement;
-    const textOriginal = labelParent.innerHTML;
-    labelParent.innerHTML = "Enviando...";
-
-    const result = await apiRequest('/aluno/financeiro/comprovante', 'POST', formData);
-
-    if (result && result.sucesso) {
-        alert("Comprovante enviado com sucesso! A secretaria analisará e dará baixa em breve.");
-        labelParent.innerHTML = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline"></i> Em Análise</span>`;
-        feather.replace();
-    } else {
-        alert("Erro ao enviar comprovante. Tente novamente.");
-        labelParent.innerHTML = textOriginal;
-    }
-}
 
 function mudarTela(idTela) {
     document.querySelectorAll('.tela').forEach(tela => {
@@ -1121,6 +1255,15 @@ function mudarTela(idTela) {
     if (btnAtivo) {
         btnAtivo.classList.remove('text-gray-500', 'border-transparent', 'font-medium');
         btnAtivo.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
+    }
+
+    const wrapperSeletor = document.getElementById('wrapper-seletor-curso');
+    if (wrapperSeletor) {
+        if ((idTela === 'dashboard' || idTela === 'boletim' || idTela === 'material') && cursosDoAluno.length > 1) {
+            wrapperSeletor.classList.remove('hidden');
+        } else {
+            wrapperSeletor.classList.add('hidden');
+        }
     }
 
     const titulos = {
