@@ -1162,10 +1162,25 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 }
 
 // ==========================================
-// 4. DIÁRIO ELETRÔNICO CONSOLIDADO (ADMIN - MÉDIA PONDERADA >= 8,0)
+// 4. DIÁRIO ELETRÔNICO CONSOLIDADO (UNIFICADO ADMIN & DOCENTE)
 // ==========================================
+function normalizarTextoDiario(txt) {
+    return String(txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase();
+}
+
 async function initDiarioEletronico() {
     const selectCurso = document.getElementById('diario-select-curso');
+    const selectPeriodo = document.getElementById('diario-select-periodo');
+    if (selectPeriodo && !selectPeriodo.dataset.listenerAdicionado) {
+        selectPeriodo.value = 'Módulo Único';
+        selectPeriodo.addEventListener('change', onTrocaModuloDiario);
+        selectPeriodo.dataset.listenerAdicionado = 'true';
+    }
+
     selectCurso.innerHTML = '<option value="">Carregando cursos...</option>';
 
     if (cursosGlobais.length === 0) await loadCursos();
@@ -1233,7 +1248,12 @@ function atualizarModulosDiario() {
 
 function obterConfigAvaliacoesModulo(cursoId, moduloNome) {
     const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
-    if (!curso) return [{ tipo: 'AV1', peso: 1 }, { tipo: 'AV2', peso: 1 }];
+    if (!curso) {
+        return [
+            { chave: 'av_0', tipo: 'Primeira avaliação', peso: 1 },
+            { chave: 'av_1', tipo: 'Segunda avaliação', peso: 1 }
+        ];
+    }
 
     let grade = [];
     try {
@@ -1241,23 +1261,49 @@ function obterConfigAvaliacoesModulo(cursoId, moduloNome) {
         grade = typeof raw === 'string' ? JSON.parse(raw) : raw;
     } catch (e) {}
 
-    const modObj = grade.find(m => (m.nome || '').trim().toUpperCase() === moduloNome.trim().toUpperCase());
+    const alvo = normalizarTextoDiario(moduloNome);
+    const modObj = grade.find(m => normalizarTextoDiario(m.nome) === alvo);
+
     if (modObj && Array.isArray(modObj.avaliacoes) && modObj.avaliacoes.length > 0) {
-        return modObj.avaliacoes.map(av => {
-            if (typeof av === 'object') {
-                return {
-                    tipo: av.tipo || av.nome || 'Avaliação',
-                    peso: parseFloat(av.peso) || 1
-                };
-            }
-            return { tipo: String(av), peso: 1 };
+        return modObj.avaliacoes.map((av, idx) => {
+            const tipo = typeof av === 'object' ? (av.tipo || av.nome || `Avaliação ${idx + 1}`) : String(av);
+            const peso = typeof av === 'object' ? (parseFloat(av.peso) || 1) : 1;
+            return {
+                chave: `av_${idx}_${tipo}`,
+                tipo: tipo,
+                peso: peso
+            };
         });
     }
 
-    return [{ tipo: 'AV1', peso: 1 }, { tipo: 'AV2', peso: 1 }];
+    return [
+        { chave: 'av_0_Primeira avaliação', tipo: 'Primeira avaliação', peso: 1 },
+        { chave: 'av_1_Segunda avaliação', tipo: 'Segunda avaliação', peso: 1 }
+    ];
+}
+
+function extrairNotaAvaliacao(notasObj, avConfig, idx) {
+    if (!notasObj || typeof notasObj !== 'object') return null;
+    // 1. Chave única indexada (evita colisão quando há 2 provas ou 2 trabalhos)
+    if (notasObj[avConfig.chave] !== undefined && notasObj[avConfig.chave] !== null && notasObj[avConfig.chave] !== '') {
+        return notasObj[avConfig.chave];
+    }
+    // 2. Retrocompatibilidade com registros antigos salvos apenas pelo nome do tipo
+    if (notasObj[avConfig.tipo] !== undefined && notasObj[avConfig.tipo] !== null && notasObj[avConfig.tipo] !== '') {
+        return notasObj[avConfig.tipo];
+    }
+    // 3. Retrocompatibilidade com chaves genéricas (AV1, AV2, nota1, nota2)
+    const aliases = idx === 0 ? ['AV1', 'nota1', 'n1'] : (idx === 1 ? ['AV2', 'nota2', 'n2'] : [`AV${idx + 1}`, `nota${idx + 1}`]);
+    for (const alias of aliases) {
+        if (notasObj[alias] !== undefined && notasObj[alias] !== null && notasObj[alias] !== '') {
+            return notasObj[alias];
+        }
+    }
+    return null;
 }
 
 function encontrarDocenteDoModulo(cursoId, moduloNome) {
+    const alvoMod = normalizarTextoDiario(moduloNome);
     for (const doc of docentesGlobais) {
         let vinculos = [];
         try {
@@ -1270,7 +1316,7 @@ function encontrarDocenteDoModulo(cursoId, moduloNome) {
 
         const match = vinculos.find(v =>
             String(v.curso_id) === String(cursoId) &&
-            (!v.modulo || v.modulo === 'Geral' || v.modulo === moduloNome)
+            (!v.modulo || normalizarTextoDiario(v.modulo) === 'GERAL' || normalizarTextoDiario(v.modulo) === alvoMod)
         );
         if (match) return doc.nome_prestador || doc.nome || 'Docente Vinculado';
     }
@@ -1306,14 +1352,13 @@ async function carregarPautaDiario() {
     const docenteNome = encontrarDocenteDoModulo(cursoId, modulo);
     colunasAvaliacaoDiarioAtual = obterConfigAvaliacoesModulo(cursoId, modulo);
 
-    // Atualiza o cabeçalho da tabela dinamicamente com os pesos da matriz
     let thHtml = `
         <th class="py-3 px-4 whitespace-nowrap">Matrícula</th>
         <th class="py-3 px-4 whitespace-nowrap">Nome do Aluno</th>
         <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Faltas</th>
     `;
-    colunasAvaliacaoDiarioAtual.forEach(av => {
-        thHtml += `<th class="py-3 px-4 text-center w-28 whitespace-nowrap text-teal-700">${av.tipo} <span class="text-[9px] text-gray-400 font-normal">(P.${av.peso})</span></th>`;
+    colunasAvaliacaoDiarioAtual.forEach((av, i) => {
+        thHtml += `<th class="py-3 px-4 text-center w-28 whitespace-nowrap text-teal-700">${i + 1}. ${av.tipo} <span class="text-[9px] text-gray-400 font-normal">(Peso ${av.peso})</span></th>`;
     });
     thHtml += `
         <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Média</th>
@@ -1321,20 +1366,17 @@ async function carregarPautaDiario() {
     `;
     theadRow.innerHTML = thHtml;
 
-    // Exibe barra de resumo da pauta
     const infoBar = document.getElementById('diario-info-bar');
     infoBar.classList.remove('hidden');
     document.getElementById('diario-titulo-pauta').innerText = `${curso?.nome_curso || 'Curso'} • ${modulo} (${periodo})`;
     document.getElementById('diario-docente-responsavel').innerText = `Docente Responsável: ${docenteNome}`;
 
-    // Busca lançamentos já salvos no backend
     let registrosSalvos = [];
     const respDiario = await apiRequest(`/diario?curso_id=${encodeURIComponent(cursoId)}&modulo=${encodeURIComponent(modulo)}&periodo=${encodeURIComponent(periodo)}`);
     if (respDiario && !respDiario.detail) {
         registrosSalvos = Array.isArray(respDiario) ? respDiario : (respDiario.lancamentos || respDiario.dados || []);
     }
 
-    // Filtra alunos matriculados neste curso
     const alunosDaTurma = alunosGlobais.filter(a => alunoPertenceAoCurso(a, cursoId) && a.status !== 'Cancelado');
 
     if (alunosDaTurma.length === 0) {
@@ -1343,21 +1385,36 @@ async function carregarPautaDiario() {
         return;
     }
 
+    const moduloNorm = normalizarTextoDiario(modulo);
+    const periodoNorm = normalizarTextoDiario(periodo);
+
     pautaAtualDiario = alunosDaTurma.map(aluno => {
-        const reg = registrosSalvos.find(r =>
-            (String(r.aluno_id) === String(aluno.id) || r.matricula === aluno.matricula) &&
-            (!r.disciplina || r.disciplina.trim().toUpperCase() === modulo.trim().toUpperCase())
-        );
+        const reg = registrosSalvos.find(r => {
+            const mesmoAluno = String(r.aluno_id) === String(aluno.id) || (r.matricula && r.matricula === aluno.matricula);
+            const discReg = normalizarTextoDiario(r.disciplina || r.modulo);
+            const mesmaDisc = !discReg || discReg === moduloNorm;
+            const perReg = normalizarTextoDiario(r.periodo);
+            const mesmoPeriodo = !perReg || perReg === periodoNorm;
+            return mesmoAluno && mesmaDisc && mesmoPeriodo;
+        });
 
         const faltas = reg?.faltas ?? 0;
-        const notasObj = reg?.notas ? { ...reg.notas } : {};
+        const notasBrutas = reg?.notas || {};
+        const notasNormalizadas = {};
+
+        colunasAvaliacaoDiarioAtual.forEach((av, idx) => {
+            const valorEncontrado = extrairNotaAvaliacao(notasBrutas, av, idx);
+            if (valorEncontrado !== null && !isNaN(parseFloat(valorEncontrado))) {
+                notasNormalizadas[av.chave] = parseFloat(valorEncontrado);
+            }
+        });
 
         return {
             aluno_id: aluno.id,
             matricula: aluno.matricula || '-',
             nome: aluno.nome || 'Sem Nome',
             faltas: faltas,
-            notas: notasObj
+            notas: notasNormalizadas
         };
     });
 
@@ -1373,12 +1430,12 @@ function renderizarLinhasDiario() {
 
         let tdsNotas = '';
         colunasAvaliacaoDiarioAtual.forEach(av => {
-            const val = item.notas[av.tipo] !== undefined && item.notas[av.tipo] !== null ? item.notas[av.tipo] : '';
-            const safeTipo = av.tipo.replace(/'/g, "\\'");
+            const val = item.notas[av.chave] !== undefined && item.notas[av.chave] !== null ? item.notas[av.chave] : '';
+            const safeChave = av.chave.replace(/'/g, "\\'");
             tdsNotas += `
                 <td class="py-2.5 px-3 text-center">
                     <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${val}"
-                        oninput="atualizarNotaLinhaDiario(${idx}, '${safeTipo}', this.value)"
+                        oninput="atualizarNotaLinhaDiario(${idx}, '${safeChave}', this.value)"
                         class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
                 </td>
             `;
@@ -1408,37 +1465,54 @@ function renderizarLinhasDiario() {
 
 function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
     let somaPonderada = 0;
-    let somaPesos = 0;
+    let somaPesosLancados = 0;
+    let totalAvaliacoes = avaliacoesConfig.length;
+    let avaliacoesLancadas = 0;
 
     avaliacoesConfig.forEach(av => {
-        const raw = notasObj ? notasObj[av.tipo] : null;
+        const raw = notasObj ? notasObj[av.chave] : null;
         if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
+            const nota = Math.min(10, Math.max(0, parseFloat(raw)));
             const peso = parseFloat(av.peso) || 1;
-            somaPonderada += parseFloat(raw) * peso;
-            somaPesos += peso;
+            somaPonderada += nota * peso;
+            somaPesosLancados += peso;
+            avaliacoesLancadas++;
         }
     });
 
-    if (somaPesos === 0) {
+    if (somaPesosLancados === 0) {
         return {
             mediaNum: null,
+            completo: false,
             mediaTexto: '-',
             situacaoHtml: '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-bold uppercase">Cursando</span>'
         };
     }
 
-    const media = somaPonderada / somaPesos;
+    const media = somaPonderada / somaPesosLancados;
     const mediaTexto = media.toFixed(1).replace('.', ',');
+    const completo = avaliacoesLancadas === totalAvaliacoes;
+
+    if (!completo) {
+        return {
+            mediaNum: media,
+            completo: false,
+            mediaTexto: `${mediaTexto}*`,
+            situacaoHtml: '<span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase" title="Aguardando lançamento de todas as avaliações">Parcial</span>'
+        };
+    }
 
     if (media >= 8.0) {
         return {
             mediaNum: media,
+            completo: true,
             mediaTexto,
             situacaoHtml: '<span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold uppercase">Aprovado</span>'
         };
     } else {
         return {
             mediaNum: media,
+            completo: true,
             mediaTexto,
             situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Em Recuperação</span>'
         };
@@ -1450,12 +1524,15 @@ function atualizarFaltaLinhaDiario(idx, valor) {
     pautaAtualDiario[idx].faltas = parseInt(valor) || 0;
 }
 
-function atualizarNotaLinhaDiario(idx, tipoAvaliacao, valor) {
+function atualizarNotaLinhaDiario(idx, chaveAvaliacao, valor) {
     if (!pautaAtualDiario[idx]) return;
     if (valor === '') {
-        delete pautaAtualDiario[idx].notas[tipoAvaliacao];
+        delete pautaAtualDiario[idx].notas[chaveAvaliacao];
     } else {
-        pautaAtualDiario[idx].notas[tipoAvaliacao] = parseFloat(valor);
+        let num = parseFloat(valor);
+        if (num > 10) num = 10;
+        if (num < 0) num = 0;
+        pautaAtualDiario[idx].notas[chaveAvaliacao] = num;
     }
 
     const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(pautaAtualDiario[idx].notas, colunasAvaliacaoDiarioAtual);
@@ -1474,11 +1551,11 @@ function atualizarResumoEstatisticoDiario(lista) {
     let qtdComNota = 0;
 
     lista.forEach(item => {
-        const { mediaNum } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
+        const { mediaNum, completo } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
         if (mediaNum !== null) {
             somaMedias += mediaNum;
             qtdComNota++;
-            if (mediaNum >= 8.0) aprovados++;
+            if (completo && mediaNum >= 8.0) aprovados++;
         }
     });
 
@@ -1508,16 +1585,18 @@ async function salvarDiarioEletronico() {
         modulo: modulo,
         periodo: periodo,
         lancamentos: pautaAtualDiario.map(item => {
-            const { mediaNum } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
+            const { mediaNum, completo } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
             return {
                 aluno_id: item.aluno_id,
                 curso_id: cursoId,
                 disciplina: modulo,
+                periodo: periodo,
                 matricula: item.matricula,
                 nome: item.nome,
                 faltas: parseInt(item.faltas) || 0,
                 notas: item.notas,
-                media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null
+                media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null,
+                situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
             };
         })
     };
@@ -1533,10 +1612,6 @@ async function salvarDiarioEletronico() {
     btn.innerHTML = originalHtml;
     btn.disabled = false;
     feather.replace();
-}
-
-function imprimirPautaDiario() {
-    window.print();
 }
 
 // ==========================================
