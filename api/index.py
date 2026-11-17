@@ -2458,16 +2458,40 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
 def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
     checar_db()
     aluno_id = validar_token_aluno(authorization)
+
+    # Busca o aluno para pegar o valor base e dia de vencimento
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
+
+    # Mapeia cursos para calcular a mensalidade caso não tenha fatura
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    valor_base = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
+
     docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
     lista = []
     for d in docs:
         item = d.to_dict()
         item["id"] = d.id
         lista.append(item)
+
+    # Se o aluno não tiver nenhuma parcela gerada na coleção, gera a do mês atual automaticamente para nunca zerar a tela
+    if not lista:
+        hoje = datetime.now()
+        mes_atual_key = f"{hoje.year}-{str(hoje.month).zfill(2)}"
+        parcela_padrao = {
+            "aluno_id": str(aluno_id),
+            "competencia": mes_atual_key,
+            "referencia_label": f"Mensalidade {hoje.strftime('%B/%Y')}",
+            "vencimento": f"{hoje.year}-{str(hoje.month).zfill(2)}-{str(aluno_dados.get('dia_vencimento', '10')).zfill(2)}",
+            "valor": valor_base if valor_base > 0 else 150.0,
+            "status": "Pendente" if aluno_dados.get("possui_pendencia_financeira") == "Sim" else "Pago",
+            "numero_nf": aluno_dados.get("numero_nf", "")
+        }
+        db.collection("mensalidades").document(f"{aluno_id}__{mes_atual_key}").set(parcela_padrao, merge=True)
+        lista.append(parcela_padrao)
+
     lista.sort(key=lambda x: x.get("competencia", ""), reverse=True)
     return lista
-
-
 def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
     checar_db()
     aluno_doc = db.collection("alunos").document(aluno_id).get()
