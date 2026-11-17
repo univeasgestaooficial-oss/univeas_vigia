@@ -915,10 +915,30 @@ async def obter_diario_turma_docente(turma_id: str, authorization: str = Header(
     checar_db()
     validar_token_docente(authorization)
 
-    consolidado = {}
-    docs = db.collection("diarios").where("turma_id", "==", turma_id).stream()
-    for doc in docs:
+    if "_" in turma_id:
+        c_alvo, d_alvo = turma_id.split("_", 1)
+        alvo_norm = f"{c_alvo}_{d_alvo.strip().upper()}"
+    else:
+        alvo_norm = turma_id.strip().upper()
+
+    docs_filtrados = []
+    for doc in db.collection("diarios").stream():
         d = doc.to_dict()
+        t_id = str(d.get("turma_id", ""))
+        if "_" in t_id:
+            c_doc, d_doc = t_id.split("_", 1)
+            t_norm = f"{c_doc}_{d_doc.strip().upper()}"
+        else:
+            t_norm = t_id.strip().upper()
+
+        if t_norm == alvo_norm:
+            docs_filtrados.append(d)
+
+    # Ordena cronologicamente para que a alteração mais recente prevaleça
+    docs_filtrados.sort(key=lambda x: x.get("data_registro", ""))
+
+    consolidado = {}
+    for d in docs_filtrados:
         for lanc in d.get("avaliacoes", []):
             aid = str(lanc.get("aluno_id"))
             if aid not in consolidado:
@@ -939,7 +959,6 @@ async def salvar_diario_eletronico(
 
     avaliacoes_dict = [lancamento.model_dump() for lancamento in payload.lancamentos]
 
-    # ID determinístico por turma + data evita duplicação de faltas ao reenviar a mesma aula
     safe_turma = payload.turma_id.replace("/", "-")
     safe_data = payload.data_aula.replace("/", "-")
     doc_id = f"{safe_turma}__{safe_data}"
@@ -956,7 +975,6 @@ async def salvar_diario_eletronico(
 
     db.collection("diarios").document(doc_id).set(registro_diario)
     return {"sucesso": True, "mensagem": "Diário registrado e sincronizado com o boletim!"}
-
 
 class MaterialPayload(BaseModel):
     turma_id: str
@@ -1549,7 +1567,7 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
     curso_id = aluno_dados.get("curso_id") or aluno_dados.get("curso")
 
     disciplinas_atuais = []
-    pesos_por_disciplina = {}
+    avaliacoes_por_disciplina = {}
 
     if curso_id:
         curso_doc = db.collection("cursos").document(curso_id).get()
@@ -1570,21 +1588,16 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
                         "nome": nome_disc,
                         "curso": nome_curso
                     })
+                    avaliacoes_por_disciplina[nome_disc.strip().upper()] = disc.get("avaliacoes", [])
 
-                    pesos_map = {}
-                    for av in disc.get("avaliacoes", []):
-                        if isinstance(av, dict):
-                            tipo_av = av.get("tipo") or av.get("nome")
-                            if tipo_av:
-                                pesos_map[tipo_av] = float(av.get("peso", 1) or 1)
-                    pesos_por_disciplina[nome_disc.strip().upper()] = pesos_map
-
-    # Consolida notas e faltas por disciplina
+    # Consolida notas e faltas por disciplina em ordem cronológica
     lancamentos_por_disc = {}
     total_faltas = 0
 
-    for doc in db.collection("diarios").stream():
-        d_data = doc.to_dict()
+    diarios_lista = [d.to_dict() for d in db.collection("diarios").stream()]
+    diarios_lista.sort(key=lambda x: x.get("data_registro", ""))
+
+    for d_data in diarios_lista:
         t_id = d_data.get("turma_id", "")
         if curso_id and not t_id.startswith(f"{curso_id}_"):
             continue
@@ -1601,14 +1614,14 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
     # Calcula a média ponderada de cada disciplina e depois a média geral
     medias_disciplinas = []
     for disc_key, notas_dict in lancamentos_por_disc.items():
-        pesos_map = pesos_por_disciplina.get(disc_key, {})
+        avaliacoes_config = avaliacoes_por_disciplina.get(disc_key, [])
         soma_ponderada = 0.0
         soma_pesos = 0.0
 
         for tipo_nota, val_nota in notas_dict.items():
             if val_nota is not None and str(val_nota) != "":
                 try:
-                    peso = pesos_map.get(tipo_nota, 1.0)
+                    peso = extrair_peso_nota_firestore(tipo_nota, avaliacoes_config)
                     soma_ponderada += float(val_nota) * peso
                     soma_pesos += peso
                 except Exception:
@@ -1669,11 +1682,11 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
     if curso_doc.exists:
         grade_curricular = curso_doc.to_dict().get("grade_curricular", [])
 
-    diarios_docs = db.collection("diarios").stream()
+    diarios_lista = [doc.to_dict() for doc in db.collection("diarios").stream()]
+    diarios_lista.sort(key=lambda x: x.get("data_registro", ""))
     lancamentos_aluno = {}
 
-    for doc in diarios_docs:
-        d_data = doc.to_dict()
+    for d_data in diarios_lista:
         t_id = d_data.get("turma_id", "")
         if not t_id.startswith(f"{curso_id}_"):
             continue
@@ -1745,20 +1758,30 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 avaliacoes_previstas = ["AV1", "AV2", "Final"]
                 pesos_avaliacoes = {"AV1": 1.0, "AV2": 1.0, "Final": 1.0}
 
-            # Calcula a Média Ponderada considerando as notas lançadas
+            # Calcula a Média Ponderada considerando chaves indexadas ('av_0_...') e antigas
             soma_ponderada = 0.0
             soma_pesos = 0.0
-            for tipo_nota, val_nota in dados_lancados["notas"].items():
+            qtd_notas_validas = 0
+            for chave_nota, val_nota in dados_lancados["notas"].items():
                 if val_nota is not None and str(val_nota) != '':
-                    peso = pesos_avaliacoes.get(tipo_nota, 1.0)
-                    soma_ponderada += float(val_nota) * peso
-                    soma_pesos += peso
-
+                    try:
+                        nota_float = float(val_nota)
+                        peso = extrair_peso_nota_firestore(chave_nota, avaliacoes_config)
+                        soma_ponderada += nota_float * peso
+                        soma_pesos += peso
+                        qtd_notas_validas += 1
+                    except Exception:
+                        pass
             media_final = round(soma_ponderada / soma_pesos, 1) if soma_pesos > 0 else None
+            total_avals_matriz = len(avaliacoes_previstas)
+            notas_completas = (total_avals_matriz > 0) and (qtd_notas_validas >= total_avals_matriz)
 
-            # Regra de aprovação UNIVEAS: Média >= 8.0
-            situacao = "Cursando"
-            if media_final is not None:
+            # Regra de aprovação UNIVEAS: Média >= 8.0 somente quando todas as avaliações forem lançadas
+            if media_final is None:
+                situacao = "Cursando"
+            elif not notas_completas:
+                situacao = "Parcial"
+            else:
                 situacao = "Aprovado" if media_final >= 8.0 else "Em Recuperação"
 
             aulas_ordenadas = sorted(
@@ -1932,6 +1955,38 @@ def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
 # Helper reutilizável para calcular o valor mensal real do aluno (considerando múltiplos cursos e promoções)
 def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
     ids_cursos = set()
+    if aluno_dict.get("curso_id") or aluno_dict.get("curso"):
+        ids_cursos.add(str(aluno_dict.get("curso_id") or aluno_dict.get("curso")))
+
+    c_json = aluno_dict.get("cursos_json", [])
+    if isinstance(c_json, str):
+        try:
+            c_json = json.loads(c_json)
+        except Exception:
+            c_json = []
+
+    if isinstance(c_json, list):
+        for item in c_json:
+            if isinstance(item, dict) and item.get("curso_id"):
+                ids_cursos.add(str(item["curso_id"]))
+
+    total = 0.0
+    for cid in ids_cursos:
+        curso = cursos_map.get(cid)
+        if not curso:
+            continue
+        if str(curso.get("promocao_ativa")).lower() in ["sim", "true", "1"] and curso.get("valor_promocional"):
+            try:
+                total += float(str(curso.get("valor_promocional")).replace(",", "."))
+                continue
+            except Exception:
+                pass
+        try:
+            total += float(str(curso.get("valor_mensalidade", 0) or 0).replace(",", "."))
+        except Exception:
+            pass
+
+    return round(total, 2)
 
 
 @app.get("/api/v1/financeiro/indicadores")
@@ -2028,8 +2083,9 @@ async def listar_diario_consolidado_admin():
 
     # Agrega todos os diários lançados por (aluno_id, curso_id, disciplina_upper)
     agregado = {}
-    for doc in db.collection("diarios").stream():
-        d = doc.to_dict()
+    diarios_lista = [doc.to_dict() for doc in db.collection("diarios").stream()]
+    diarios_lista.sort(key=lambda x: x.get("data_registro", ""))
+    for d in diarios_lista:
         t_id = d.get("turma_id", "")
         if "_" not in t_id:
             continue
@@ -2213,3 +2269,29 @@ async def atualizar_perfil_aluno(payload: PerfilAlunoUpdatePayload, authorizatio
 
     return {"sucesso": True, "mensagem": "Dados cadastrais atualizados com sucesso!"}
 
+def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> float:
+    """
+    Resolve o peso da avaliação tanto para chaves novas ('av_0_Prova AV1')
+    quanto para chaves antigas ('Prova AV1' ou 'AV1').
+    """
+    if not isinstance(avaliacoes_config, list) or not avaliacoes_config:
+        return 1.0
+
+    # 1. Se vier no formato indexado 'av_<idx>_<tipo>'
+    if chave_nota.startswith("av_"):
+        partes = chave_nota.split("_", 2)
+        if len(partes) >= 2 and partes[1].isdigit():
+            idx = int(partes[1])
+            if 0 <= idx < len(avaliacoes_config):
+                av = avaliacoes_config[idx]
+                if isinstance(av, dict):
+                    return float(av.get("peso", 1) or 1)
+
+    # 2. Fallback por nome/tipo da avaliação
+    chave_upper = chave_nota.strip().upper()
+    for av in avaliacoes_config:
+        if isinstance(av, dict):
+            tipo_av = str(av.get("tipo") or av.get("nome") or "").strip().upper()
+            if tipo_av == chave_upper:
+                return float(av.get("peso", 1) or 1)
+    return 1.0
