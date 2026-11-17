@@ -79,6 +79,11 @@
             </button>
 
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Conta</p>
+
+            <button onclick="mudarTela('tutorial')" id="btn-tutorial" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors mt-1">
+                <i data-feather="help-circle" class="h-5 w-5 mr-3"></i>
+                <span class="text-sm">Tutorial do Aluno</span>
+            </button>
             <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
                 <i data-feather="user" class="h-5 w-5 mr-3"></i>
                 <span class="text-sm">Meu Perfil</span>
@@ -533,63 +538,8 @@ function calcularMediaDisciplina(d) {
     return somaPonderada / somaPesos;
 }
 
-function calcularMediaDisciplina(d) {
-    if (!d) return null;
-    if (d.media_final !== undefined && d.media_final !== null && d.media_final !== '') {
-        const mf = parseFloat(d.media_final);
-        if (!isNaN(mf)) return mf;
-    }
 
-    const notasObj = d.notas || {};
-    const pesosObj = d.pesos_avaliacoes || {};
-    const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
-        ? d.avaliacoes_previstas
-        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
 
-    let somaPonderada = 0;
-    let somaPesos = 0;
-
-    avalPrevistas.forEach((tipo, idx) => {
-        const num = extrairNotaAluno(notasObj, tipo, idx);
-        if (num !== null && !isNaN(num)) {
-            const peso = parseFloat(pesosObj[`av_${idx}_${tipo}`] ?? pesosObj[tipo] ?? 1) || 1;
-            somaPonderada += num * peso;
-            somaPesos += peso;
-        }
-    });
-
-    if (somaPesos === 0) return null;
-    return somaPonderada / somaPesos;
-}
-
-function calcularMediaDisciplina(d) {
-    if (!d) return null;
-    if (d.media_final !== undefined && d.media_final !== null && d.media_final !== '') {
-        const mf = parseFloat(d.media_final);
-        if (!isNaN(mf)) return mf;
-    }
-
-    const notasObj = d.notas || {};
-    const pesosObj = d.pesos_avaliacoes || {};
-    const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
-        ? d.avaliacoes_previstas
-        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
-
-    let somaPonderada = 0;
-    let somaPesos = 0;
-
-    avalPrevistas.forEach((tipo, idx) => {
-        const num = extrairNotaAluno(notasObj, tipo, idx);
-        if (num !== null && !isNaN(num)) {
-            const peso = parseFloat(pesosObj[`av_${idx}_${tipo}`] ?? pesosObj[tipo] ?? 1) || 1;
-            somaPonderada += num * peso;
-            somaPesos += peso;
-        }
-    });
-
-    if (somaPesos === 0) return null;
-    return somaPonderada / somaPesos;
-}
 
 function liberarAcessoAluno() {
     document.getElementById('tela-login').classList.add('hidden');
@@ -1021,10 +971,8 @@ function filtrarMateriaisPorDisciplina() {
 }
 
 async function loadPerfilFinanceiro() {
-    const [dados, parcelasColecao] = await Promise.all([
-        apiRequest('/aluno/perfil'),
-        apiRequest('/aluno/mensalidades')
-    ]);
+    const dados = await apiRequest('/aluno/perfil');
+    const parcelasColecao = await apiRequest('/aluno/mensalidades') || [];
 
     if (dados) {
         document.getElementById('perfil-cpf').value = dados.cpf || '';
