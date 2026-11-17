@@ -25,8 +25,7 @@ import base64
 class LancamentoAluno(BaseModel):
     aluno_id: str
     faltas: int
-    notas: dict = {}  # Agora aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
-    # Mantidos por retrocompatibilidade caso tenha dados velhos gravados
+    notas: dict = {}  # Aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
     nota_1: Optional[float] = None
     nota_2: Optional[float] = None
 
@@ -62,6 +61,7 @@ if firebase_env and not firebase_admin._apps:
         print(f"Erro ao inicializar Firebase: {e}")
 
 db = firestore.client() if firebase_admin._apps else None
+
 # ==========================================
 # 2. INICIALIZAÇÃO DA API
 # ==========================================
@@ -102,7 +102,6 @@ async def login_administrador(senha: str = Form(...)):
 # ==========================================
 # 2.6 AUTENTICAÇÃO DO PROFESSOR (DOCENTE)
 # ==========================================
-
 @app.post("/api/v1/auth/docente")
 async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
     checar_db()
@@ -686,13 +685,11 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="Perfil de professor não encontrado")
 
     dados_prof = doc_prof.to_dict()
-    # Puxa os vínculos gravados pelo Admin (JSON) em vez de 'curso_id'
     vinculos_str = dados_prof.get("vinculos_json", "[]")
 
     try:
-        import json
         vinculos = json.loads(vinculos_str)
-    except:
+    except Exception:
         vinculos = []
 
     return {
@@ -703,7 +700,6 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
     }
 
 
-# Crie este Schema junto aos outros (lá no topo do arquivo ou antes dessa rota)
 class TurmaConfigPayload(BaseModel):
     turma_id: str
     data_inicio: str = None
@@ -733,9 +729,8 @@ async def listar_turmas_docente(authorization: str = Header(None)):
     vinculos_str = dados_prof.get("vinculos_json", "[]")
 
     try:
-        import json
         vinculos = json.loads(vinculos_str)
-    except:
+    except Exception:
         vinculos = []
 
     turmas_formatadas = []
@@ -744,7 +739,6 @@ async def listar_turmas_docente(authorization: str = Header(None)):
             continue
 
         c_id = vinc.get("curso") or vinc.get("curso_id")
-        # Pega prioritariamente o nome da DISCIPLINA, senão pega o módulo
         mod_nome = vinc.get("disciplina") or vinc.get("modulo") or "Módulo/Disciplina"
         nome_curso = "Curso Vinculado"
         ch_total = 40
@@ -755,21 +749,16 @@ async def listar_turmas_docente(authorization: str = Header(None)):
             if c_ref.exists:
                 c_dados = c_ref.to_dict()
                 nome_curso = c_dados.get("nome_curso", "CURSO DESCONHECIDO")
-
                 nome_alvo = str(mod_nome).strip().upper()
 
-                # Busca na grade, navegando pelas sub-disciplinas se existirem
                 for m in c_dados.get("grade_curricular", []):
                     if not isinstance(m, dict): continue
-
-                    # 1. Tenta achar direto no primeiro nível (flat)
                     m_nome = str(m.get("nome") or m.get("disciplina") or "").strip().upper()
                     if m_nome == nome_alvo:
                         detalhes_modulo = m
                         ch_total = int(m.get("ch_total", m.get("carga_horaria", 40)))
                         break
 
-                    # 2. Tenta achar dentro do array 'disciplinas' (aninhado - Nível 2)
                     sub_disciplinas = m.get("disciplinas", [])
                     if isinstance(sub_disciplinas, list):
                         encontrou = False
@@ -789,13 +778,12 @@ async def listar_turmas_docente(authorization: str = Header(None)):
             "nome_disciplina": mod_nome,
             "curso_pai": nome_curso,
             "carga_horaria": ch_total,
-            "detalhes": detalhes_modulo  # Agora enviará o objeto completo com Ementa, Horários, etc.
+            "detalhes": detalhes_modulo
         })
 
     return turmas_formatadas
 
 
-# ROTA NOVA: Onde o professor atualiza as configurações da disciplina
 @app.post("/api/v1/docente/turmas/configurar")
 async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str = Header(None)):
     checar_db()
@@ -804,7 +792,7 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
     try:
         curso_id, nome_alvo = payload.turma_id.split("_", 1)
         nome_alvo = nome_alvo.strip().upper()
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="ID da turma inválido")
 
     curso_ref = db.collection("cursos").document(curso_id)
@@ -815,7 +803,6 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
 
     curso_dados = curso_doc.to_dict()
     grade = curso_dados.get("grade_curricular", [])
-
     modulo_atualizado = False
 
     def atualizar_obj(obj):
@@ -852,10 +839,8 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
     if not modulo_atualizado:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada na matriz do curso.")
 
-    # Salva os dados na grade
     curso_ref.update({"grade_curricular": grade})
 
-    # SISTEMA DE NOTIFICAÇÃO AO ALUNO
     if payload.justificativa and payload.justificativa.strip():
         nova_notificacao = {
             "tipo": "ALTERACAO_CRONOGRAMA",
@@ -898,7 +883,6 @@ async def obter_diario_turma_docente(turma_id: str, authorization: str = Header(
         if t_norm == alvo_norm:
             docs_filtrados.append(d)
 
-    # Ordena cronologicamente para que a alteração mais recente prevaleça
     docs_filtrados.sort(key=lambda x: x.get("data_registro", ""))
 
     consolidado = {}
@@ -940,11 +924,13 @@ async def salvar_diario_eletronico(
     db.collection("diarios").document(doc_id).set(registro_diario)
     return {"sucesso": True, "mensagem": "Diário registrado e sincronizado com o boletim!"}
 
+
 class MaterialPayload(BaseModel):
     turma_id: str
     titulo: str
     url_arquivo: str
     data_postagem: Optional[str] = None
+
 
 @app.post("/api/v1/docente/material/upload")
 async def upload_material_didatico(
@@ -978,8 +964,6 @@ async def listar_materiais_docente(authorization: str = Header(None)):
     for doc in docs:
         m = doc.to_dict()
         m["id"] = doc.id
-
-        # Opcional: busca o nome amigável da turma/disciplina se necessário
         turma_id = m.get("turma_id", "")
         m["nome_turma"] = "Turma Vinculada"
         if "_" in turma_id:
@@ -1174,7 +1158,7 @@ async def gerar_pdf_documento(documento_id: str):
                     img.hAlign = 'CENTER'
                     elements.append(img)
                     elements.append(Spacer(1, 10))
-            except Exception as e:
+            except Exception:
                 pass
 
         elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao')}</b>", title_style))
@@ -1267,7 +1251,7 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         elements = []
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle('TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14,
-                                     alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e'))
+                                   alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e'))
         subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=9,
                                         alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155'))
 
@@ -1381,7 +1365,7 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
         elements = []
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle('TitleStyle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=14,
-                                     alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e'))
+                                   alignment=TA_CENTER, spaceAfter=5, textColor=colors.HexColor('#0f766e'))
         subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=9,
                                         alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155'))
 
@@ -1458,7 +1442,6 @@ async def excluir_material_didatico(material_id: str, authorization: str = Heade
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Material não encontrado.")
 
-    # Proteção: Garante que o professor só exclua materiais dele mesmo
     if doc.to_dict().get("docente_id") != docente_id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
 
@@ -1477,7 +1460,6 @@ async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayl
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Material não encontrado.")
 
-    # Proteção: Garante que o professor só edite materiais dele mesmo
     if doc.to_dict().get("docente_id") != docente_id:
         raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
 
@@ -1500,7 +1482,6 @@ async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization:
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Docente não encontrado.")
 
-    # Atualiza apenas os dados de contato
     ref.update({
         "email": payload.email,
         "telefone": payload.telefone
@@ -1554,7 +1535,6 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
                     })
                     avaliacoes_por_disciplina[nome_disc.strip().upper()] = disc.get("avaliacoes", [])
 
-    # Consolida notas e faltas por disciplina em ordem cronológica
     lancamentos_por_disc = {}
     total_faltas = 0
 
@@ -1575,7 +1555,6 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
                     lancamentos_por_disc[disc_key] = {}
                 lancamentos_por_disc[disc_key].update(lanc.get("notas", {}))
 
-    # Calcula a média ponderada de cada disciplina e depois a média geral
     medias_disciplinas = []
     for disc_key, notas_dict in lancamentos_por_disc.items():
         avaliacoes_config = avaliacoes_por_disciplina.get(disc_key, [])
@@ -1603,6 +1582,8 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
         "status_financeiro": "Pendente" if is_pendente else "Regular",
         "disciplinas_atuais": disciplinas_atuais[:3]
     }
+
+
 @app.get("/api/v1/aluno/cursos")
 async def listar_cursos_aluno(authorization: str = Header(None)):
     checar_db()
@@ -1702,7 +1683,6 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 {"faltas": 0, "notas": {}, "historico_aulas": []}
             )
 
-            # Extrai avaliações previstas e seus respectivos pesos
             avaliacoes_config = disc_matriz.get("avaliacoes", [])
             avaliacoes_previstas = []
             pesos_avaliacoes = {}
@@ -1722,7 +1702,6 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 avaliacoes_previstas = ["AV1", "AV2", "Final"]
                 pesos_avaliacoes = {"AV1": 1.0, "AV2": 1.0, "Final": 1.0}
 
-            # Calcula a Média Ponderada considerando chaves indexadas ('av_0_...') e antigas
             soma_ponderada = 0.0
             soma_pesos = 0.0
             qtd_notas_validas = 0
@@ -1740,7 +1719,6 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
             total_avals_matriz = len(avaliacoes_previstas)
             notas_completas = (total_avals_matriz > 0) and (qtd_notas_validas >= total_avals_matriz)
 
-            # Regra de aprovação UNIVEAS: Média >= 8.0 somente quando todas as avaliações forem lançadas
             if media_final is None:
                 situacao = "Cursando"
             elif not notas_completas:
@@ -1808,6 +1786,7 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
 
     return boletim_enriquecido
 
+
 @app.get("/api/v1/aluno/materiais/{curso_id}")
 async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None)):
     checar_db()
@@ -1824,6 +1803,7 @@ async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None
             materiais.append({"id": doc.id, **m})
 
     return materiais
+
 
 @app.get("/api/v1/aluno/perfil")
 async def obter_perfil_aluno(authorization: str = Header(None)):
@@ -1893,7 +1873,6 @@ async def aluno_enviar_comprovante_portal(
     except Exception:
         mapa = {}
 
-    # === AQUI ENTRA O TRECHO QUE VOCÊ PERGUNTOU ===
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
     valor_aluno = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
 
@@ -1905,7 +1884,6 @@ async def aluno_enviar_comprovante_portal(
     parcela_mes["comprovante_nome"] = comprovante.filename
     parcela_mes["atualizado_em"] = datetime.now().isoformat()
     mapa[mes_ref] = parcela_mes
-    # ==============================================
 
     aluno_ref.update({
         "status_comprovante": "Em Análise",
@@ -1917,6 +1895,7 @@ async def aluno_enviar_comprovante_portal(
 
     return {"sucesso": True, "mensagem": f"Comprovante da competência {mes_ref} enviado com sucesso!"}
 
+
 @app.get("/api/v1/financeiro/comprovante/{aluno_id}")
 async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
     checar_db()
@@ -1927,7 +1906,6 @@ async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
     aluno_dados = aluno_doc.to_dict() or {}
     comp_id = None
 
-    # 1. Tenta localizar o comprovante específico do mês (competencia)
     if competencia:
         mapa_raw = aluno_dados.get("mensalidades_json", "{}")
         try:
@@ -1937,7 +1915,6 @@ async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
         except Exception:
             comp_id = None
 
-        # 2. Se não estava no JSON, procura na coleção comprovantes_pagamento pela competência
         if not comp_id:
             docs_comp = (
                 db.collection("comprovantes_pagamento")
@@ -1950,7 +1927,6 @@ async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
                 lista_comp.sort(key=lambda x: x.get("data_envio", ""), reverse=True)
                 comp_id = lista_comp[0]["id"]
 
-    # 3. Fallback retrocompatível para o último comprovante geral do aluno
     if not comp_id:
         comp_id = aluno_dados.get("ultimo_comprovante_id")
 
@@ -1970,6 +1946,7 @@ async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
         "competencia": comp.get("competencia", competencia)
     }
 
+
 def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
     flag = aluno_dict.get("possui_pendencia_financeira")
     if flag == "Sim":
@@ -1979,7 +1956,6 @@ def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
     return False
 
 
-# Helper reutilizável para calcular o valor mensal real do aluno (considerando múltiplos cursos e promoções)
 def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
     ids_cursos = set()
     if aluno_dict.get("curso_id") or aluno_dict.get("curso"):
@@ -2045,6 +2021,7 @@ async def obter_indicadores_financeiros():
         "pagamentos_mes": pagamentos_mes_qtd
     }
 
+
 @app.post("/api/v1/alunos/{aluno_id}/pendencia")
 async def atualizar_pendencia_aluno(
         aluno_id: str,
@@ -2082,6 +2059,7 @@ async def atualizar_pendencia_aluno(
 
     ref.update(update_data)
     return {"sucesso": True, "mensagem": "Situação financeira mensal atualizada com sucesso."}
+
 
 @app.post("/api/v1/alunos/{aluno_id}/nf")
 async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form("")):
@@ -2276,6 +2254,8 @@ async def excluir_documento_emitido(documento_id: str):
 
     ref.delete()
     return {"sucesso": True, "mensagem": "Documento excluído com sucesso."}
+
+
 @app.put("/api/v1/cursos/{curso_id}")
 async def atualizar_curso(
         curso_id: str,
@@ -2363,7 +2343,6 @@ async def listar_notificacoes_aluno(authorization: str = Header(None)):
                 "importante": n.get("importante", True)
             })
 
-    # Ordena da mais recente para a mais antiga
     notificacoes.sort(key=lambda x: x.get("data_envio", ""), reverse=True)
     return notificacoes
 
@@ -2393,15 +2372,11 @@ async def atualizar_perfil_aluno(payload: PerfilAlunoUpdatePayload, authorizatio
 
     return {"sucesso": True, "mensagem": "Dados cadastrais atualizados com sucesso!"}
 
+
 def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> float:
-    """
-    Resolve o peso da avaliação tanto para chaves novas ('av_0_Prova AV1')
-    quanto para chaves antigas ('Prova AV1' ou 'AV1').
-    """
     if not isinstance(avaliacoes_config, list) or not avaliacoes_config:
         return 1.0
 
-    # 1. Se vier no formato indexado 'av_<idx>_<tipo>'
     if chave_nota.startswith("av_"):
         partes = chave_nota.split("_", 2)
         if len(partes) >= 2 and partes[1].isdigit():
@@ -2411,7 +2386,6 @@ def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> flo
                 if isinstance(av, dict):
                     return float(av.get("peso", 1) or 1)
 
-    # 2. Fallback por nome/tipo da avaliação
     chave_upper = chave_nota.strip().upper()
     for av in avaliacoes_config:
         if isinstance(av, dict):
@@ -2420,18 +2394,19 @@ def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> flo
                 return float(av.get("peso", 1) or 1)
     return 1.0
 
+
 class ParcelaUpdatePayload(BaseModel):
     aluno_id: str
-    competencia: str  # Ex: "2026-11"
+    competencia: str
     referencia_label: Optional[str] = None
     vencimento: Optional[str] = None
     valor: float = 0.0
-    status: str  # "Pago" | "Pendente" | "Em Análise"
+    status: str
     numero_nf: Optional[str] = ""
     data_pagamento: Optional[str] = None
 
+
 def consolidar_status_financeiro_aluno(aluno_id: str):
-    """Recalcula o resumo financeiro APENAS deste aluno com base nas suas parcelas isoladas."""
     parcelas_docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
     parcelas = [p.to_dict() for p in parcelas_docs]
 
@@ -2448,6 +2423,7 @@ def consolidar_status_financeiro_aluno(aluno_id: str):
         "detalhes_pendencia_financeira": detalhes
     }, merge=True)
 
+
 @app.get("/api/v1/financeiro/parcelas/{aluno_id}")
 def listar_parcelas_aluno(aluno_id: str):
     docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
@@ -2458,6 +2434,7 @@ def listar_parcelas_aluno(aluno_id: str):
         lista.append(item)
     lista.sort(key=lambda x: x.get("competencia", ""))
     return lista
+
 
 @app.post("/api/v1/financeiro/parcela/salvar")
 def salvar_parcela_individual(payload: ParcelaUpdatePayload):
@@ -2475,6 +2452,7 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
     db.collection("mensalidades").document(doc_id).set(dados, merge=True)
     consolidar_status_financeiro_aluno(str(payload.aluno_id))
     return {"sucesso": True, "parcela": dados}
+
 
 @app.get("/api/v1/aluno/mensalidades")
 def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
