@@ -1847,17 +1847,19 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
 @app.get("/api/v1/aluno/materiais/{curso_id}")
 async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None)):
     checar_db()
-    aluno_id = validar_token_aluno(authorization)
+    validar_token_aluno(authorization)
 
     materiais = []
     docs = db.collection("materiais_didaticos").stream()
     for doc in docs:
         m = doc.to_dict()
-        if curso_id in m.get("turma_id", ""):
+        t_id = m.get("turma_id", "")
+        if curso_id in t_id:
+            if not m.get("disciplina") and "_" in t_id:
+                m["disciplina"] = t_id.split("_", 1)[1].strip()
             materiais.append({"id": doc.id, **m})
 
     return materiais
-
 
 @app.get("/api/v1/aluno/perfil")
 async def obter_perfil_aluno(authorization: str = Header(None)):
@@ -1882,12 +1884,17 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
         "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não"),
         "detalhes_pendencia_financeira": dados.get("detalhes_pendencia_financeira", ""),
         "status_comprovante": dados.get("status_comprovante", "Nenhum"),
-        "numero_nf": dados.get("numero_nf", "")
+        "numero_nf": dados.get("numero_nf", ""),
+        "mensalidades_json": dados.get("mensalidades_json", "{}")
     }
 
 
 @app.post("/api/v1/aluno/financeiro/comprovante")
-async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), authorization: str = Header(None)):
+async def aluno_enviar_comprovante_portal(
+        comprovante: UploadFile = File(...),
+        competencia: str = Form(""),
+        authorization: str = Header(None)
+):
     checar_db()
     aluno_id = validar_token_aluno(authorization)
 
@@ -1899,8 +1906,11 @@ async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), a
     b64_str = base64.b64encode(conteudo_bytes).decode("utf-8")
     data_uri = f"data:{mime_type};base64,{b64_str}"
 
+    mes_ref = competencia.strip() or datetime.now().strftime("%Y-%m")
+
     dados_comp = {
         "aluno_id": aluno_id,
+        "competencia": mes_ref,
         "nome_arquivo": comprovante.filename,
         "content_type": mime_type,
         "arquivo_base64": data_uri,
@@ -1909,26 +1919,79 @@ async def aluno_enviar_comprovante_portal(comprovante: UploadFile = File(...), a
     }
     _, doc_ref = db.collection("comprovantes_pagamento").add(dados_comp)
 
-    db.collection("alunos").document(aluno_id).update({
+    aluno_ref = db.collection("alunos").document(aluno_id)
+    aluno_snap = aluno_ref.get()
+    aluno_dados = aluno_snap.to_dict() if aluno_snap.exists else {}
+
+    mapa_raw = aluno_dados.get("mensalidades_json", "{}")
+    try:
+        mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else dict(mapa_raw or {})
+    except Exception:
+        mapa = {}
+
+    # === AQUI ENTRA O TRECHO QUE VOCÊ PERGUNTOU ===
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    valor_aluno = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
+
+    parcela_mes = mapa.get(mes_ref, {"competencia": mes_ref, "valor": valor_aluno, "numero_nf": ""})
+    if not parcela_mes.get("valor"):
+        parcela_mes["valor"] = valor_aluno
+    parcela_mes["status"] = "Em Análise"
+    parcela_mes["comprovante_id"] = doc_ref.id
+    parcela_mes["comprovante_nome"] = comprovante.filename
+    parcela_mes["atualizado_em"] = datetime.now().isoformat()
+    mapa[mes_ref] = parcela_mes
+    # ==============================================
+
+    aluno_ref.update({
         "status_comprovante": "Em Análise",
         "ultimo_comprovante_id": doc_ref.id,
         "ultimo_comprovante_nome": comprovante.filename,
-        "ultimo_comprovante_data": datetime.now().isoformat()
+        "ultimo_comprovante_data": datetime.now().isoformat(),
+        "mensalidades_json": json.dumps(mapa, ensure_ascii=False)
     })
 
-    return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso!"}
-
+    return {"sucesso": True, "mensagem": f"Comprovante da competência {mes_ref} enviado com sucesso!"}
 
 @app.get("/api/v1/financeiro/comprovante/{aluno_id}")
-async def visualizar_comprovante_aluno(aluno_id: str):
+async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
     checar_db()
     aluno_doc = db.collection("alunos").document(aluno_id).get()
     if not aluno_doc.exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado.")
 
-    comp_id = aluno_doc.to_dict().get("ultimo_comprovante_id")
+    aluno_dados = aluno_doc.to_dict() or {}
+    comp_id = None
+
+    # 1. Tenta localizar o comprovante específico do mês (competencia)
+    if competencia:
+        mapa_raw = aluno_dados.get("mensalidades_json", "{}")
+        try:
+            mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else (mapa_raw or {})
+            parcela_mes = mapa.get(competencia, {})
+            comp_id = parcela_mes.get("comprovante_id")
+        except Exception:
+            comp_id = None
+
+        # 2. Se não estava no JSON, procura na coleção comprovantes_pagamento pela competência
+        if not comp_id:
+            docs_comp = (
+                db.collection("comprovantes_pagamento")
+                .where("aluno_id", "==", str(aluno_id))
+                .where("competencia", "==", competencia)
+                .stream()
+            )
+            lista_comp = [{"id": d.id, **d.to_dict()} for d in docs_comp]
+            if lista_comp:
+                lista_comp.sort(key=lambda x: x.get("data_envio", ""), reverse=True)
+                comp_id = lista_comp[0]["id"]
+
+    # 3. Fallback retrocompatível para o último comprovante geral do aluno
     if not comp_id:
-        raise HTTPException(status_code=404, detail="Nenhum comprovante anexado por este aluno.")
+        comp_id = aluno_dados.get("ultimo_comprovante_id")
+
+    if not comp_id:
+        raise HTTPException(status_code=404, detail="Nenhum comprovante anexado para este mês.")
 
     comp_doc = db.collection("comprovantes_pagamento").document(comp_id).get()
     if not comp_doc.exists:
@@ -1939,9 +2002,9 @@ async def visualizar_comprovante_aluno(aluno_id: str):
         "nome_arquivo": comp.get("nome_arquivo"),
         "content_type": comp.get("content_type"),
         "arquivo_base64": comp.get("arquivo_base64"),
-        "data_envio": comp.get("data_envio")
+        "data_envio": comp.get("data_envio"),
+        "competencia": comp.get("competencia", competencia)
     }
-
 
 def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
     flag = aluno_dict.get("possui_pendencia_financeira")
@@ -2023,7 +2086,8 @@ async def atualizar_pendencia_aluno(
         aluno_id: str,
         possui_pendencia_financeira: str = Form("Não"),
         detalhes_pendencia_financeira: str = Form(""),
-        numero_nf: str = Form("")
+        numero_nf: str = Form(""),
+        mensalidades_json: str = Form("")
 ):
     checar_db()
     ref = db.collection("alunos").document(aluno_id)
@@ -2041,7 +2105,9 @@ async def atualizar_pendencia_aluno(
         "data_atualizacao_financeira": datetime.now().isoformat()
     }
 
-    # Regra de negócio: Ao quitar no financeiro ("Não"), ativa o aluno na íntegra
+    if mensalidades_json:
+        update_data["mensalidades_json"] = mensalidades_json
+
     if possui_pendencia_financeira == "Não":
         update_data["status_comprovante"] = "Aprovado"
         if status_atual not in ["Trancado", "Concluído"]:
@@ -2051,8 +2117,7 @@ async def atualizar_pendencia_aluno(
             update_data["status"] = "Pendente"
 
     ref.update(update_data)
-    return {"sucesso": True, "mensagem": "Situação financeira e status do aluno atualizados."}
-
+    return {"sucesso": True, "mensagem": "Situação financeira mensal atualizada com sucesso."}
 
 @app.post("/api/v1/alunos/{aluno_id}/nf")
 async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form("")):
@@ -2295,3 +2360,271 @@ def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> flo
             if tipo_av == chave_upper:
                 return float(av.get("peso", 1) or 1)
     return 1.0
+
+class ParcelaUpdatePayload(BaseModel):
+    aluno_id: str
+    competencia: str  # Ex: "2026-11"
+    referencia_label: Optional[str] = None
+    vencimento: Optional[str] = None
+    valor: float = 0.0
+    status: str  # "Pago" | "Pendente" | "Em Análise"
+    numero_nf: Optional[str] = ""
+    data_pagamento: Optional[str] = None
+
+def consolidar_status_financeiro_aluno(aluno_id: str):
+    """Recalcula o resumo financeiro APENAS deste aluno com base nas suas parcelas isoladas."""
+    parcelas_docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
+    parcelas = [p.to_dict() for p in parcelas_docs]
+
+    pendentes = [p for p in parcelas if p.get("status") == "Pendente"]
+    em_analise = [p for p in parcelas if p.get("status") == "Em Análise"]
+
+    tem_pendencia = "Sim" if len(pendentes) > 0 else "Não"
+    status_comp = "Em Análise" if len(em_analise) > 0 else ("Quitado" if len(pendentes) == 0 else "Pendente")
+    detalhes = ", ".join([p.get("referencia_label") or p.get("competencia") for p in pendentes])
+
+    db.collection("alunos").document(str(aluno_id)).set({
+        "possui_pendencia_financeira": tem_pendencia,
+        "status_comprovante": status_comp,
+        "detalhes_pendencia_financeira": detalhes
+    }, merge=True)
+
+@app.get("/api/v1/financeiro/parcelas/{aluno_id}")
+def listar_parcelas_aluno(aluno_id: str):
+    docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
+    lista = []
+    for d in docs:
+        item = d.to_dict()
+        item["id"] = d.id
+        lista.append(item)
+    lista.sort(key=lambda x: x.get("competencia", ""))
+    return lista
+
+@app.post("/api/v1/financeiro/parcela/salvar")
+def salvar_parcela_individual(payload: ParcelaUpdatePayload):
+    doc_id = f"{payload.aluno_id}__{payload.competencia}"
+    dados = {
+        "aluno_id": str(payload.aluno_id),
+        "competencia": payload.competencia,
+        "referencia_label": payload.referencia_label or payload.competencia,
+        "vencimento": payload.vencimento or "",
+        "valor": float(payload.valor or 0),
+        "status": payload.status,
+        "numero_nf": payload.numero_nf or "",
+        "data_pagamento": payload.data_pagamento or (datetime.now().strftime("%Y-%m-%d") if payload.status == "Pago" else None)
+    }
+    db.collection("mensalidades").document(doc_id).set(dados, merge=True)
+    consolidar_status_financeiro_aluno(str(payload.aluno_id))
+    return {"sucesso": True, "parcela": dados}
+
+@app.get("/api/v1/aluno/mensalidades")
+def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
+    lista = []
+    for d in docs:
+        item = d.to_dict()
+        item["id"] = d.id
+        lista.append(item)
+    lista.sort(key=lambda x: x.get("competencia", ""), reverse=True)
+    return lista
+
+
+def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
+    checar_db()
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    if not aluno_doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    aluno = aluno_doc.to_dict() or {}
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+
+    mapa_raw = aluno.get("mensalidades_json", "{}")
+    try:
+        mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else (mapa_raw or {})
+    except Exception:
+        mapa = {}
+
+    parcela = mapa.get(competencia)
+
+    if not parcela:
+        m_doc = db.collection("mensalidades").document(f"{aluno_id}__{competencia}").get()
+        if m_doc.exists:
+            parcela = m_doc.to_dict()
+
+    mes_atual = datetime.now().strftime("%Y-%m")
+    if not parcela and competencia == mes_atual and aluno.get("possui_pendencia_financeira") != "Sim":
+        parcela = {
+            "competencia": competencia,
+            "status": "Pago",
+            "valor": calcular_valor_mensal_aluno(aluno, cursos_map),
+            "numero_nf": aluno.get("numero_nf", ""),
+            "atualizado_em": aluno.get("data_atualizacao_financeira", datetime.now().isoformat())
+        }
+
+    if not parcela or parcela.get("status") != "Pago":
+        raise HTTPException(status_code=400, detail="Recibo disponível apenas para mensalidades com status Pago.")
+
+    sys_ref = db.collection("sistema").document("configuracoes").get()
+    sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+        "nome_instituicao": "UNIVEAS",
+        "cnpj": "53.199.321/0001-23",
+        "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+    }
+
+    valor_pago = float(parcela.get("valor") or calcular_valor_mensal_aluno(aluno, cursos_map) or 0)
+    valor_fmt = f"R$ {valor_pago:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    matricula_limpa = str(aluno.get("matricula", "000")).replace("#", "")
+    numero_nf = parcela.get("numero_nf") or f"REC-{matricula_limpa}-{competencia.replace('-', '')}"
+
+    partes_comp = competencia.split("-")
+    comp_fmt = f"{partes_comp[1]}/{partes_comp[0]}" if len(partes_comp) == 2 else competencia
+
+    data_baixa_raw = parcela.get("data_pagamento") or parcela.get("atualizado_em") or datetime.now().isoformat()
+    try:
+        data_baixa_fmt = datetime.fromisoformat(str(data_baixa_raw).replace("Z", "")).strftime("%d/%m/%Y")
+    except Exception:
+        data_baixa_fmt = datetime.now().strftime("%d/%m/%Y")
+
+    curso_id = aluno.get("curso_id") or aluno.get("curso")
+    nome_curso = cursos_map.get(str(curso_id), {}).get("nome_curso", "Curso Técnico / Profissionalizante").upper()
+
+    buffer = io.BytesIO()
+    pdf = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'RecTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+        fontSize=15, alignment=TA_CENTER, spaceAfter=4, textColor=colors.HexColor('#0f766e')
+    )
+    sub_style = ParagraphStyle(
+        'RecSub', parent=styles['Normal'], fontName='Helvetica',
+        fontSize=9, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155')
+    )
+    body_style = ParagraphStyle(
+        'RecBody', parent=styles['Normal'], fontName='Helvetica',
+        fontSize=11, alignment=TA_JUSTIFY, leading=17, spaceAfter=18
+    )
+    footer_style = ParagraphStyle(
+        'RecFooter', parent=styles['Normal'], fontName='Helvetica-Oblique',
+        fontSize=8.5, alignment=TA_CENTER, textColor=colors.gray
+    )
+
+    elements = []
+    try:
+        req = urllib.request.Request("https://i.imgur.com/ki7mdS2.png", headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            img = Image(io.BytesIO(response.read()), width=65, height=65)
+            img.hAlign = 'CENTER'
+            elements.append(img)
+            elements.append(Spacer(1, 8))
+    except Exception:
+        pass
+
+    elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
+    elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", sub_style))
+    elements.append(Paragraph(
+        f"<b>RECIBO DE PAGAMENTO DE MENSALIDADE • Nº {numero_nf}</b>",
+        ParagraphStyle('DocHeading', parent=title_style, fontSize=12, textColor=colors.HexColor('#0f172a'), spaceAfter=18)
+    ))
+
+    nome_aluno = str(aluno.get("nome", "ALUNO")).upper()
+    cpf_aluno = aluno.get("cpf", "Não informado")
+    matricula_aluno = aluno.get("matricula", "S/N")
+
+    texto_declaracao = (
+        f"Recebemos de <b>{nome_aluno}</b>, inscrito(a) no CPF nº <b>{cpf_aluno}</b>, "
+        f"regularmente matriculado(a) sob o registro <b>{matricula_aluno}</b> no curso de "
+        f"<b>{nome_curso}</b>, a importância de <b>{valor_fmt}</b>, referente à quitação integral "
+        f"da mensalidade escolar da competência <b>{comp_fmt}</b>."
+    )
+    elements.append(Paragraph(texto_declaracao, body_style))
+
+    resumo_data = [
+        ['CAMPO', 'DETALHAMENTO DO LANÇAMENTO'],
+        ['Aluno(a) / Matrícula', f"{nome_aluno} ({matricula_aluno})"],
+        ['Curso Vinculado', nome_curso],
+        ['Competência Quitada', comp_fmt],
+        ['Data de Quitação', data_baixa_fmt],
+        ['Forma de Pagamento', str(aluno.get("forma_pagamento") or "PIX / Secretaria").upper()],
+        ['Documento / NF', numero_nf],
+        ['Valor Total Pago', valor_fmt],
+    ]
+
+    tabela_resumo = Table(resumo_data, colWidths=[165, 335])
+    tabela_resumo.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 1), (0, -1), colors.HexColor('#334155')),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecfdf5')),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (1, -1), (1, -1), colors.HexColor('#047857')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('TOPPADDING', (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(tabela_resumo)
+    elements.append(Spacer(1, 30))
+
+    elements.append(Paragraph(
+        f"Vigia/PA, {datetime.now().strftime('%d/%m/%Y')}.",
+        ParagraphStyle('CidadeData', parent=body_style, alignment=TA_CENTER)
+    ))
+    elements.append(Spacer(1, 35))
+
+    sig_table = Table([
+        ['________________________________________'],
+        ['Tesouraria / Secretaria Financeira — UNIVEAS']
+    ], colWidths=[300])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+    ]))
+    elements.append(sig_table)
+    elements.append(Spacer(1, 25))
+
+    hash_aut = f"REC-{aluno_id[:6].upper()}-{competencia.replace('-', '')}"
+    elements.append(Paragraph(
+        f"Comprovante financeiro emitido eletronicamente pelo SIGA UNIVEAS.<br/>"
+        f"Código de Autenticidade: <b>{hash_aut}</b>",
+        footer_style
+    ))
+
+    pdf.build(elements)
+    buffer.seek(0)
+    nome_arq = f"Recibo_UNIVEAS_{competencia}_{matricula_limpa}.pdf"
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={nome_arq}"}
+    )
+
+
+@app.get("/api/v1/aluno/financeiro/recibo/{competencia}/pdf")
+async def gerar_recibo_mensalidade_aluno_pdf(competencia: str, authorization: str = Header(None)):
+    try:
+        aluno_id = validar_token_aluno(authorization)
+        return _montar_pdf_recibo_aluno(aluno_id, competencia)
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar recibo PDF: {str(e)}")
+
+
+@app.get("/api/v1/financeiro/recibo/{aluno_id}/{competencia}/pdf")
+async def gerar_recibo_mensalidade_admin_pdf(aluno_id: str, competencia: str):
+    try:
+        return _montar_pdf_recibo_aluno(aluno_id, competencia)
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar recibo PDF: {str(e)}")
