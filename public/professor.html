@@ -725,43 +725,79 @@ async function loadTurmas() {
 }
 
 // =========================================================
-// CÁLCULO DE MÉDIA PONDERADA DOCENTE (CORTE DE APROVAÇÃO: 8,0)
+// CÁLCULO DE MÉDIA PONDERADA DOCENTE (SINCRONIZADO COM ADMIN - CORTE: 8,0)
 // =========================================================
-function calcularMediaPonderadaDocente(notasObj, avaliacoesConfig) {
-    let somaPonderada = 0;
-    let somaPesos = 0;
+function normalizarAvaliacoesDocente(avaliacoesRaw) {
+    const lista = (Array.isArray(avaliacoesRaw) && avaliacoesRaw.length > 0)
+        ? avaliacoesRaw
+        : [{ tipo: 'Primeira avaliação', peso: 1 }, { tipo: 'Segunda avaliação', peso: 1 }];
 
-    const listaAvals = Array.isArray(avaliacoesConfig) && avaliacoesConfig.length > 0
-        ? avaliacoesConfig
-        : Object.keys(notasObj || {}).map(k => ({ tipo: k, peso: 1 }));
-
-    listaAvals.forEach(av => {
-        const tipo = typeof av === 'object' ? (av.tipo || av.nome) : av;
+    return lista.map((av, idx) => {
+        const tipo = typeof av === 'object' ? (av.tipo || av.nome || `Avaliação ${idx + 1}`) : String(av);
         const peso = typeof av === 'object' ? (parseFloat(av.peso) || 1) : 1;
-        const val = notasObj ? notasObj[tipo] : null;
+        const data = typeof av === 'object' ? (av.data || '') : '';
+        return {
+            chave: `av_${idx}_${tipo}`,
+            tipo: tipo,
+            peso: peso,
+            data: data
+        };
+    });
+}
 
-        if (val !== undefined && val !== null && val !== '') {
-            const num = parseFloat(val);
-            if (!isNaN(num)) {
-                somaPonderada += num * peso;
-                somaPesos += peso;
-            }
+function extrairNotaDocente(notasObj, avConfig, idx) {
+    if (!notasObj || typeof notasObj !== 'object') return null;
+    // 1. Chave indexada (padrão novo Admin + Docente)
+    if (notasObj[avConfig.chave] !== undefined && notasObj[avConfig.chave] !== null && notasObj[avConfig.chave] !== '') {
+        return notasObj[avConfig.chave];
+    }
+    // 2. Retrocompatibilidade com chave antiga por nome/tipo
+    if (notasObj[avConfig.tipo] !== undefined && notasObj[avConfig.tipo] !== null && notasObj[avConfig.tipo] !== '') {
+        return notasObj[avConfig.tipo];
+    }
+    // 3. Aliases legados
+    const aliases = idx === 0 ? ['AV1', 'nota1', 'n1'] : (idx === 1 ? ['AV2', 'nota2', 'n2'] : [`AV${idx + 1}`, `nota${idx + 1}`]);
+    for (const alias of aliases) {
+        if (notasObj[alias] !== undefined && notasObj[alias] !== null && notasObj[alias] !== '') {
+            return notasObj[alias];
+        }
+    }
+    return null;
+}
+
+function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
+    let somaPonderada = 0;
+    let somaPesosLancados = 0;
+    const totalAvaliacoes = avaliacoesConfig.length;
+    let avaliacoesLancadas = 0;
+
+    avaliacoesConfig.forEach(av => {
+        const raw = notasObj ? notasObj[av.chave] : null;
+        if (raw !== undefined && raw !== null && raw !== '' && !isNaN(parseFloat(raw))) {
+            const nota = Math.min(10, Math.max(0, parseFloat(raw)));
+            const peso = parseFloat(av.peso) || 1;
+            somaPonderada += nota * peso;
+            somaPesosLancados += peso;
+            avaliacoesLancadas++;
         }
     });
 
-    if (somaPesos === 0) return null;
-    return somaPonderada / somaPesos;
+    if (somaPesosLancados === 0) {
+        return { mediaNum: null, completo: false };
+    }
+
+    return {
+        mediaNum: somaPonderada / somaPesosLancados,
+        completo: avaliacoesLancadas === totalAvaliacoes
+    };
 }
 
 function recalcularLinhaDiarioDocente(inputElement) {
     if (inputElement && inputElement.value !== '') {
         let valNum = parseFloat(inputElement.value);
         if (!isNaN(valNum)) {
-            if (valNum > 10) {
-                inputElement.value = '10';
-            } else if (valNum < 0) {
-                inputElement.value = '0';
-            }
+            if (valNum > 10) inputElement.value = '10';
+            else if (valNum < 0) inputElement.value = '0';
         }
     }
 
@@ -770,32 +806,37 @@ function recalcularLinhaDiarioDocente(inputElement) {
 
     const notasLinha = {};
     tr.querySelectorAll('.input-nota-dinamica').forEach(inp => {
-        const tipo = inp.getAttribute('data-tipo');
+        const chave = inp.getAttribute('data-chave');
         if (inp.value !== '') {
-            notasLinha[tipo] = parseFloat(inp.value);
+            notasLinha[chave] = parseFloat(inp.value);
         }
     });
 
-    const media = calcularMediaPonderadaDocente(notasLinha, avaliacoesAtuaisDiario);
+    const { mediaNum, completo } = calcularSituacaoPonderadaDocente(notasLinha, avaliacoesAtuaisDiario);
     const celulaMedia = tr.querySelector('.celula-media-docente');
     const celulaSituacao = tr.querySelector('.celula-situacao-docente');
 
     if (celulaMedia) {
-        if (media === null) {
+        if (mediaNum === null) {
             celulaMedia.innerText = '-';
             celulaMedia.className = 'celula-media-docente py-3 px-4 text-center font-black text-gray-400';
         } else {
-            celulaMedia.innerText = media.toFixed(1);
-            celulaMedia.className = media >= 8.0
-                ? 'celula-media-docente py-3 px-4 text-center font-black text-green-600'
-                : 'celula-media-docente py-3 px-4 text-center font-black text-red-600';
+            const mediaFmt = mediaNum.toFixed(1).replace('.', ',');
+            celulaMedia.innerText = completo ? mediaFmt : `${mediaFmt}*`;
+            celulaMedia.className = !completo
+                ? 'celula-media-docente py-3 px-4 text-center font-black text-blue-600'
+                : (mediaNum >= 8.0
+                    ? 'celula-media-docente py-3 px-4 text-center font-black text-green-600'
+                    : 'celula-media-docente py-3 px-4 text-center font-black text-red-600');
         }
     }
 
     if (celulaSituacao) {
-        if (media === null) {
+        if (mediaNum === null) {
             celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase">Cursando</span>';
-        } else if (media >= 8.0) {
+        } else if (!completo) {
+            celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase" title="Aguardando lançamento de todas as avaliações">Parcial</span>';
+        } else if (mediaNum >= 8.0) {
             celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aprovado</span>';
         } else {
             celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Em Recuperação</span>';
@@ -812,9 +853,26 @@ function prepararDiario(idTurma) {
     processarTurmaDiario();
 }
 
+function obterDataHojeIso() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const nomesDias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return {
+        iso: `${ano}-${mes}-${dia}`,
+        formatada: `${dia}/${mes}/${ano} (Hoje - ${nomesDias[hoje.getDay()]})`
+    };
+}
+
 function processarTurmaDiario() {
     const turmaId = String(document.getElementById('select-turma-diario').value || '');
     const selectData = document.getElementById('data-aula-diario');
+
+    if (selectData && !selectData.dataset.listenerAdicionado) {
+        selectData.addEventListener('change', carregarChamada);
+        selectData.dataset.listenerAdicionado = 'true';
+    }
 
     if (!turmaId) {
         selectData.innerHTML = '<option value="">Selecione a turma primeiro...</option>';
@@ -822,25 +880,27 @@ function processarTurmaDiario() {
     }
 
     const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === turmaId);
+    const hojeObj = obterDataHojeIso();
+    let datasValidas = [];
 
-    if (!turma || !turma.detalhes || !turma.detalhes.data_inicio) {
-        selectData.innerHTML = '<option value="">Datas não definidas pela secretaria.</option>';
-    } else {
+    if (turma && turma.detalhes && turma.detalhes.data_inicio) {
         const diasAula = turma.detalhes.dias_aula || [];
-        const dataInicio = turma.detalhes.data_inicio;
-        const datasValidas = gerarDatasDoCronograma(dataInicio, diasAula);
+        datasValidas = gerarDatasDoCronograma(turma.detalhes.data_inicio, diasAula);
+    }
 
-        if (datasValidas.length === 0) {
-            selectData.innerHTML = '<option value="">Nenhuma aula ocorrida até hoje.</option>';
-        } else {
-            selectData.innerHTML = '';
-            datasValidas.reverse().forEach(dataObj => {
-                const opt = document.createElement('option');
-                opt.value = dataObj.iso;
-                opt.text = dataObj.formatada;
-                selectData.appendChild(opt);
-            });
-        }
+    selectData.innerHTML = '';
+    if (datasValidas.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = hojeObj.iso;
+        opt.text = hojeObj.formatada;
+        selectData.appendChild(opt);
+    } else {
+        datasValidas.reverse().forEach(dataObj => {
+            const opt = document.createElement('option');
+            opt.value = dataObj.iso;
+            opt.text = dataObj.formatada;
+            selectData.appendChild(opt);
+        });
     }
 
     carregarChamada();
@@ -889,11 +949,8 @@ async function carregarChamada() {
     feather.replace();
 
     const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === turmaId);
-    const avaliacoes = (turma && turma.detalhes && Array.isArray(turma.detalhes.avaliacoes) && turma.detalhes.avaliacoes.length > 0)
-        ? turma.detalhes.avaliacoes
-        : [{ tipo: 'Nota Final', peso: 1 }];
-
-    avaliacoesAtuaisDiario = avaliacoes;
+    const avaliacoesBrutas = turma?.detalhes?.avaliacoes || turma?.avaliacoes || [];
+    avaliacoesAtuaisDiario = normalizarAvaliacoesDocente(avaliacoesBrutas);
 
     // 1. CONSTRÓI O CABEÇALHO DINAMICAMENTE COM AS AVALIAÇÕES E PESOS DA MATRIZ
     let thHTML = `
@@ -902,11 +959,10 @@ async function carregarChamada() {
         <th class="py-3 px-4 w-24 text-center text-teal-600 whitespace-nowrap">Faltas</th>
     `;
 
-    avaliacoes.forEach(av => {
-        const tipo = typeof av === 'object' ? (av.tipo || av.nome) : av;
-        const peso = typeof av === 'object' && av.peso ? ` <span class="text-[10px] text-gray-400 font-normal">(Peso ${av.peso})</span>` : '';
-        const dataPrev = typeof av === 'object' && av.data ? `Data Prevista: ${av.data}` : '';
-        thHTML += `<th class="py-3 px-4 w-28 text-center text-blue-600" title="${dataPrev}">${tipo}${peso}</th>`;
+    avaliacoesAtuaisDiario.forEach((av, i) => {
+        const pesoHtml = ` <span class="text-[10px] text-gray-400 font-normal">(Peso ${av.peso})</span>`;
+        const dataPrev = av.data ? `Data Prevista: ${av.data}` : '';
+        thHTML += `<th class="py-3 px-4 w-28 text-center text-blue-600" title="${dataPrev}">${i + 1}. ${av.tipo}${pesoHtml}</th>`;
     });
 
     thHTML += `
@@ -950,12 +1006,18 @@ async function carregarChamada() {
             const num = String(index + 1).padStart(2, '0');
 
             let tdNotasHTML = '';
-            avaliacoes.forEach(av => {
-                const tipo = typeof av === 'object' ? (av.tipo || av.nome) : av;
-                const val = notasSalvas[tipo] !== undefined && notasSalvas[tipo] !== null ? notasSalvas[tipo] : '';
+            avaliacoesAtuaisDiario.forEach((av, idx) => {
+                const valBruto = extrairNotaDocente(notasSalvas, av, idx);
+                const val = valBruto !== null ? valBruto : '';
+                const safeChave = av.chave.replace(/"/g, '&quot;');
+                const safeTipo = av.tipo.replace(/"/g, '&quot;');
+
                 tdNotasHTML += `
                     <td class="py-3 px-4">
-                        <input type="number" step="0.1" min="0" max="10" value="${val}" data-tipo="${tipo}" oninput="recalcularLinhaDiarioDocente(this)" placeholder="-" class="input-nota-dinamica w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-bold">
+                        <input type="number" step="0.1" min="0" max="10" value="${val}"
+                            data-chave="${safeChave}" data-tipo="${safeTipo}"
+                            oninput="recalcularLinhaDiarioDocente(this)" placeholder="-"
+                            class="input-nota-dinamica w-full text-center border border-gray-200 rounded-lg p-1.5 text-sm focus:outline-none focus:border-teal-500 bg-white font-bold">
                     </td>
                 `;
             });
@@ -979,7 +1041,6 @@ async function carregarChamada() {
             `;
         });
 
-        // Recalcula imediatamente todas as linhas com notas já carregadas
         document.querySelectorAll('.linha-aluno').forEach(tr => {
             const primeiroInput = tr.querySelector('.input-nota-dinamica');
             if (primeiroInput) recalcularLinhaDiarioDocente(primeiroInput);
@@ -998,12 +1059,16 @@ async function salvarDiario(btnElement) {
     const dataAula = document.getElementById('data-aula-diario').value;
     const conteudo = document.getElementById('conteudo-aula-diario').value;
 
-    if (!turmaId || !dataAula || !conteudo) {
+    if (!turmaId || !dataAula || !conteudo.trim()) {
         alert("Selecione a turma, a data e preencha o Conteúdo Ministrado para prosseguir.");
         btnElement.innerText = textoOriginal;
         btnElement.disabled = false;
         return;
     }
+
+    const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === String(turmaId));
+    const cursoId = String(turma?.curso_id || turma?.curso || String(turmaId).split('_')[0]);
+    const moduloNome = turma?.nome_disciplina || turma?.modulo || turma?.disciplina || 'Geral';
 
     const arrayAlunos = [];
     document.querySelectorAll('.linha-aluno').forEach(linha => {
@@ -1013,30 +1078,39 @@ async function salvarDiario(btnElement) {
         let dictNotas = {};
         linha.querySelectorAll('.input-nota-dinamica').forEach(inp => {
             if (inp.value !== '') {
-                dictNotas[inp.getAttribute('data-tipo')] = parseFloat(inp.value);
+                const chave = inp.getAttribute('data-chave');
+                dictNotas[chave] = parseFloat(inp.value);
             }
         });
 
-        if(alunoId) {
+        const { mediaNum, completo } = calcularSituacaoPonderadaDocente(dictNotas, avaliacoesAtuaisDiario);
+
+        if (alunoId) {
             arrayAlunos.push({
                 aluno_id: alunoId,
                 faltas: parseInt(falta) || 0,
-                notas: dictNotas
+                notas: dictNotas,
+                media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null,
+                situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
             });
         }
     });
 
     const payload = {
         turma_id: turmaId,
+        curso_id: cursoId,
+        modulo: moduloNome,
+        periodo: 'Módulo Único',
         data_aula: dataAula,
-        conteudo_ministrado: conteudo,
+        conteudo_ministrado: conteudo.trim(),
         lancamentos: arrayAlunos
     };
 
     const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert("Diário sincronizado! Notas e médias ponderadas disponíveis no Portal do Aluno.");
+        alert("Diário sincronizado! Notas e médias ponderadas disponíveis no Admin e no Portal do Aluno.");
+        carregarChamada();
     } else {
         alert("Falha ao salvar diário: " + (result?.detail || 'Tente novamente.'));
     }
