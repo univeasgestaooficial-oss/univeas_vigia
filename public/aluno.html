@@ -980,6 +980,63 @@ function isParcelaPaga(statusStr) {
     const s = String(statusStr || '').trim().toLowerCase();
     return s === 'pago' || s === 'paga' || s === 'quitado' || s === 'quitada';
 }
+function calcularDescontoPontualidadeLocal(valorIntegral, competencia) {
+    const base = parseFloat(valorIntegral || 0);
+    const hoje = new Date();
+    let elegivel = hoje.getDate() <= 5;
+
+    if (competencia && /^\d{4}-\d{2}$/.test(competencia)) {
+        const [ano, mes] = competencia.split('-').map(Number);
+        const limite = new Date(ano, mes - 1, 5, 23, 59, 59);
+        elegivel = hoje <= limite;
+    }
+
+    if (elegivel && base > 0) {
+        const valorComDesconto = Math.round(base * 0.77 * 100) / 100;
+        return {
+            valorIntegral: base,
+            valorFinal: valorComDesconto,
+            descontoPct: 23,
+            elegivel: true
+        };
+    }
+
+    return {
+        valorIntegral: base,
+        valorFinal: base,
+        descontoPct: 0,
+        elegivel: false
+    };
+}
+
+function calcularDescontoPontualidadeLocal(valorIntegral, competencia) {
+    const base = parseFloat(valorIntegral || 0);
+    const hoje = new Date();
+    let elegivel = hoje.getDate() <= 5;
+
+    if (competencia && /^\d{4}-\d{2}$/.test(competencia)) {
+        const [ano, mes] = competencia.split('-').map(Number);
+        const limite = new Date(ano, mes - 1, 5, 23, 59, 59);
+        elegivel = hoje <= limite;
+    }
+
+    if (elegivel && base > 0) {
+        const valorComDesconto = Math.round(base * 0.77 * 100) / 100;
+        return {
+            valorIntegral: base,
+            valorFinal: valorComDesconto,
+            descontoPct: 23,
+            elegivel: true
+        };
+    }
+
+    return {
+        valorIntegral: base,
+        valorFinal: base,
+        descontoPct: 0,
+        elegivel: false
+    };
+}
 
 async function loadPerfilFinanceiro() {
     const tbody = document.getElementById('tbody-financeiro');
@@ -987,11 +1044,15 @@ async function loadPerfilFinanceiro() {
     const badgeQtdAbertas = document.getElementById('badge-qtd-parcelas-abertas');
 
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Buscando faturas...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Sincronizando mensalidades...</td></tr>';
     }
 
     try {
-        const dados = await apiRequest('/aluno/perfil');
+        const [dados, listaMensalidadesApi] = await Promise.all([
+            apiRequest('/aluno/perfil'),
+            apiRequest('/aluno/mensalidades')
+        ]);
+
         perfilFinanceiroAluno = dados || {};
 
         if (dados && !dados.detail) {
@@ -1005,34 +1066,14 @@ async function loadPerfilFinanceiro() {
             if (elEnd) elEnd.value = dados.endereco || '';
         }
 
-        const diaVenc = String(dados?.dia_vencimento || '10').padStart(2, '0');
-
-        let valorBaseCurso = parseFloat(dados?.valor_mensalidade || 0);
-        let duracaoMeses = parseInt(dados?.duracao_meses || dados?.qtd_parcelas || 0, 10);
-
-        if (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0) {
-            if (!valorBaseCurso) {
-                valorBaseCurso = cursosDoAluno.reduce((acc, c) => {
-                    const v = (c.promocao_ativa === 'Sim' && parseFloat(c.valor_promocional) > 0)
-                        ? parseFloat(c.valor_promocional)
-                        : parseFloat(c.valor_mensalidade || 0);
-                    return acc + (v || 0);
-                }, 0);
-            }
-            if (!duracaoMeses) {
-                duracaoMeses = Math.max(...cursosDoAluno.map(c => {
-                    const direto = parseInt(c.duracao_meses || c.meses || c.parcelas || 0, 10);
-                    if (direto > 0) return direto;
-                    const matchDur = String(c.duracao || '').match(/\d+/);
-                    return matchDur ? parseInt(matchDur[0], 10) : 0;
-                }));
-            }
-        }
-        if (!duracaoMeses || duracaoMeses < 1) duracaoMeses = 12;
+        const valorRealContrato = parseFloat(dados?.valor_mensalidade || 0);
+        const hoje = new Date();
+        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 
         let mapaMeses = {};
-        try {
-            if (dados?.mensalidades_json) {
+
+        if (dados?.mensalidades_json) {
+            try {
                 const mapaAdmin = typeof dados.mensalidades_json === 'string'
                     ? JSON.parse(dados.mensalidades_json)
                     : dados.mensalidades_json;
@@ -1044,70 +1085,60 @@ async function loadPerfilFinanceiro() {
                         }
                     });
                 }
-            }
-        } catch (e) {}
-
-        // Define o mês inicial do contrato
-        const hoje = new Date();
-        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-        const chavesExistentes = Object.keys(mapaMeses).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
-
-        let anoInicio = hoje.getFullYear();
-        let mesInicio = hoje.getMonth();
-
-        if (chavesExistentes.length > 0) {
-            const [a0, m0] = chavesExistentes[0].split('-').map(Number);
-            anoInicio = a0;
-            mesInicio = m0 - 1;
-        } else if (dados?.data_matricula || dados?.created_at) {
-            const rawData = String(dados.data_matricula || dados.created_at);
-            const matchIso = rawData.match(/^(\d{4})-(\d{2})/);
-            if (matchIso) {
-                anoInicio = Number(matchIso[1]);
-                mesInicio = Number(matchIso[2]) - 1;
-            }
+            } catch (e) {}
         }
 
-        // Gera todas as parcelas do carnê (carrossel + quitadas)
-        const totalParcelas = Math.max(duracaoMeses, chavesExistentes.length);
-        for (let i = 0; i < totalParcelas; i++) {
-            const dtParcela = new Date(anoInicio, mesInicio + i, 1);
-            const comp = `${dtParcela.getFullYear()}-${String(dtParcela.getMonth() + 1).padStart(2, '0')}`;
+        if (Array.isArray(listaMensalidadesApi)) {
+            listaMensalidadesApi.forEach(item => {
+                if (item && item.competencia) {
+                    const comp = String(item.competencia);
+                    mapaMeses[comp] = {
+                        ...(mapaMeses[comp] || {}),
+                        ...item,
+                        competencia: comp
+                    };
+                }
+            });
+        }
 
-            if (!mapaMeses[comp]) {
-                mapaMeses[comp] = {
-                    competencia: comp,
-                    status: 'Pendente',
-                    valor: valorBaseCurso,
-                    numero_nf: ''
-                };
-            }
-            if (!mapaMeses[comp].valor) mapaMeses[comp].valor = valorBaseCurso;
-            mapaMeses[comp].parcela_num = i + 1;
-            mapaMeses[comp].parcela_total = totalParcelas;
+        if (Object.keys(mapaMeses).length === 0) {
+            const isPend = String(dados?.possui_pendencia_financeira || '').toLowerCase() === 'sim';
+            const calcIni = calcularDescontoPontualidadeLocal(valorRealContrato, mesAtualKey);
+            mapaMeses[mesAtualKey] = {
+                competencia: mesAtualKey,
+                status: isPend ? 'Pendente' : 'Pago',
+                valor_integral: calcIni.valorIntegral,
+                valor: calcIni.valorFinal,
+                desconto_percentual: calcIni.descontoPct,
+                numero_nf: dados?.numero_nf || ''
+            };
         }
 
         const todasCompetencias = Object.keys(mapaMeses).sort();
         todasCompetencias.forEach((comp, idx) => {
-            if (!mapaMeses[comp].parcela_num) {
-                mapaMeses[comp].parcela_num = idx + 1;
-                mapaMeses[comp].parcela_total = todasCompetencias.length;
+            const p = mapaMeses[comp];
+            const vInt = parseFloat(p.valor_integral || valorRealContrato || p.valor || 0);
+            p.valor_integral = vInt;
+
+            if (!isParcelaPaga(p.status)) {
+                const calc = calcularDescontoPontualidadeLocal(vInt, comp);
+                p.valor = calc.valorFinal;
+                p.desconto_percentual = calc.descontoPct;
+                p.elegivel_desconto = calc.elegivel;
+            } else {
+                if (!p.valor || parseFloat(p.valor) <= 0) p.valor = vInt;
             }
+
+            p.parcela_num = idx + 1;
+            p.parcela_total = todasCompetencias.length;
         });
 
         mapaFinanceiroAtual = mapaMeses;
 
-        const parcelasAbertas = todasCompetencias
-            .map(k => mapaMeses[k])
-            .filter(p => !isParcelaPaga(p.status));
+        const todasParcelas = todasCompetencias.map(k => mapaMeses[k]);
+        const parcelasAbertas = todasParcelas.filter(p => !isParcelaPaga(p.status));
 
-        const parcelasPagas = todasCompetencias
-            .map(k => mapaMeses[k])
-            .filter(p => isParcelaPaga(p.status))
-            .reverse();
-
-        // Atualiza KPI de Status Financeiro no Dashboard
-        const temAlgumaPendente = parcelasAbertas.some(p => p.competencia <= mesAtualKey && !isParcelaPaga(p.status));
+        const temAlgumaPendente = parcelasAbertas.some(p => p.competencia <= mesAtualKey);
         const statusFin = document.getElementById('dash-financeiro');
         if (statusFin) {
             const iconBox = statusFin.parentElement?.nextElementSibling;
@@ -1126,13 +1157,12 @@ async function loadPerfilFinanceiro() {
             badgeQtdAbertas.innerText = `${parcelasAbertas.length} ${parcelasAbertas.length === 1 ? 'Parcela em Aberto' : 'Parcelas em Aberto'}`;
         }
 
-        // 1. RENDERIZA O CARROSSEL SUPERIOR (APENAS VISUALIZAÇÃO DAS PARCELAS EM ABERTO)
         if (carrossel) {
             if (parcelasAbertas.length === 0) {
                 carrossel.innerHTML = `
                     <div class="w-full bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
-                        <p class="text-sm font-black text-green-700 uppercase">Todas as mensalidades foram quitadas!</p>
-                        <p class="text-xs text-green-600 mt-1">Gere seus comprovantes de pagamento na lista abaixo.</p>
+                        <p class="text-sm font-black text-green-700 uppercase">Nenhuma mensalidade em aberto!</p>
+                        <p class="text-xs text-green-600 mt-1">Seus pagamentos quitados estão disponíveis abaixo para emissão do comprovante.</p>
                     </div>
                 `;
             } else {
@@ -1146,62 +1176,63 @@ async function loadPerfilFinanceiro() {
                     const isMesAtual = p.competencia === mesAtualKey;
                     const isAtrasada = p.competencia < mesAtualKey;
 
-                    const valorNum = parseFloat(p.valor || valorBaseCurso || 0);
-                    const valorFormatado = valorNum > 0
-                        ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    const valorFinalNum = parseFloat(p.valor || 0);
+                    const valorIntegralNum = parseFloat(p.valor_integral || valorFinalNum);
+                    const temDesconto = Number(p.desconto_percentual || 0) > 0 && valorFinalNum < valorIntegralNum;
+
+                    const valorFormatado = valorFinalNum > 0
+                        ? valorFinalNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                         : 'A Combinar';
 
-                    const vencFmt = p.vencimento && p.vencimento.includes('-')
-                        ? p.vencimento.split('-').reverse().join('/')
-                        : `${diaVenc}/${mes}/${ano}`;
+                    const valorIntegralFmt = valorIntegralNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                    const linhaDescontoHtml = temDesconto
+                        ? `<p class="text-[11px] text-emerald-200 font-bold mt-1">
+                               <span class="line-through opacity-75 mr-1">${valorIntegralFmt}</span> • 23% OFF até 05/${mes}
+                           </p>`
+                        : `<p class="text-[10px] text-white/75 font-medium mt-1">Valor integral (após dia 05/${mes})</p>`;
 
                     let cardBg = 'bg-slate-600 text-white border-slate-500';
                     let tagTopo = nomeMes;
-                    let subTag = `Parcela ${String(p.parcela_num).padStart(2, '0')}/${String(p.parcela_total).padStart(2, '0')}`;
+                    let statusBadgeCard = `
+                        <span class="mt-3 w-full inline-flex items-center justify-center bg-black/20 text-white/90 text-[10px] font-bold uppercase py-1.5 px-2.5 rounded-lg">
+                            <i data-feather="tag" class="w-3 h-3 mr-1.5"></i> 23% OFF pagando até 05/${mes}
+                        </span>
+                    `;
 
                     if (isMesAtual) {
                         cardBg = 'bg-gradient-to-br from-blue-600 to-blue-700 text-white border-blue-500 ring-2 ring-blue-300';
                         tagTopo = 'MÊS ATUAL';
-                        subTag = `Parcela ${String(p.parcela_num).padStart(2, '0')}/${String(p.parcela_total).padStart(2, '0')} • ${nomeMes}`;
+                        statusBadgeCard = temDesconto
+                            ? `<span class="mt-3 w-full inline-flex items-center justify-center bg-emerald-500/30 border border-emerald-300/40 text-white text-[10px] font-black uppercase py-1.5 px-2.5 rounded-lg">
+                                   <i data-feather="percent" class="w-3 h-3 mr-1.5"></i> Desconto 23% Ativo até 05/${mes}
+                               </span>`
+                            : `<span class="mt-3 w-full inline-flex items-center justify-center bg-white/20 text-white text-[10px] font-black uppercase py-1.5 px-2.5 rounded-lg">
+                                   <i data-feather="calendar" class="w-3 h-3 mr-1.5"></i> Valor Integral • Procure a Secretaria
+                               </span>`;
                     } else if (isAtrasada) {
                         cardBg = 'bg-gradient-to-br from-red-600 to-red-700 text-white border-red-500';
                         tagTopo = 'EM ATRASO';
-                        subTag = `Parcela ${String(p.parcela_num).padStart(2, '0')}/${String(p.parcela_total).padStart(2, '0')} • ${nomeMes}`;
-                    }
-
-                    let statusBadgeCard = '';
-                    if (isAtrasada) {
                         statusBadgeCard = `
                             <span class="mt-3 w-full inline-flex items-center justify-center bg-white/20 text-white text-[10px] font-black uppercase py-1.5 px-2.5 rounded-lg">
                                 <i data-feather="alert-circle" class="w-3 h-3 mr-1.5"></i> Pendente • Procure a Secretaria
                             </span>
                         `;
-                    } else if (isMesAtual) {
-                        statusBadgeCard = `
-                            <span class="mt-3 w-full inline-flex items-center justify-center bg-white/20 text-white text-[10px] font-black uppercase py-1.5 px-2.5 rounded-lg">
-                                <i data-feather="calendar" class="w-3 h-3 mr-1.5"></i> A Vencer no Mês
-                            </span>
-                        `;
-                    } else {
-                        statusBadgeCard = `
-                            <span class="mt-3 w-full inline-flex items-center justify-center bg-black/20 text-white/90 text-[10px] font-bold uppercase py-1.5 px-2.5 rounded-lg">
-                                <i data-feather="clock" class="w-3 h-3 mr-1.5"></i> Parcela Futura
-                            </span>
-                        `;
                     }
 
                     carrossel.innerHTML += `
-                        <div class="${cardBg} border rounded-2xl p-4 min-w-[235px] w-[235px] shrink-0 flex flex-col justify-between shadow-sm hover:shadow-md transition">
+                        <div class="${cardBg} border rounded-2xl p-4 min-w-[255px] w-[255px] shrink-0 flex flex-col justify-between shadow-sm">
                             <div>
                                 <div class="flex items-center justify-between gap-1">
                                     <span class="text-[11px] font-black uppercase tracking-wider truncate">${tagTopo}</span>
-                                    <span class="text-[9px] font-bold bg-black/20 px-2 py-0.5 rounded-full shrink-0">#${p.parcela_num}</span>
+                                    <span class="text-[9px] font-bold bg-black/20 px-2 py-0.5 rounded-full shrink-0">${mes}/${ano}</span>
                                 </div>
-                                <p class="text-[11px] text-white/80 font-medium capitalize mt-0.5 truncate">${subTag}</p>
+                                <p class="text-[11px] text-white/80 font-medium capitalize mt-0.5 truncate">${nomeMes}</p>
                                 <p class="text-2xl font-black tracking-tight mt-3">${valorFormatado}</p>
+                                ${linhaDescontoHtml}
                             </div>
                             <div class="mt-3 pt-2.5 border-t border-white/15">
-                                <p class="text-[10px] text-white/85 font-semibold">Vencimento: <strong>${vencFmt}</strong></p>
+                                <p class="text-[10px] text-white/85 font-semibold">Apuração com desconto: <strong>Até dia 05/${mes}/${ano}</strong></p>
                                 ${statusBadgeCard}
                             </div>
                         </div>
@@ -1210,51 +1241,60 @@ async function loadPerfilFinanceiro() {
             }
         }
 
-        // 2. RENDERIZA A LISTA ABAIXO (APENAS PAGAMENTOS QUITADOS PELO GESTOR)
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        if (parcelasPagas.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center py-8 text-gray-400 text-xs">
-                        Nenhum pagamento quitado registrado ainda. Assim que o gestor confirmar a baixa como Paga, o registro aparecerá aqui para gerar seu comprovante.
-                    </td>
-                </tr>
-            `;
+        const registrosOrdenados = [...todasParcelas].reverse();
+        if (registrosOrdenados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400 text-xs">Nenhum registro financeiro encontrado no cadastro.</td></tr>';
         } else {
-            parcelasPagas.forEach(p => {
+            registrosOrdenados.forEach(p => {
                 const [ano, mes] = p.competencia.split('-');
                 const nomeMes = (ano && mes)
                     ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
                     : p.competencia;
 
-                const valorNum = parseFloat(p.valor || valorBaseCurso || 0);
+                const valorNum = parseFloat(p.valor || 0);
+                const valorIntegralNum = parseFloat(p.valor_integral || valorNum);
+                const temDesconto = Number(p.desconto_percentual || 0) > 0 && valorNum < valorIntegralNum;
+
                 const valorFormatado = valorNum > 0
                     ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                     : 'Conforme Contrato';
 
-                const vencFmt = p.vencimento && p.vencimento.includes('-')
-                    ? p.vencimento.split('-').reverse().join('/')
-                    : `Dia ${diaVenc}/${mes}/${ano}`;
+                const infoDescontoTabela = temDesconto
+                    ? `<br><span class="text-[10px] text-emerald-600 font-bold">23% OFF Pontualidade (Integral: ${valorIntegralNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})</span>`
+                    : '';
 
+                const pago = isParcelaPaga(p.status);
                 const nfTexto = p.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${p.numero_nf}</p>` : '';
+
+                const statusBadge = pago
+                    ? `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>`
+                    : `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Pendente</span>`;
+
+                const acaoHtml = pago
+                    ? `<button onclick="baixarReciboPdf('${p.competencia}', this)" class="bg-blue-600 text-white hover:bg-blue-700 transition px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto shadow-sm">
+                           <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Gerar Comprovante
+                       </button>`
+                    : `<span class="text-[11px] font-semibold text-gray-400">Aguardando baixa na secretaria</span>`;
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50 transition border-b border-gray-50">
                         <td class="py-4 px-4 font-bold text-gray-900 capitalize">
-                            ${p.referencia_label || nomeMes} <span class="text-[10px] text-gray-400 font-semibold">(Parcela ${String(p.parcela_num).padStart(2, '0')}/${String(p.parcela_total).padStart(2, '0')})</span>
-                            <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${vencFmt}</span>
+                            ${p.referencia_label || nomeMes}
+                            <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Apuração c/ desconto: até 05/${mes}/${ano}</span>
                         </td>
-                        <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
+                        <td class="py-4 px-4 text-gray-800 font-black">
+                            ${valorFormatado}
+                            ${infoDescontoTabela}
+                        </td>
                         <td class="py-4 px-4 text-center">
-                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>
+                            ${statusBadge}
                             ${nfTexto}
                         </td>
                         <td class="py-4 px-4 text-right">
-                            <button onclick="baixarReciboPdf('${p.competencia}', this)" class="bg-blue-600 text-white hover:bg-blue-700 transition px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto shadow-sm">
-                                <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Gerar Comprovante
-                            </button>
+                            ${acaoHtml}
                         </td>
                     </tr>
                 `;
@@ -1268,6 +1308,276 @@ async function loadPerfilFinanceiro() {
     } finally {
         if (typeof feather !== 'undefined') feather.replace();
     }
+}
+
+async function baixarReciboPdf(competencia, btnElement) {
+    const textoOriginal = btnElement ? btnElement.innerHTML : '';
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = 'Gerando PDF...';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/aluno/financeiro/recibo/${encodeURIComponent(competencia)}/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}`
+            }
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const urlBlob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            a.download = `Comprovante_UNIVEAS_${competencia}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => window.URL.revokeObjectURL(urlBlob), 4000);
+            return;
+        }
+
+        abrirComprovanteImprimivel(competencia);
+    } catch (e) {
+        abrirComprovanteImprimivel(competencia);
+    } finally {
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = textoOriginal;
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+    }
+}
+
+function abrirComprovanteImprimivel(competencia) {
+    const parcela = mapaFinanceiroAtual[competencia] || { competencia };
+    const nomeAluno = localStorage.getItem('nome_aluno') || perfilFinanceiroAluno.nome || 'Aluno UNIVEAS';
+    const matricula = localStorage.getItem('matricula_aluno') || perfilFinanceiroAluno.matricula || 'S/N';
+    const cpf = perfilFinanceiroAluno.cpf || 'Informado no cadastro';
+    const cursoNome = (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0)
+        ? cursosDoAluno.map(c => c.nome_curso).join(' / ')
+        : 'Curso UNIVEAS';
+
+    const [ano, mes] = competencia.split('-');
+    const refMes = (ano && mes)
+        ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()
+        : competencia;
+
+    const valorNum = parseFloat(parcela.valor || perfilFinanceiroAluno.valor_mensalidade || 0);
+    const valorIntegralNum = parseFloat(parcela.valor_integral || valorNum);
+    const descontoPct = Number(parcela.desconto_percentual || 0);
+
+    const valorFormatado = valorNum > 0
+        ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        : 'Conforme Contrato';
+
+    const infoDesconto = descontoPct > 0 && valorNum < valorIntegralNum
+        ? `Desconto de ${descontoPct}% (Pontualidade até dia 05) sobre ${valorIntegralNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+        : 'Valor Integral do Curso';
+
+    const dataEmissao = new Date().toLocaleString('pt-BR');
+    const dataBaixa = parcela.data_pagamento || parcela.updated_at || new Date().toLocaleDateString('pt-BR');
+    const codigoAutenticacao = parcela.numero_nf || `UNV-${matricula.replace(/[^A-Z0-9]/gi, '')}-${competencia.replace('-', '')}`;
+
+    const janela = window.open('', '_blank', 'width=800,height=650');
+    if (!janela) {
+        alert('Habilite os pop-ups do navegador para visualizar e salvar o comprovante.');
+        return;
+    }
+
+    janela.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Comprovante de Pagamento - ${competencia}</title>
+            <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 32px; background: #f8fafc; }
+                .recibo { max-width: 680px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-top: 6px solid #16a34a; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+                .topo { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 18px; margin-bottom: 22px; }
+                .topo img { height: 52px; }
+                .titulo { text-align: right; }
+                .titulo h1 { margin: 0; font-size: 18px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+                .titulo p { margin: 4px 0 0; font-size: 12px; color: #16a34a; font-weight: 700; }
+                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+                .campo { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
+                .campo span { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 3px; }
+                .campo strong { font-size: 13px; color: #0f172a; }
+                .destaque { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+                .destaque .valor { font-size: 22px; font-weight: 900; color: #15803d; }
+                .rodape { border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+                .btn-print { display: block; margin: 20px auto 0; background: #2563eb; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+                @media print { body { background: #fff; padding: 0; } .recibo { box-shadow: none; border: 1px solid #ccc; } .btn-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="recibo">
+                <div class="topo">
+                    <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS">
+                    <div class="titulo">
+                        <h1>Comprovante de Pagamento</h1>
+                        <p>● QUITAÇÃO CONFIRMADA PELA SECRETARIA</p>
+                    </div>
+                </div>
+                <div class="grid">
+                    <div class="campo"><span>Aluno(a)</span><strong>${nomeAluno}</strong></div>
+                    <div class="campo"><span>Matrícula / CPF</span><strong>${matricula} • ${cpf}</strong></div>
+                    <div class="campo"><span>Curso</span><strong>${cursoNome}</strong></div>
+                    <div class="campo"><span>Competência</span><strong>${refMes}</strong></div>
+                </div>
+                <div class="destaque">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Valor Quitado</div>
+                        <div style="font-size: 11px; color: #475569; margin-top: 2px;">${infoDesconto} • Baixa: ${dataBaixa}</div>
+                    </div>
+                    <div class="valor">${valorFormatado}</div>
+                </div>
+                <div class="rodape">
+                    <div>Autenticação: <strong>${codigoAutenticacao}</strong><br>Emitido em: ${dataEmissao}</div>
+                    <div style="text-align: right;">SIGA - UNIVEAS<br>Secretaria Acadêmica e Financeira</div>
+                </div>
+            </div>
+            <button class="btn-print" onclick="window.print()">Imprimir / Salvar em PDF</button>
+        </body>
+        </html>
+    `);
+    janela.document.close();
+}
+
+async function baixarReciboPdf(competencia, btnElement) {
+    const textoOriginal = btnElement ? btnElement.innerHTML : '';
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = 'Gerando PDF...';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/aluno/financeiro/recibo/${encodeURIComponent(competencia)}/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}`
+            }
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const urlBlob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            a.download = `Comprovante_UNIVEAS_${competencia}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => window.URL.revokeObjectURL(urlBlob), 4000);
+            return;
+        }
+
+        abrirComprovanteImprimivel(competencia);
+    } catch (e) {
+        abrirComprovanteImprimivel(competencia);
+    } finally {
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = textoOriginal;
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+    }
+}
+
+function abrirComprovanteImprimivel(competencia) {
+    const parcela = mapaFinanceiroAtual[competencia] || { competencia };
+    const nomeAluno = localStorage.getItem('nome_aluno') || perfilFinanceiroAluno.nome || 'Aluno UNIVEAS';
+    const matricula = localStorage.getItem('matricula_aluno') || perfilFinanceiroAluno.matricula || 'S/N';
+    const cpf = perfilFinanceiroAluno.cpf || 'Informado no cadastro';
+    const cursoNome = (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0)
+        ? cursosDoAluno.map(c => c.nome_curso).join(' / ')
+        : 'Curso UNIVEAS';
+
+    const [ano, mes] = competencia.split('-');
+    const refMes = (ano && mes)
+        ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()
+        : competencia;
+
+    const valorNum = parseFloat(parcela.valor || perfilFinanceiroAluno.valor_mensalidade || 0);
+    const valorIntegralNum = parseFloat(parcela.valor_integral || valorNum);
+    const descontoPct = Number(parcela.desconto_percentual || 0);
+
+    const valorFormatado = valorNum > 0
+        ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        : 'Conforme Contrato';
+
+    const infoDesconto = descontoPct > 0 && valorNum < valorIntegralNum
+        ? `Desconto de ${descontoPct}% (Pontualidade até dia 05) sobre ${valorIntegralNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+        : 'Valor Integral do Curso';
+
+    const dataEmissao = new Date().toLocaleString('pt-BR');
+    const dataBaixa = parcela.data_pagamento || parcela.updated_at || new Date().toLocaleDateString('pt-BR');
+    const codigoAutenticacao = parcela.numero_nf || `UNV-${matricula.replace(/[^A-Z0-9]/gi, '')}-${competencia.replace('-', '')}`;
+
+    const janela = window.open('', '_blank', 'width=800,height=650');
+    if (!janela) {
+        alert('Habilite os pop-ups do navegador para visualizar e salvar o comprovante.');
+        return;
+    }
+
+    janela.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Comprovante de Pagamento - ${competencia}</title>
+            <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 32px; background: #f8fafc; }
+                .recibo { max-width: 680px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-top: 6px solid #16a34a; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+                .topo { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 18px; margin-bottom: 22px; }
+                .topo img { height: 52px; }
+                .titulo { text-align: right; }
+                .titulo h1 { margin: 0; font-size: 18px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+                .titulo p { margin: 4px 0 0; font-size: 12px; color: #16a34a; font-weight: 700; }
+                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+                .campo { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
+                .campo span { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 3px; }
+                .campo strong { font-size: 13px; color: #0f172a; }
+                .destaque { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+                .destaque .valor { font-size: 22px; font-weight: 900; color: #15803d; }
+                .rodape { border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+                .btn-print { display: block; margin: 20px auto 0; background: #2563eb; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+                @media print { body { background: #fff; padding: 0; } .recibo { box-shadow: none; border: 1px solid #ccc; } .btn-print { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="recibo">
+                <div class="topo">
+                    <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS">
+                    <div class="titulo">
+                        <h1>Comprovante de Pagamento</h1>
+                        <p>● QUITAÇÃO CONFIRMADA PELA SECRETARIA</p>
+                    </div>
+                </div>
+                <div class="grid">
+                    <div class="campo"><span>Aluno(a)</span><strong>${nomeAluno}</strong></div>
+                    <div class="campo"><span>Matrícula / CPF</span><strong>${matricula} • ${cpf}</strong></div>
+                    <div class="campo"><span>Curso</span><strong>${cursoNome}</strong></div>
+                    <div class="campo"><span>Competência</span><strong>${refMes}</strong></div>
+                </div>
+                <div class="destaque">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Valor Quitado</div>
+                        <div style="font-size: 11px; color: #475569; margin-top: 2px;">${infoDesconto} • Baixa: ${dataBaixa}</div>
+                    </div>
+                    <div class="valor">${valorFormatado}</div>
+                </div>
+                <div class="rodape">
+                    <div>Autenticação: <strong>${codigoAutenticacao}</strong><br>Emitido em: ${dataEmissao}</div>
+                    <div style="text-align: right;">SIGA - UNIVEAS<br>Secretaria Acadêmica e Financeira</div>
+                </div>
+            </div>
+            <button class="btn-print" onclick="window.print()">Imprimir / Salvar em PDF</button>
+        </body>
+        </html>
+    `);
+    janela.document.close();
 }
 
 async function baixarReciboPdf(competencia, btnElement) {
