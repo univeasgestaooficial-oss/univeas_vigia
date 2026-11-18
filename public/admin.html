@@ -3073,33 +3073,44 @@ function calcularValorMensalidadeAluno(item) {
     return valorCobranca;
 }
 
-function obterParcelaDoMes(aluno, mesCompetencia) {
-    let mapa = {};
-    try {
-        if (aluno.mensalidades_json) {
-            mapa = typeof aluno.mensalidades_json === 'string'
-                ? JSON.parse(aluno.mensalidades_json)
-                : aluno.mensalidades_json;
-        }
-    } catch (e) {}
+function obterParcelaDoMes(aluno, mesRef) {
+    const mapa = getMapaMensalidadesAluno(aluno);
+    const valorPadrao = getValorMensalidadeAluno(aluno);
 
-    // Se já existe registro explícito para este aluno neste mês específico, retorna ele isolado
-    if (mapa && mapa[mesCompetencia]) {
-        return mapa[mesCompetencia];
+    if (mapa[mesRef]) {
+        return {
+            competencia: mesRef,
+            status: mapa[mesRef].status || 'Pendente',
+            numero_nf: mapa[mesRef].numero_nf || '',
+            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
+            comprovante_id: mapa[mesRef].comprovante_id || null,
+            atualizado_em: mapa[mesRef].atualizado_em || null
+        };
     }
 
-    // Fallback retrocompatível apenas se nunca foi lançado mês a mês
-    const valorPadrao = calcularValorMensalidadeAluno(aluno);
-    const legadoPendente = aluno.possui_pendencia_financeira === 'Sim' ||
-        (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
+    const hoje = new Date();
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 
+    // Fallback legado apenas para o mês atual se o cadastro ainda não tiver mapa mensal
+    if (mesRef === mesAtual && Object.keys(mapa).length === 0) {
+        const isPendente = aluno.possui_pendencia_financeira === 'Sim' ||
+            (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
+        return {
+            competencia: mesRef,
+            status: isPendente ? 'Pendente' : 'Pago',
+            numero_nf: aluno.numero_nf || '',
+            valor: valorPadrao,
+            comprovante_id: aluno.ultimo_comprovante_id || null
+        };
+    }
+
+    // Meses ainda não lançados no mapa aparecem como Pendente (em aberto) por padrão
     return {
-        competencia: mesCompetencia,
-        status: legadoPendente ? 'Pendente' : 'Pago',
+        competencia: mesRef,
+        status: 'Pendente',
+        numero_nf: '',
         valor: valorPadrao,
-        numero_nf: aluno.numero_nf || '',
-        detalhes: aluno.detalhes_pendencia_financeira || '',
-        comprovante_nome: aluno.ultimo_comprovante_nome || ''
+        comprovante_id: null
     };
 }
 
