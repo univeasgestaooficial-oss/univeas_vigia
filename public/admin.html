@@ -3742,10 +3742,11 @@ function obterParcelaDoMes(aluno, mesRef) {
 
     const valorPadrao = calcularValorMensalidadeAluno(aluno);
 
-    if (mapa && mapa[mesRef]) {
+    // 1. Se já existe registro explícito para aquele mês no mapa, respeita ele
+    if (mapa && mapa[mesRef] && mapa[mesRef].status) {
         return {
             competencia: mesRef,
-            status: mapa[mesRef].status || 'Pendente',
+            status: mapa[mesRef].status,
             detalhes: mapa[mesRef].detalhes || '',
             numero_nf: mapa[mesRef].numero_nf || '',
             valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
@@ -3755,27 +3756,16 @@ function obterParcelaDoMes(aluno, mesRef) {
         };
     }
 
-    const hoje = new Date();
-    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-
-    if (mesRef === mesAtual && Object.keys(mapa || {}).length === 0) {
-        const isPendente = aluno.possui_pendencia_financeira === 'Sim' ||
-            (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
-        return {
-            competencia: mesRef,
-            status: isPendente ? 'Pendente' : 'Pago',
-            detalhes: aluno.detalhes_pendencia_financeira || '',
-            numero_nf: aluno.numero_nf || '',
-            valor: valorPadrao,
-            comprovante_id: aluno.ultimo_comprovante_id || null,
-            comprovante_nome: ''
-        };
-    }
+    // 2. Se não há baixa explícita no mês, verifica se o cadastro do aluno tem pendência ou status Pendente
+    const temPendenciaCadastro =
+        aluno.status === 'Pendente' ||
+        aluno.possui_pendencia === 'Sim' ||
+        aluno.possui_pendencia_financeira === 'Sim';
 
     return {
         competencia: mesRef,
-        status: 'Pendente',
-        detalhes: '',
+        status: temPendenciaCadastro ? 'Pendente' : 'Pendente',
+        detalhes: aluno.detalhes_pendencia_financeira || aluno.detalhes_pendencia || '',
         numero_nf: '',
         valor: valorPadrao,
         comprovante_id: null,
