@@ -262,7 +262,7 @@ def obter_mapa_mensalidades_unificado(aluno_id: str, aluno_dict: dict, cursos_ma
 
 
 def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
-    """Mantém o documento do aluno e a coleção 'mensalidades' 100% espelhados."""
+    """Mantém o documento do aluno e a coleção 'mensalidades' 100% espelhados, ignorando parcelas futuras."""
     aluno_ref = db.collection("alunos").document(str(aluno_id))
     snap = aluno_ref.get()
     if not snap.exists:
@@ -270,9 +270,13 @@ def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
 
     aluno_atual = snap.to_dict() or {}
     status_atual = aluno_atual.get("status", "Pendente")
+    mes_atual = datetime.now().strftime("%Y-%m")
 
-    pendentes = [v for v in mapa_mensalidades.values() if v.get("status") == "Pendente"]
-    em_analise = [v for v in mapa_mensalidades.values() if v.get("status") == "Em Análise"]
+    # Considera inadimplente apenas competências vencidas ou do mês atual
+    pendentes = [
+        v for v in mapa_mensalidades.values()
+        if v.get("status") == "Pendente" and str(v.get("competencia", "")) <= mes_atual
+    ]
     tem_pendencia = len(pendentes) > 0
 
     detalhes = ", ".join([
@@ -280,7 +284,6 @@ def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
         for p in pendentes
     ])
 
-    status_comp = "Em Análise" if em_analise else ("Pendente" if tem_pendencia else "Aprovado")
     novo_status_aluno = status_atual
     if status_atual not in ["Trancado", "Concluído"]:
         novo_status_aluno = "Pendente" if tem_pendencia else "Ativo"
@@ -288,12 +291,11 @@ def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
     aluno_ref.update({
         "possui_pendencia_financeira": "Sim" if tem_pendencia else "Não",
         "detalhes_pendencia_financeira": detalhes if tem_pendencia else "",
-        "status_comprovante": status_comp,
+        "status_comprovante": "Pendente" if tem_pendencia else "Aprovado",
         "status": novo_status_aluno,
         "mensalidades_json": json.dumps(mapa_mensalidades, ensure_ascii=False),
         "data_atualizacao_financeira": datetime.now().isoformat()
     })
-
 
 # ==========================================
 # 2.5 AUTENTICAÇÃO DO ADMINISTRADOR
@@ -1034,6 +1036,8 @@ async def atualizar_pendencia_aluno(
     cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
     mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
     mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_atual, cursos_map, mens_docs)
+    agora_iso = datetime.now().isoformat()
+    hoje_br = datetime.now().strftime("%d/%m/%Y")
 
     if mensalidades_json:
         try:
@@ -1041,13 +1045,15 @@ async def atualizar_pendencia_aluno(
             if isinstance(recebido, dict):
                 for comp, info in recebido.items():
                     if isinstance(info, dict):
+                        status_item = info.get("status", "Pendente")
                         parcela_atualizada = {
                             **mapa.get(comp, {}),
                             **info,
                             "aluno_id": str(aluno_id),
                             "competencia": comp,
                             "valor": float(info.get("valor") or calcular_valor_mensal_aluno(aluno_atual, cursos_map) or 0),
-                            "atualizado_em": datetime.now().isoformat()
+                            "data_pagamento": (info.get("data_pagamento") or hoje_br) if status_item == "Pago" else None,
+                            "atualizado_em": agora_iso
                         }
                         mapa[comp] = parcela_atualizada
                         db.collection("mensalidades").document(f"{aluno_id}__{comp}").set(parcela_atualizada, merge=True)
@@ -1063,8 +1069,9 @@ async def atualizar_pendencia_aluno(
             "status": status_novo,
             "detalhes": detalhes_pendencia_financeira if status_novo == "Pendente" else "",
             "numero_nf": numero_nf,
+            "data_pagamento": hoje_br if status_novo == "Pago" else None,
             "valor": float(mapa.get(mes_atual, {}).get("valor") or calcular_valor_mensal_aluno(aluno_atual, cursos_map) or 0),
-            "atualizado_em": datetime.now().isoformat()
+            "atualizado_em": agora_iso
         }
         mapa[mes_atual] = parcela_atualizada
         db.collection("mensalidades").document(f"{aluno_id}__{mes_atual}").set(parcela_atualizada, merge=True)
@@ -2652,6 +2659,8 @@ async def listar_notificacoes_aluno(authorization: str = Header(None)):
     return notificacoes
 
 
+import re  # garanta este import no topo do arquivo, se ainda não houver
+
 @app.get("/api/v1/aluno/perfil")
 async def obter_perfil_aluno(authorization: str = Header(None)):
     checar_db()
@@ -2661,24 +2670,38 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
 
-    dados = doc.to_dict()
+    dados = doc.to_dict() or {}
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+
     valor_mensalidade = calcular_valor_mensal_aluno(dados, cursos_map)
+    mapa_unificado = obter_mapa_mensalidades_unificado(str(aluno_id), dados, cursos_map, mens_docs)
+
+    # Descobre a duração em meses do curso vinculado
+    duracao_meses = int(dados.get("duracao_meses") or 0)
+    if not duracao_meses:
+        curso_id = str(dados.get("curso_id") or dados.get("curso") or "")
+        curso_obj = cursos_map.get(curso_id, {})
+        match_dur = re.search(r"\d+", str(curso_obj.get("duracao") or ""))
+        if match_dur:
+            duracao_meses = int(match_dur.group(0))
 
     return {
+        "nome": dados.get("nome"),
+        "matricula": dados.get("matricula"),
         "cpf": dados.get("cpf"),
         "email": dados.get("email"),
         "telefone": dados.get("telefone"),
         "endereco": dados.get("endereco"),
         "dia_vencimento": dados.get("dia_vencimento", 10),
         "valor_mensalidade": valor_mensalidade,
+        "duracao_meses": duracao_meses or 12,
+        "data_matricula": dados.get("data_cadastro") or dados.get("created_at") or "",
         "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não"),
         "detalhes_pendencia_financeira": dados.get("detalhes_pendencia_financeira", ""),
-        "status_comprovante": dados.get("status_comprovante", "Nenhum"),
         "numero_nf": dados.get("numero_nf", ""),
-        "mensalidades_json": dados.get("mensalidades_json", "{}")
+        "mensalidades_json": mapa_unificado
     }
-
 
 @app.put("/api/v1/aluno/perfil")
 @app.post("/api/v1/aluno/perfil")
