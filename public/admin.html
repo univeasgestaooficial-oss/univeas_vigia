@@ -3207,12 +3207,6 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
     let modal = document.getElementById('modal-pendencia-financeira');
     if (modal) modal.remove();
 
-    const btnVerAnexo = (statusAtual === 'Em Análise' || statusAtual === 'Pago')
-        ? `<button type="button" onclick="verComprovanteMes('${alunoId}', '${competencia}')" class="w-full bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition py-2 px-3 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-2">
-               <i data-feather="paperclip" class="w-4 h-4"></i> Visualizar Comprovante (${competencia})
-           </button>`
-        : '';
-
     const htmlModal = `
     <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-teal-500">
@@ -3234,11 +3228,8 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
                     <select id="select-status-parcela" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
                         <option value="Pago">Pago / Quitado</option>
                         <option value="Pendente">Pendente (Em Aberto)</option>
-                        <option value="Em Análise">Comprovante em Análise</option>
                     </select>
                 </div>
-
-                ${btnVerAnexo}
 
                 <div id="bloco-detalhes-pendencia" class="hidden">
                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Observação / Referência</label>
@@ -3261,12 +3252,13 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
     document.body.insertAdjacentHTML('beforeend', htmlModal);
     document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome}`;
     document.getElementById('input-nf-aluno').value = nfAtual || '';
-    document.getElementById('select-status-parcela').value = statusAtual || 'Pendente';
+    document.getElementById('select-status-parcela').value = statusAtual === 'Pago' ? 'Pago' : 'Pendente';
     document.getElementById('input-detalhes-pendencia').value = (detalhesAtuais && detalhesAtuais !== 'undefined') ? detalhesAtuais : '';
 
-    toggleCampoDetalhes(statusAtual);
+    toggleCampoDetalhes(statusAtual === 'Pago' ? 'Pago' : 'Pendente');
     feather.replace();
 }
+
 
 async function salvarPendenciaAluno(e) {
     e.preventDefault();
@@ -3297,20 +3289,37 @@ async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela,
         }
     } catch (e) {}
 
-    // Atualiza APENAS a competência escolhida deste aluno específico
+    // Descobre a duração em meses do curso vinculado para sincronizar o carnê do aluno
+    let duracaoCursoMeses = parseInt(alunoAtual.duracao_meses || 0, 10);
+    if (!duracaoCursoMeses && Array.isArray(cursosGlobais)) {
+        const cursoVinc = cursosGlobais.find(c => String(c.id) === String(alunoAtual.curso_id));
+        if (cursoVinc && cursoVinc.duracao) {
+            const matchNum = String(cursoVinc.duracao).match(/\d+/);
+            if (matchNum) duracaoCursoMeses = parseInt(matchNum[0], 10);
+        }
+    }
+
+    const valorMensal = calcularValorMensalidadeAluno(alunoAtual);
+
+    // Atualiza APENAS a competência escolhida (mês atual ou parcela futura adiantada)
     mapaMensalidades[competencia] = {
         ...(mapaMensalidades[competencia] || {}),
         competencia: competencia,
         status: statusParcela,
-        valor: calcularValorMensalidadeAluno(alunoAtual),
+        valor: valorMensal,
         detalhes: detalhes || '',
         numero_nf: numeroNF || '',
+        data_pagamento: statusParcela === 'Pago' ? new Date().toLocaleDateString('pt-BR') : '',
         atualizado_em: new Date().toISOString()
     };
 
-    // Consolida o status geral APENAS deste aluno com base em TODAS as suas competências
+    // Considera inadimplência apenas meses até o mês atual (ignora parcelas futuras do carnê)
+    const hoje = new Date();
+    const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     const todasParcelas = Object.values(mapaMensalidades);
-    const mesesPendentes = todasParcelas.filter(p => p.status === 'Pendente').map(p => p.competencia);
+    const mesesPendentes = todasParcelas
+        .filter(p => p.status === 'Pendente' && p.competencia <= mesAtualKey)
+        .map(p => p.competencia);
     const temAlgumaPendencia = mesesPendentes.length > 0 ? 'Sim' : 'Não';
 
     const formData = new FormData();
@@ -3319,6 +3328,12 @@ async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela,
             formData.append(key, alunoAtual[key]);
         }
     }
+
+    if (statusParcela === 'Pago' && alunoAtual.status === 'Pendente') {
+        formData.set('status', 'Ativo');
+    }
+    if (valorMensal > 0) formData.set('valor_mensalidade', valorMensal);
+    if (duracaoCursoMeses > 0) formData.set('duracao_meses', duracaoCursoMeses);
 
     formData.set('mensalidades_json', JSON.stringify(mapaMensalidades));
     formData.set('possui_pendencia', temAlgumaPendencia);
