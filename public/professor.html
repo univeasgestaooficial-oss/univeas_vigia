@@ -774,7 +774,7 @@ function extrairNotaDocente(notasObj, avConfig, idx) {
     return null;
 }
 
-function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
+function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
     let somaNotas = 0;
     let totalAvaliacoes = avaliacoesConfig.length;
     let avaliacoesLancadas = 0;
@@ -782,8 +782,7 @@ function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
     avaliacoesConfig.forEach(av => {
         const raw = notasObj ? notasObj[av.chave] : null;
         if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
-            const nota = Math.max(0, parseFloat(raw));
-            somaNotas += nota;
+            somaNotas += Math.max(0, parseFloat(raw));
             avaliacoesLancadas++;
         }
     });
@@ -793,11 +792,11 @@ function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
             mediaNum: null,
             completo: false,
             mediaTexto: '-',
-            situacaoHtml: '<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-[10px] font-bold uppercase">Cursando</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-bold uppercase">Cursando</span>'
         };
     }
 
-    // Regra oficial UNIVEAS: Soma de todas as notas dividida por 2
+    // Regra oficial UNIVEAS: Soma das notas dividida por 2
     const media = somaNotas / 2;
     const mediaTexto = media.toFixed(1).replace('.', ',');
     const completo = avaliacoesLancadas === totalAvaliacoes;
@@ -807,7 +806,7 @@ function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
             mediaNum: media,
             completo: false,
             mediaTexto: `${mediaTexto}*`,
-            situacaoHtml: '<span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-[10px] font-bold uppercase">Parcial</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase">Parcial</span>'
         };
     }
 
@@ -816,17 +815,19 @@ function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
             mediaNum: media,
             completo: true,
             mediaTexto,
-            situacaoHtml: '<span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-md text-[10px] font-bold uppercase">Aprovado</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold uppercase">Aprovado</span>'
         };
     } else {
         return {
             mediaNum: media,
             completo: true,
             mediaTexto,
-            situacaoHtml: '<span class="px-2.5 py-1 bg-red-100 text-red-700 rounded-md text-[10px] font-bold uppercase">Recuperação</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Recuperação</span>'
         };
     }
 }
+
+
 function recalcularLinhaDiarioDocente(inputElement) {
     if (inputElement && inputElement.value !== '') {
         let valNum = parseFloat(inputElement.value);
