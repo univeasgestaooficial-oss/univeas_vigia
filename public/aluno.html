@@ -80,14 +80,10 @@
 
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Conta</p>
 
-            <button onclick="mudarTela('tutorial')" id="btn-tutorial" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors mt-1">
-                <i data-feather="help-circle" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Tutorial do Aluno</span>
-            </button>
-            <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
-                <i data-feather="user" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Meu Perfil</span>
-            </button>
+            <a href="tutorial_aluno.html" class="w-full flex items-center justify-center px-4 py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+                <i data-feather="help-circle" class="h-4 w-4 mr-2 shrink-0"></i>
+                <span>Manual & Tutorial</span>
+            </a>
         </div>
 
         <div class="p-4 border-t border-gray-100">
@@ -986,28 +982,40 @@ async function loadPerfilFinanceiro() {
     const valorBaseCurso = parseFloat(dados?.valor_mensalidade || 0);
 
     let mapaMeses = {};
-    try {
-        if (dados?.mensalidades_json) {
-            mapaMeses = typeof dados.mensalidades_json === 'string'
-                ? JSON.parse(dados.mensalidades_json)
-                : { ...dados.mensalidades_json };
-        }
-    } catch (e) {}
 
+    // 1. Primeiro carrega da coleção de parcelas
     if (Array.isArray(parcelasColecao)) {
         parcelasColecao.forEach(p => {
-            if (p.competencia && !mapaMeses[p.competencia]) {
-                mapaMeses[p.competencia] = p;
+            if (p.competencia) {
+                mapaMeses[p.competencia] = { ...p };
             }
         });
     }
 
+    // 2. Depois aplica o mapa oficial do cadastro do aluno (Admin tem prioridade)
+    try {
+        if (dados?.mensalidades_json) {
+            const mapaAdmin = typeof dados.mensalidades_json === 'string'
+                ? JSON.parse(dados.mensalidades_json)
+                : dados.mensalidades_json;
+
+            if (mapaAdmin && typeof mapaAdmin === 'object') {
+                Object.keys(mapaAdmin).forEach(comp => {
+                    if (mapaAdmin[comp] && typeof mapaAdmin[comp] === 'object') {
+                        mapaMeses[comp] = { ...(mapaMeses[comp] || {}), ...mapaAdmin[comp], competencia: comp };
+                    }
+                });
+            }
+        }
+    } catch (e) {}
+
+    // 3. Garante que o mês atual sempre esteja presente
     const hoje = new Date();
     const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     if (!mapaMeses[mesAtualKey]) {
         mapaMeses[mesAtualKey] = {
             competencia: mesAtualKey,
-            status: dados?.possui_pendencia_financeira === 'Não' ? 'Pago' : 'Pendente',
+            status: dados?.possui_pendencia_financeira === 'Sim' ? 'Pendente' : 'Pago',
             valor: valorBaseCurso,
             numero_nf: dados?.numero_nf || ''
         };
@@ -1084,7 +1092,6 @@ async function loadPerfilFinanceiro() {
     });
     feather.replace();
 }
-
 async function baixarReciboPdf(competencia, btnElement) {
     const textoOriginal = btnElement ? btnElement.innerHTML : '';
     if (btnElement) {
