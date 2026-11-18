@@ -182,7 +182,7 @@
                         <div id="lista-avisos" class="space-y-3 overflow-y-auto pr-2 flex-1 no-scrollbar">
                             <div class="bg-teal-50/70 border border-teal-100 p-4 rounded-xl">
                                 <p class="text-xs font-black text-teal-900 uppercase">Critério de Aprovação UNIVEAS</p>
-                                <p class="text-xs text-teal-700 mt-1 leading-relaxed">A média final de cada disciplina é calculada de forma ponderada conforme os pesos da matriz curricular. Nota mínima para aprovação direta: <strong>8,0</strong>.</p>
+                                <p class="text-xs text-teal-700 mt-1 leading-relaxed">Critério padrão UNIVEAS: Soma das avaliações ÷ 2 (Média ≥ <strong>8,0</strong> = Aprovado | &lt; 8,0 = Recuperação).</p>
                             </div>
                             <div class="bg-amber-50/70 border border-amber-100 p-4 rounded-xl">
                                 <p class="text-xs font-black text-amber-900 uppercase">Notificação Automática aos Alunos</p>
@@ -215,7 +215,7 @@
                             Diário Eletrônico (Sincronizado com a Matriz)
                         </h4>
                         <span class="text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-full uppercase">
-                            Média Ponderada • Corte: 8,0
+                            Soma das Avaliações ÷ 2 • Corte: 8,0
                         </span>
                     </div>
 
@@ -242,6 +242,18 @@
                         <textarea id="conteudo-aula-diario" rows="2" placeholder="Descreva brevemente o assunto tratado em sala de aula hoje..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-white"></textarea>
                     </div>
 
+                    <div id="resumo-estatistico-diario-docente" class="hidden mb-4 bg-teal-50/60 border border-teal-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h5 id="resumo-docente-titulo" class="text-sm font-black text-gray-900 uppercase">Resumo da Turma</h5>
+                            <p id="resumo-docente-subtitulo" class="text-xs font-bold text-teal-700 mt-0.5">Sincronizado com a Secretaria</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="badge-docente-total" class="bg-white border border-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm">0 Alunos</span>
+                            <span id="badge-docente-aprovados" class="bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-xl">0 Aprovados</span>
+                            <span id="badge-docente-media" class="bg-teal-600 text-white text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm">Média Turma: -</span>
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto border rounded-xl border-gray-100 mb-4 flex-1">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
@@ -262,7 +274,7 @@
                     </div>
 
                     <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-400 font-medium">As avaliações e pesos seguem o cronograma definido pela secretaria.</p>
+                        <p class="text-xs text-gray-400 font-medium">Critério padrão UNIVEAS: Soma das avaliações ÷ 2 (Média ≥ 8,0 = Aprovado | &lt; 8,0 = Recuperação).</p>
                         <button onclick="salvarDiario(this)" class="bg-teal-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase tracking-wider hover:bg-teal-600 transition shadow-sm">Salvar Diário</button>
                     </div>
                 </div>
@@ -734,7 +746,7 @@ async function loadTurmas() {
 }
 
 // =========================================================
-// CÁLCULO DE MÉDIA PONDERADA DOCENTE (SINCRONIZADO COM ADMIN - CORTE: 8,0)
+// CÁLCULO OFICIAL UNIVEAS (SOMA DAS AVALIAÇÕES ÷ 2 • CORTE: 8,0)
 // =========================================================
 function normalizarAvaliacoesDocente(avaliacoesRaw) {
     const lista = (Array.isArray(avaliacoesRaw) && avaliacoesRaw.length > 0)
@@ -756,15 +768,12 @@ function normalizarAvaliacoesDocente(avaliacoesRaw) {
 
 function extrairNotaDocente(notasObj, avConfig, idx) {
     if (!notasObj || typeof notasObj !== 'object') return null;
-    // 1. Chave indexada (padrão novo Admin + Docente)
     if (notasObj[avConfig.chave] !== undefined && notasObj[avConfig.chave] !== null && notasObj[avConfig.chave] !== '') {
         return notasObj[avConfig.chave];
     }
-    // 2. Retrocompatibilidade com chave antiga por nome/tipo
     if (notasObj[avConfig.tipo] !== undefined && notasObj[avConfig.tipo] !== null && notasObj[avConfig.tipo] !== '') {
         return notasObj[avConfig.tipo];
     }
-    // 3. Aliases legados
     const aliases = idx === 0 ? ['AV1', 'nota1', 'n1'] : (idx === 1 ? ['AV2', 'nota2', 'n2'] : [`AV${idx + 1}`, `nota${idx + 1}`]);
     for (const alias of aliases) {
         if (notasObj[alias] !== undefined && notasObj[alias] !== null && notasObj[alias] !== '') {
@@ -774,7 +783,7 @@ function extrairNotaDocente(notasObj, avConfig, idx) {
     return null;
 }
 
-function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
+function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
     let somaNotas = 0;
     let totalAvaliacoes = avaliacoesConfig.length;
     let avaliacoesLancadas = 0;
@@ -796,7 +805,6 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
         };
     }
 
-    // Regra oficial UNIVEAS: Soma das notas dividida por 2
     const media = somaNotas / 2;
     const mediaTexto = media.toFixed(1).replace('.', ',');
     const completo = avaliacoesLancadas === totalAvaliacoes;
@@ -827,6 +835,46 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
     }
 }
 
+function atualizarResumoEstatisticoDocente() {
+    const linhas = document.querySelectorAll('.linha-aluno');
+    const box = document.getElementById('resumo-estatistico-diario-docente');
+    if (!box) return;
+
+    if (linhas.length === 0) {
+        box.classList.add('hidden');
+        return;
+    }
+
+    const turmaId = String(document.getElementById('select-turma-diario').value || '');
+    const turma = turmasProfessor.find(t => getTurmaIdSeguro(t) === turmaId);
+    const nomeCurso = turma?.curso_pai || turma?.curso || 'Curso';
+    const nomeDisc = turma?.nome_disciplina || turma?.modulo || turma?.disciplina || 'Disciplina';
+
+    let aprovados = 0;
+    let somaMedias = 0;
+    let qtdMedias = 0;
+
+    linhas.forEach(tr => {
+        const notasLinha = {};
+        tr.querySelectorAll('.input-nota-dinamica').forEach(inp => {
+            const chave = inp.getAttribute('data-chave');
+            if (inp.value !== '') notasLinha[chave] = parseFloat(inp.value);
+        });
+        const { mediaNum, completo } = calcularSituacaoPonderadaDocente(notasLinha, avaliacoesAtuaisDiario);
+        if (mediaNum !== null) {
+            somaMedias += mediaNum;
+            qtdMedias++;
+            if (completo && mediaNum >= 8.0) aprovados++;
+        }
+    });
+
+    const mediaTurma = qtdMedias > 0 ? (somaMedias / qtdMedias).toFixed(1).replace('.', ',') : '-';
+    document.getElementById('resumo-docente-titulo').innerText = `${nomeCurso} • ${nomeDisc}`;
+    document.getElementById('badge-docente-total').innerText = `${linhas.length} ${linhas.length === 1 ? 'Aluno' : 'Alunos'}`;
+    document.getElementById('badge-docente-aprovados').innerText = `${aprovados} ${aprovados === 1 ? 'Aprovado' : 'Aprovados'}`;
+    document.getElementById('badge-docente-media').innerText = `Média Turma: ${mediaTurma}`;
+    box.classList.remove('hidden');
+}
 
 function recalcularLinhaDiarioDocente(inputElement) {
     if (inputElement && inputElement.value !== '') {
@@ -875,9 +923,11 @@ function recalcularLinhaDiarioDocente(inputElement) {
         } else if (mediaNum >= 8.0) {
             celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-bold uppercase">Aprovado</span>';
         } else {
-            celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Em Recuperação</span>';
+            celulaSituacao.innerHTML = '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Recuperação</span>';
         }
     }
+
+    atualizarResumoEstatisticoDocente();
 }
 
 // =========================================================
@@ -989,7 +1039,6 @@ async function carregarChamada() {
     const avaliacoesBrutas = turma?.detalhes?.avaliacoes || turma?.avaliacoes || [];
     avaliacoesAtuaisDiario = normalizarAvaliacoesDocente(avaliacoesBrutas);
 
-    // 1. CONSTRÓI O CABEÇALHO DINAMICAMENTE COM AS AVALIAÇÕES E PESOS DA MATRIZ
     let thHTML = `
         <th class="py-3 px-4 w-12 whitespace-nowrap">Matr.</th>
         <th class="py-3 px-4 whitespace-nowrap min-w-[200px]">Nome do Aluno</th>
@@ -1008,7 +1057,6 @@ async function carregarChamada() {
     `;
     thead.innerHTML = thHTML;
 
-    // 2. BUSCA OS ALUNOS E AS NOTAS SALVAS
     const cursoId = String(turma?.curso_id || turma?.curso || turmaId.split('_')[0]);
     const [alunos, pautaSalvaResp] = await Promise.all([
         apiRequest('/alunos'),
@@ -1082,8 +1130,10 @@ async function carregarChamada() {
             const primeiroInput = tr.querySelector('.input-nota-dinamica');
             if (primeiroInput) recalcularLinhaDiarioDocente(primeiroInput);
         });
+        atualizarResumoEstatisticoDocente();
     } else {
         tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-400">Nenhum aluno ativo matriculado neste curso.</td></tr>';
+        atualizarResumoEstatisticoDocente();
     }
 }
 
@@ -1134,7 +1184,7 @@ async function salvarDiario(btnElement) {
                 notas: dictNotas,
                 notas_removidas: notasRemovidas,
                 media: mediaNum !== null ? Number(mediaNum.toFixed(1)) : null,
-                situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
+                situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Recuperação'))
             });
         }
     });
@@ -1153,7 +1203,7 @@ async function salvarDiario(btnElement) {
     const result = await apiRequest('/docente/diario/salvar', 'POST', payload);
 
     if (result && result.sucesso) {
-        alert("Diário sincronizado! Notas e médias ponderadas disponíveis no Admin e no Portal do Aluno.");
+        alert("Diário sincronizado! Notas e médias disponíveis no Admin e no Portal do Aluno.");
         document.getElementById('conteudo-aula-diario').value = '';
         loadDashboardDocente();
         carregarChamada();
@@ -1447,7 +1497,6 @@ function inicializarSeletorTurmasProfessor(professorData) {
 
     const listaTurmas = professorData.turmas_vinculadas || [];
 
-    // Se tiver apenas 1 turma, esconde o seletor
     if (listaTurmas.length <= 1) {
         wrapper.classList.add('hidden');
         if (listaTurmas.length === 1) {
@@ -1457,7 +1506,6 @@ function inicializarSeletorTurmasProfessor(professorData) {
         return;
     }
 
-    // Se tiver mais de 1 turma, exibe o seletor para alternar
     wrapper.classList.remove('hidden');
 
     let turmaSalva = localStorage.getItem('turma_ativa_id') || getTurmaIdSeguro(listaTurmas[0]);
