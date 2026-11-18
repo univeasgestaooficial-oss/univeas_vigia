@@ -25,7 +25,7 @@ import base64
 class LancamentoAluno(BaseModel):
     aluno_id: str
     faltas: int
-    notas: dict = {}  # Aceita N avaliações dinâmicas como {"Prova AV1": 8.5, "Seminário": 9.0}
+    notas: dict = {}
     nota_1: Optional[float] = None
     nota_2: Optional[float] = None
 
@@ -36,13 +36,77 @@ class DiarioPayload(BaseModel):
     conteudo_ministrado: str
     lancamentos: List[LancamentoAluno]
 
+
 class MaterialEdicaoPayload(BaseModel):
     titulo: str
     url_arquivo: str
 
+
 class PerfilDocentePayload(BaseModel):
     email: str
     telefone: str
+
+
+class TurmaConfigPayload(BaseModel):
+    turma_id: str
+    data_inicio: str = None
+    data_fim: str = None
+    ementa: str = None
+    ch_teoria: int = 0
+    ch_pratica: int = 0
+    ch_estagio: int = 0
+    ch_total: int = 0
+    dias_aula: List[str] = []
+    hora_inicio: str = None
+    hora_fim: str = None
+    avaliacoes: List[dict] = []
+    justificativa: str = None
+
+
+class MaterialPayload(BaseModel):
+    turma_id: str
+    titulo: str
+    url_arquivo: str
+    data_postagem: Optional[str] = None
+
+
+class DiarioAdminItem(BaseModel):
+    aluno_id: str
+    curso_id: str
+    disciplina: str
+    periodo: Optional[str] = "Módulo Único"
+    matricula: Optional[str] = None
+    nome: Optional[str] = None
+    faltas: int = 0
+    notas: dict = {}
+    media: Optional[float] = None
+    situacao: Optional[str] = None
+
+
+class DiarioAdminPayload(BaseModel):
+    curso_id: Optional[str] = None
+    modulo: Optional[str] = None
+    periodo: Optional[str] = None
+    lancamentos: List[DiarioAdminItem] = []
+    registros: Optional[List[DiarioAdminItem]] = None
+
+
+class PerfilAlunoUpdatePayload(BaseModel):
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    endereco: Optional[str] = None
+
+
+class ParcelaUpdatePayload(BaseModel):
+    aluno_id: str
+    competencia: str
+    referencia_label: Optional[str] = None
+    vencimento: Optional[str] = None
+    valor: float = 0.0
+    status: str
+    numero_nf: Optional[str] = ""
+    data_pagamento: Optional[str] = None
+
 
 # ==========================================
 # 1. CONEXÃO COM O GOOGLE FIRESTORE
@@ -79,6 +143,149 @@ app.add_middleware(
 def checar_db():
     if not db:
         raise HTTPException(status_code=500, detail="Banco de dados não conectado.")
+
+
+# ==========================================
+# FUNÇÕES AUXILIARES FINANCEIRAS UNIFICADAS
+# ==========================================
+def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
+    flag = aluno_dict.get("possui_pendencia_financeira")
+    if flag == "Sim":
+        return True
+    if aluno_dict.get("status") == "Pendente" and flag != "Não":
+        return True
+    return False
+
+
+def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
+    ids_cursos = set()
+    if aluno_dict.get("curso_id") or aluno_dict.get("curso"):
+        ids_cursos.add(str(aluno_dict.get("curso_id") or aluno_dict.get("curso")))
+
+    c_json = aluno_dict.get("cursos_json", [])
+    if isinstance(c_json, str):
+        try:
+            c_json = json.loads(c_json)
+        except Exception:
+            c_json = []
+
+    if isinstance(c_json, list):
+        for item in c_json:
+            if isinstance(item, dict) and item.get("curso_id"):
+                ids_cursos.add(str(item["curso_id"]))
+
+    total = 0.0
+    for cid in ids_cursos:
+        curso = cursos_map.get(cid)
+        if not curso:
+            continue
+        if str(curso.get("promocao_ativa")).lower() in ["sim", "true", "1"] and curso.get("valor_promocional"):
+            try:
+                total += float(str(curso.get("valor_promocional")).replace(",", "."))
+                continue
+            except Exception:
+                pass
+        try:
+            total += float(str(curso.get("valor_mensalidade", 0) or 0).replace(",", "."))
+        except Exception:
+            pass
+
+    return round(total, 2)
+
+
+def obter_mapa_mensalidades_unificado(aluno_id: str, aluno_dict: dict, cursos_map: dict, colecao_mensalidades: list) -> dict:
+    """Mescla dados de alunos.mensalidades_json + coleção mensalidades + legado do aluno sem perder nada."""
+    mapa = {}
+    valor_padrao = calcular_valor_mensal_aluno(aluno_dict, cursos_map)
+
+    for m in colecao_mensalidades:
+        if str(m.get("aluno_id")) == str(aluno_id) and m.get("competencia"):
+            comp = str(m["competencia"])
+            mapa[comp] = {
+                "id": m.get("id", f"{aluno_id}__{comp}"),
+                "aluno_id": str(aluno_id),
+                "competencia": comp,
+                "status": m.get("status", "Pendente"),
+                "valor": float(m.get("valor") or valor_padrao or 0),
+                "numero_nf": m.get("numero_nf", ""),
+                "comprovante_id": m.get("comprovante_id"),
+                "comprovante_nome": m.get("comprovante_nome", ""),
+                "detalhes": m.get("detalhes", ""),
+                "data_pagamento": m.get("data_pagamento"),
+                "atualizado_em": m.get("atualizado_em")
+            }
+
+    m_raw = aluno_dict.get("mensalidades_json", "{}")
+    try:
+        m_json = json.loads(m_raw) if isinstance(m_raw, str) else (m_raw or {})
+    except Exception:
+        m_json = {}
+
+    if isinstance(m_json, dict):
+        for comp, info in m_json.items():
+            if isinstance(info, dict):
+                base = mapa.get(comp, {})
+                val_raw = info.get("valor")
+                mapa[comp] = {
+                    **base,
+                    **info,
+                    "id": base.get("id", f"{aluno_id}__{comp}"),
+                    "aluno_id": str(aluno_id),
+                    "competencia": comp,
+                    "valor": float(val_raw if val_raw not in [None, ""] else (base.get("valor") or valor_padrao or 0))
+                }
+
+    if not mapa:
+        mes_atual = datetime.now().strftime("%Y-%m")
+        is_pendente = aluno_esta_pendente_financeiro(aluno_dict)
+        status_legado = "Em Análise" if aluno_dict.get("status_comprovante") == "Em Análise" else ("Pendente" if is_pendente else "Pago")
+        mapa[mes_atual] = {
+            "id": f"{aluno_id}__{mes_atual}",
+            "aluno_id": str(aluno_id),
+            "competencia": mes_atual,
+            "status": status_legado,
+            "valor": valor_padrao,
+            "numero_nf": aluno_dict.get("numero_nf", ""),
+            "comprovante_id": aluno_dict.get("ultimo_comprovante_id"),
+            "comprovante_nome": aluno_dict.get("ultimo_comprovante_nome", ""),
+            "detalhes": aluno_dict.get("detalhes_pendencia_financeira", "")
+        }
+
+    return mapa
+
+
+def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
+    """Mantém o documento do aluno e a coleção 'mensalidades' 100% espelhados."""
+    aluno_ref = db.collection("alunos").document(str(aluno_id))
+    snap = aluno_ref.get()
+    if not snap.exists:
+        return
+
+    aluno_atual = snap.to_dict() or {}
+    status_atual = aluno_atual.get("status", "Pendente")
+
+    pendentes = [v for v in mapa_mensalidades.values() if v.get("status") == "Pendente"]
+    em_analise = [v for v in mapa_mensalidades.values() if v.get("status") == "Em Análise"]
+    tem_pendencia = len(pendentes) > 0
+
+    detalhes = ", ".join([
+        p.get("detalhes") or f"Mensalidade {p.get('competencia')}"
+        for p in pendentes
+    ])
+
+    status_comp = "Em Análise" if em_analise else ("Pendente" if tem_pendencia else "Aprovado")
+    novo_status_aluno = status_atual
+    if status_atual not in ["Trancado", "Concluído"]:
+        novo_status_aluno = "Pendente" if tem_pendencia else "Ativo"
+
+    aluno_ref.update({
+        "possui_pendencia_financeira": "Sim" if tem_pendencia else "Não",
+        "detalhes_pendencia_financeira": detalhes if tem_pendencia else "",
+        "status_comprovante": status_comp,
+        "status": novo_status_aluno,
+        "mensalidades_json": json.dumps(mapa_mensalidades, ensure_ascii=False),
+        "data_atualizacao_financeira": datetime.now().isoformat()
+    })
 
 
 # ==========================================
@@ -123,6 +330,7 @@ async def login_docente(registro: str = Form(...), cpf: str = Form(...)):
         }
     else:
         raise HTTPException(status_code=401, detail="Registro ou CPF incorretos. Acesso negado.")
+
 
 # ==========================================
 # 2.7 AUTENTICAÇÃO DO ALUNO (ESTUDANTE)
@@ -235,7 +443,6 @@ async def matricular_aluno(
 
     _, doc_ref = db.collection("alunos").add(novo_aluno)
 
-    # Sincroniza também na coleção 'mensalidades' para consistência total
     db.collection("mensalidades").document(f"{doc_ref.id}__{mes_ref}").set({
         "aluno_id": doc_ref.id,
         "competencia": mes_ref,
@@ -304,6 +511,7 @@ async def alterar_aluno(
         ref.update(dados_limpos)
 
     return {"sucesso": True, "mensagem": "Aluno atualizado com sucesso"}
+
 
 @app.delete("/api/v1/alunos/{aluno_id}")
 async def excluir_aluno(aluno_id: str):
@@ -482,6 +690,48 @@ async def registrar_curso(
     return {"sucesso": True, "mensagem": "Curso registrado com matriz acadêmica e link da foto!"}
 
 
+@app.put("/api/v1/cursos/{curso_id}")
+async def atualizar_curso(
+        curso_id: str,
+        codigo: str = Form(...),
+        nome_curso: str = Form(...),
+        categoria: str = Form("Técnico"),
+        modalidade: str = Form("Presencial"),
+        duracao: str = Form(None),
+        valor_matricula: float = Form(0.0),
+        valor_mensalidade: float = Form(...),
+        promocao_ativa: str = Form("Não"),
+        valor_promocional: str = Form(None),
+        descricao: str = Form(""),
+        foto_capa: str = Form(""),
+        disciplinas_json: str = Form("[]")
+):
+    checar_db()
+    try:
+        grade = json.loads(disciplinas_json)
+    except Exception:
+        grade = []
+
+    dados_atualizados = {
+        "codigo": codigo,
+        "nome_curso": nome_curso.upper(),
+        "categoria": categoria,
+        "modalidade": modalidade,
+        "duracao": duracao,
+        "valor_matricula": valor_matricula,
+        "valor_mensalidade": valor_mensalidade,
+        "promocao_ativa": promocao_ativa,
+        "valor_promocional": valor_promocional,
+        "descricao": descricao,
+        "foto_capa": foto_capa,
+        "grade_curricular": grade,
+        "data_atualizacao": datetime.now().isoformat()
+    }
+
+    db.collection("cursos").document(curso_id).update(dados_atualizados)
+    return {"sucesso": True, "mensagem": "Curso atualizado com sucesso"}
+
+
 @app.delete("/api/v1/cursos/{curso_id}")
 async def excluir_curso(curso_id: str):
     checar_db()
@@ -639,59 +889,317 @@ async def gerar_pdf_curso(curso_id: str):
 
 
 # ==========================================
-# 5. MÓDULO FINANCEIRO
+# 5. MÓDULO FINANCEIRO UNIFICADO (SEM DUPLICAÇÃO)
 # ==========================================
 @app.get("/api/v1/financeiro/mensalidades")
-async def listar_mensalidades():
+async def listar_mensalidades(competencia: Optional[str] = None):
     checar_db()
-    docs = db.collection("mensalidades").stream()
-    return {"lista": [{"id": doc.id, **doc.to_dict()} for doc in docs]}
+    alunos_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("alunos").stream()]
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").stream()]
+
+    mes_alvo = competencia or datetime.now().strftime("%Y-%m")
+    lista_unificada = []
+
+    for a in alunos_docs:
+        if a.get("status") in ["Trancado", "Concluído"]:
+            continue
+        mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
+        if mes_alvo in mapa:
+            parcela = mapa[mes_alvo]
+        else:
+            parcela = {
+                "id": f"{a['id']}__{mes_alvo}",
+                "aluno_id": a["id"],
+                "competencia": mes_alvo,
+                "status": "Pendente",
+                "valor": calcular_valor_mensal_aluno(a, cursos_map),
+                "numero_nf": ""
+            }
+        lista_unificada.append({
+            **parcela,
+            "nome_aluno": a.get("nome", "Aluno"),
+            "matricula": a.get("matricula", "S/N"),
+            "dia_vencimento": a.get("dia_vencimento", "10"),
+            "forma_pagamento": a.get("forma_pagamento", "PIX")
+        })
+
+    return {"lista": lista_unificada}
+
+
+@app.get("/api/v1/financeiro/indicadores")
+async def obter_indicadores_financeiros(competencia: Optional[str] = None):
+    checar_db()
+    alunos_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("alunos").stream()]
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").stream()]
+
+    mes_alvo = competencia or datetime.now().strftime("%Y-%m")
+    total_recebido = 0.0
+    total_receber = 0.0
+    inadimplencia_qtd = 0
+    pagamentos_mes_qtd = 0
+
+    for a in alunos_docs:
+        if a.get("status") in ["Trancado", "Concluído"]:
+            continue
+        mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
+        parcela = mapa.get(mes_alvo) or {
+            "status": "Pendente",
+            "valor": calcular_valor_mensal_aluno(a, cursos_map)
+        }
+        valor = float(parcela.get("valor") or 0)
+        if parcela.get("status") == "Pago":
+            total_recebido += valor
+            pagamentos_mes_qtd += 1
+        else:
+            total_receber += valor
+            inadimplencia_qtd += 1
+
+    return {
+        "total_recebido": round(total_recebido, 2),
+        "total_receber": round(total_receber, 2),
+        "inadimplencia": inadimplencia_qtd,
+        "pagamentos_mes": pagamentos_mes_qtd
+    }
+
+
+@app.get("/api/v1/financeiro/parcelas/{aluno_id}")
+def listar_parcelas_aluno(aluno_id: str):
+    checar_db()
+    aluno_doc = db.collection("alunos").document(str(aluno_id)).get()
+    if not aluno_doc.exists:
+        return []
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+    mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_doc.to_dict(), cursos_map, mens_docs)
+    lista = list(mapa.values())
+    lista.sort(key=lambda x: x.get("competencia", ""), reverse=True)
+    return lista
+
+
+@app.post("/api/v1/financeiro/parcela/salvar")
+def salvar_parcela_individual(payload: ParcelaUpdatePayload):
+    checar_db()
+    aluno_id = str(payload.aluno_id)
+    comp = payload.competencia
+    doc_id = f"{aluno_id}__{comp}"
+
+    dados = {
+        "aluno_id": aluno_id,
+        "competencia": comp,
+        "referencia_label": payload.referencia_label or comp,
+        "vencimento": payload.vencimento or "",
+        "valor": float(payload.valor or 0),
+        "status": payload.status,
+        "numero_nf": payload.numero_nf or "",
+        "data_pagamento": payload.data_pagamento or (datetime.now().strftime("%Y-%m-%d") if payload.status == "Pago" else None),
+        "atualizado_em": datetime.now().isoformat()
+    }
+    db.collection("mensalidades").document(doc_id).set(dados, merge=True)
+
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    if aluno_doc.exists:
+        cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+        mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
+        mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_doc.to_dict(), cursos_map, mens_docs)
+        mapa[comp] = {**mapa.get(comp, {}), **dados}
+        sincronizar_estado_aluno(aluno_id, mapa)
+
+    return {"sucesso": True, "parcela": dados}
+
+
+@app.post("/api/v1/alunos/{aluno_id}/pendencia")
+async def atualizar_pendencia_aluno(
+        aluno_id: str,
+        possui_pendencia_financeira: str = Form("Não"),
+        detalhes_pendencia_financeira: str = Form(""),
+        numero_nf: str = Form(""),
+        mensalidades_json: str = Form("")
+):
+    checar_db()
+    ref = db.collection("alunos").document(str(aluno_id))
+    doc_snap = ref.get()
+    if not doc_snap.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    aluno_atual = doc_snap.to_dict() or {}
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+    mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_atual, cursos_map, mens_docs)
+
+    if mensalidades_json:
+        try:
+            recebido = json.loads(mensalidades_json) if isinstance(mensalidades_json, str) else mensalidades_json
+            if isinstance(recebido, dict):
+                for comp, info in recebido.items():
+                    if isinstance(info, dict):
+                        parcela_atualizada = {
+                            **mapa.get(comp, {}),
+                            **info,
+                            "aluno_id": str(aluno_id),
+                            "competencia": comp,
+                            "valor": float(info.get("valor") or calcular_valor_mensal_aluno(aluno_atual, cursos_map) or 0),
+                            "atualizado_em": datetime.now().isoformat()
+                        }
+                        mapa[comp] = parcela_atualizada
+                        db.collection("mensalidades").document(f"{aluno_id}__{comp}").set(parcela_atualizada, merge=True)
+        except Exception:
+            pass
+    else:
+        mes_atual = datetime.now().strftime("%Y-%m")
+        status_novo = "Pendente" if possui_pendencia_financeira == "Sim" else "Pago"
+        parcela_atualizada = {
+            **mapa.get(mes_atual, {}),
+            "aluno_id": str(aluno_id),
+            "competencia": mes_atual,
+            "status": status_novo,
+            "detalhes": detalhes_pendencia_financeira if status_novo == "Pendente" else "",
+            "numero_nf": numero_nf,
+            "valor": float(mapa.get(mes_atual, {}).get("valor") or calcular_valor_mensal_aluno(aluno_atual, cursos_map) or 0),
+            "atualizado_em": datetime.now().isoformat()
+        }
+        mapa[mes_atual] = parcela_atualizada
+        db.collection("mensalidades").document(f"{aluno_id}__{mes_atual}").set(parcela_atualizada, merge=True)
+
+    if numero_nf:
+        ref.update({"numero_nf": numero_nf})
+
+    sincronizar_estado_aluno(str(aluno_id), mapa)
+    return {"sucesso": True, "mensagem": "Situação financeira mensal atualizada com sucesso."}
+
+
+@app.post("/api/v1/alunos/{aluno_id}/nf")
+async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form("")):
+    checar_db()
+    ref = db.collection("alunos").document(aluno_id)
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    ref.update({"numero_nf": numero_nf})
+    return {"sucesso": True, "mensagem": "Nota Fiscal atualizada."}
 
 
 @app.post("/api/v1/financeiro/baixar/{mensalidade_id}")
 async def dar_baixa_mensalidade(mensalidade_id: str):
     checar_db()
-    db.collection("mensalidades").document(mensalidade_id).update(
-        {"status": "Pago", "data_pagamento": datetime.now().isoformat()})
+    m_ref = db.collection("mensalidades").document(mensalidade_id)
+    m_snap = m_ref.get()
+    agora = datetime.now().isoformat()
+
+    if m_snap.exists:
+        m_dados = m_snap.to_dict()
+        m_ref.update({"status": "Pago", "data_pagamento": agora, "atualizado_em": agora})
+        aluno_id = str(m_dados.get("aluno_id", ""))
+        comp = m_dados.get("competencia")
+    elif "__" in mensalidade_id:
+        aluno_id, comp = mensalidade_id.split("__", 1)
+        m_ref.set({"aluno_id": aluno_id, "competencia": comp, "status": "Pago", "data_pagamento": agora, "atualizado_em": agora}, merge=True)
+    else:
+        raise HTTPException(status_code=404, detail="Mensalidade não encontrada.")
+
+    if aluno_id:
+        aluno_doc = db.collection("alunos").document(aluno_id).get()
+        if aluno_doc.exists:
+            cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+            mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
+            mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_doc.to_dict(), cursos_map, mens_docs)
+            if comp and comp in mapa:
+                mapa[comp]["status"] = "Pago"
+                mapa[comp]["data_pagamento"] = agora
+            sincronizar_estado_aluno(aluno_id, mapa)
+
     return {"sucesso": True, "mensagem": "Baixa realizada."}
 
 
-@app.post("/api/v1/financeiro/enviar-comprovante")
-async def aluno_enviar_comprovante(
-        aluno_id: str = Form(...),
-        mensalidade_id: str = Form(...),
-        referencia_pagamento: str = Form(...),
-        comprovante: UploadFile = File(...)
-):
-    checar_db()
-    dados_baixa = {
-        "aluno_id": aluno_id,
-        "mensalidade_id": mensalidade_id,
-        "referencia_pagamento": referencia_pagamento,
-        "nome_arquivo": comprovante.filename,
-        "status": "Em Análise",
-        "data_envio": datetime.now().isoformat()
-    }
-    _, doc_ref = db.collection("comprovantes_pagamento").add(dados_baixa)
-    db.collection("mensalidades").document(mensalidade_id).update({
-        "status": "Em Análise",
-        "comprovante_id": doc_ref.id
-    })
-    return {"sucesso": True, "mensagem": "Comprovante enviado com sucesso."}
-
-
 @app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
-async def auditar_e_quitar_mensalidade(
-        mensalidade_id: str,
-        acao: str = Form(...)
-):
+async def auditar_e_quitar_mensalidade(mensalidade_id: str, acao: str = Form(...)):
     checar_db()
-    novo_status = "Pago" if acao == 'aprovar' else "Rejeitado"
-    db.collection("mensalidades").document(mensalidade_id).update({
+    novo_status = "Pago" if acao == "aprovar" else "Pendente"
+    agora = datetime.now().isoformat()
+    m_ref = db.collection("mensalidades").document(mensalidade_id)
+    m_snap = m_ref.get()
+
+    if m_snap.exists:
+        m_dados = m_snap.to_dict()
+        aluno_id = str(m_dados.get("aluno_id", ""))
+        comp = m_dados.get("competencia")
+    elif "__" in mensalidade_id:
+        aluno_id, comp = mensalidade_id.split("__", 1)
+    else:
+        raise HTTPException(status_code=404, detail="Mensalidade não encontrada.")
+
+    m_ref.set({
+        "aluno_id": aluno_id,
+        "competencia": comp,
         "status": novo_status,
-        "data_pagamento": datetime.now().isoformat() if acao == 'aprovar' else None
-    })
+        "data_pagamento": agora if acao == "aprovar" else None,
+        "atualizado_em": agora
+    }, merge=True)
+
+    if aluno_id:
+        aluno_doc = db.collection("alunos").document(aluno_id).get()
+        if aluno_doc.exists:
+            cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+            mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
+            mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_doc.to_dict(), cursos_map, mens_docs)
+            if comp and comp in mapa:
+                mapa[comp]["status"] = novo_status
+                mapa[comp]["data_pagamento"] = agora if acao == "aprovar" else None
+            sincronizar_estado_aluno(aluno_id, mapa)
+
     return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
+
+
+@app.get("/api/v1/financeiro/comprovante/{aluno_id}")
+async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
+    checar_db()
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    if not aluno_doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    aluno_dados = aluno_doc.to_dict() or {}
+    comp_id = None
+
+    if competencia:
+        mapa_raw = aluno_dados.get("mensalidades_json", "{}")
+        try:
+            mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else (mapa_raw or {})
+            parcela_mes = mapa.get(competencia, {})
+            comp_id = parcela_mes.get("comprovante_id")
+        except Exception:
+            comp_id = None
+
+        if not comp_id:
+            docs_comp = (
+                db.collection("comprovantes_pagamento")
+                .where("aluno_id", "==", str(aluno_id))
+                .where("competencia", "==", competencia)
+                .stream()
+            )
+            lista_comp = [{"id": d.id, **d.to_dict()} for d in docs_comp]
+            if lista_comp:
+                lista_comp.sort(key=lambda x: x.get("data_envio", ""), reverse=True)
+                comp_id = lista_comp[0]["id"]
+
+    if not comp_id:
+        comp_id = aluno_dados.get("ultimo_comprovante_id")
+
+    if not comp_id:
+        raise HTTPException(status_code=404, detail="Nenhum comprovante anexado para este mês.")
+
+    comp_doc = db.collection("comprovantes_pagamento").document(comp_id).get()
+    if not comp_doc.exists:
+        raise HTTPException(status_code=404, detail="Arquivo do comprovante não localizado.")
+
+    comp = comp_doc.to_dict()
+    return {
+        "nome_arquivo": comp.get("nome_arquivo"),
+        "content_type": comp.get("content_type"),
+        "arquivo_base64": comp.get("arquivo_base64"),
+        "data_envio": comp.get("data_envio"),
+        "competencia": comp.get("competencia", competencia)
+    }
 
 
 # ==========================================
@@ -726,22 +1234,6 @@ async def obter_dashboard_docente(authorization: str = Header(None)):
         "aulas_semana": len(vinculos),
         "curso_vinculado": vinculos[0].get("curso") if vinculos else None
     }
-
-
-class TurmaConfigPayload(BaseModel):
-    turma_id: str
-    data_inicio: str = None
-    data_fim: str = None
-    ementa: str = None
-    ch_teoria: int = 0
-    ch_pratica: int = 0
-    ch_estagio: int = 0
-    ch_total: int = 0
-    dias_aula: List[str] = []
-    hora_inicio: str = None
-    hora_fim: str = None
-    avaliacoes: List[dict] = []
-    justificativa: str = None
 
 
 @app.get("/api/v1/docente/turmas")
@@ -780,7 +1272,8 @@ async def listar_turmas_docente(authorization: str = Header(None)):
                 nome_alvo = str(mod_nome).strip().upper()
 
                 for m in c_dados.get("grade_curricular", []):
-                    if not isinstance(m, dict): continue
+                    if not isinstance(m, dict):
+                        continue
                     m_nome = str(m.get("nome") or m.get("disciplina") or "").strip().upper()
                     if m_nome == nome_alvo:
                         detalhes_modulo = m
@@ -791,7 +1284,8 @@ async def listar_turmas_docente(authorization: str = Header(None)):
                     if isinstance(sub_disciplinas, list):
                         encontrou = False
                         for disc in sub_disciplinas:
-                            if not isinstance(disc, dict): continue
+                            if not isinstance(disc, dict):
+                                continue
                             d_nome = str(disc.get("nome") or disc.get("disciplina") or "").strip().upper()
                             if d_nome == nome_alvo:
                                 detalhes_modulo = disc
@@ -815,7 +1309,7 @@ async def listar_turmas_docente(authorization: str = Header(None)):
 @app.post("/api/v1/docente/turmas/configurar")
 async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str = Header(None)):
     checar_db()
-    docente_id = validar_token_docente(authorization)
+    validar_token_docente(authorization)
 
     try:
         curso_id, nome_alvo = payload.turma_id.split("_", 1)
@@ -847,7 +1341,8 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
         obj["avaliacoes"] = [av for av in payload.avaliacoes]
 
     for m in grade:
-        if not isinstance(m, dict): continue
+        if not isinstance(m, dict):
+            continue
         if str(m.get("nome") or m.get("disciplina") or "").strip().upper() == nome_alvo:
             atualizar_obj(m)
             modulo_atualizado = True
@@ -856,7 +1351,8 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
         sub_disciplinas = m.get("disciplinas", [])
         if isinstance(sub_disciplinas, list):
             for disc in sub_disciplinas:
-                if not isinstance(disc, dict): continue
+                if not isinstance(disc, dict):
+                    continue
                 if str(disc.get("nome") or disc.get("disciplina") or "").strip().upper() == nome_alvo:
                     atualizar_obj(disc)
                     modulo_atualizado = True
@@ -953,13 +1449,6 @@ async def salvar_diario_eletronico(
     return {"sucesso": True, "mensagem": "Diário registrado e sincronizado com o boletim!"}
 
 
-class MaterialPayload(BaseModel):
-    turma_id: str
-    titulo: str
-    url_arquivo: str
-    data_postagem: Optional[str] = None
-
-
 @app.post("/api/v1/docente/material/upload")
 async def upload_material_didatico(
         payload: MaterialPayload,
@@ -1003,6 +1492,68 @@ async def listar_materiais_docente(authorization: str = Header(None)):
     return materiais
 
 
+@app.delete("/api/v1/docente/material/{material_id}")
+async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
+
+    ref.delete()
+    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
+
+
+@app.put("/api/v1/docente/material/{material_id}")
+async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("materiais_didaticos").document(material_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Material não encontrado.")
+
+    if doc.to_dict().get("docente_id") != docente_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
+
+    ref.update({
+        "titulo": payload.titulo,
+        "url_arquivo": payload.url_arquivo
+    })
+
+    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
+
+
+@app.put("/api/v1/docente/perfil/atualizar")
+async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
+    checar_db()
+    docente_id = validar_token_docente(authorization)
+
+    ref = db.collection("docentes").document(docente_id)
+    doc = ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Docente não encontrado.")
+
+    ref.update({
+        "email": payload.email,
+        "telefone": payload.telefone
+    })
+
+    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
+
+
+# ==========================================
+# 7. DASHBOARD GERAL E DIÁRIO CONSOLIDADO ADMIN
+# ==========================================
 @app.get("/api/v1/dashboard/indicadores")
 async def obter_indicadores_dashboard():
     checar_db()
@@ -1010,20 +1561,26 @@ async def obter_indicadores_dashboard():
     docentes_docs = list(db.collection("docentes").stream())
     cursos_docs = list(db.collection("cursos").stream())
     cursos_map = {d.id: d.to_dict() for d in cursos_docs}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").stream()]
 
+    mes_atual = datetime.now().strftime("%Y-%m")
     alunos_ativos = len([a for a in alunos_docs if a.get("status") == "Ativo"])
-    total_inadimplencia = sum(
-        calcular_valor_mensal_aluno(a, cursos_map)
-        for a in alunos_docs
-        if a.get("status") not in ["Trancado", "Concluído"] and aluno_esta_pendente_financeiro(a)
-    )
+    total_inadimplencia = 0.0
+
+    for a in alunos_docs:
+        if a.get("status") in ["Trancado", "Concluído"]:
+            continue
+        mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
+        parcela = mapa.get(mes_atual)
+        if parcela and parcela.get("status") != "Pago":
+            total_inadimplencia += float(parcela.get("valor") or 0)
 
     notificacoes = []
     for idx, a in enumerate(alunos_docs):
         if a.get("status") == "Pendente":
             notificacoes.append({
                 "id": idx + 1,
-                "descricao": f"Pré-matrícula pendente: {a.get('nome')} ({a.get('matricula')})",
+                "descricao": f"Pré-matrícula / Mensalidade pendente: {a.get('nome')} ({a.get('matricula')})",
                 "status": "PENDENTE"
             })
         elif a.get("status_comprovante") == "Em Análise":
@@ -1040,6 +1597,139 @@ async def obter_indicadores_dashboard():
         "total_inadimplencia": f"{total_inadimplencia:.2f}".replace(".", ","),
         "notificacoes": notificacoes
     }
+
+
+@app.get("/api/v1/diario")
+async def listar_diario_consolidado_admin(
+    curso_id: Optional[str] = None,
+    modulo: Optional[str] = None,
+    periodo: Optional[str] = None
+):
+    checar_db()
+    alunos = [{"id": d.id, **d.to_dict()} for d in db.collection("alunos").stream()]
+    cursos = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+
+    agregado = {}
+    diarios_lista = [doc.to_dict() for doc in db.collection("diarios").stream()]
+    diarios_lista.sort(key=lambda x: x.get("data_registro", ""))
+    for d in diarios_lista:
+        t_id = d.get("turma_id", "")
+        if "_" not in t_id:
+            continue
+        c_id, disc_nome = t_id.split("_", 1)
+        if curso_id and str(c_id) != str(curso_id):
+            continue
+        disc_key = disc_nome.strip().upper()
+        if modulo and disc_key != modulo.strip().upper():
+            continue
+
+        for lanc in d.get("avaliacoes", []):
+            aid = str(lanc.get("aluno_id"))
+            chave = (aid, c_id, disc_key)
+            if chave not in agregado:
+                agregado[chave] = {"faltas": 0, "notas": {}}
+            agregado[chave]["faltas"] += int(lanc.get("faltas", 0))
+            agregado[chave]["notas"].update(lanc.get("notas", {}))
+
+    resultado = []
+    for a in alunos:
+        if a.get("status") in ["Trancado", "Concluído", "Cancelado"]:
+            continue
+
+        ids_cursos = set()
+        if a.get("curso_id") or a.get("curso"):
+            ids_cursos.add(str(a.get("curso_id") or a.get("curso")))
+        c_json = a.get("cursos_json", [])
+        if isinstance(c_json, str):
+            try:
+                c_json = json.loads(c_json)
+            except Exception:
+                c_json = []
+        if isinstance(c_json, list):
+            for item in c_json:
+                if isinstance(item, dict) and item.get("curso_id"):
+                    ids_cursos.add(str(item["curso_id"]))
+
+        for cid in ids_cursos:
+            if curso_id and str(cid) != str(curso_id):
+                continue
+            curso_obj = cursos.get(cid)
+            if not curso_obj:
+                continue
+            nome_curso = curso_obj.get("nome_curso", "Curso")
+
+            for m in curso_obj.get("grade_curricular", []):
+                if not isinstance(m, dict):
+                    continue
+                sub_lista = m.get("disciplinas", [])
+                itens = sub_lista if (isinstance(sub_lista, list) and len(sub_lista) > 0) else [m]
+
+                for disc in itens:
+                    if not isinstance(disc, dict):
+                        continue
+                    nome_disc = disc.get("nome") or disc.get("disciplina")
+                    if not nome_disc:
+                        continue
+                    if modulo and nome_disc.strip().upper() != modulo.strip().upper():
+                        continue
+
+                    dados_lanc = agregado.get((a["id"], cid, nome_disc.strip().upper()), {"faltas": 0, "notas": {}})
+                    avals = [
+                        av.get("tipo") if isinstance(av, dict) else av
+                        for av in disc.get("avaliacoes", ["AV1", "AV2", "Final"])
+                    ]
+
+                    resultado.append({
+                        "aluno_id": a["id"],
+                        "nome": a.get("nome", "Aluno"),
+                        "nome_aluno": a.get("nome", "Aluno"),
+                        "matricula": a.get("matricula", "S/N"),
+                        "curso_id": cid,
+                        "nome_curso": nome_curso,
+                        "disciplina": nome_disc,
+                        "modulo": nome_disc,
+                        "periodo": periodo or "Módulo Único",
+                        "avaliacoes_previstas": avals,
+                        "faltas": dados_lanc["faltas"],
+                        "notas": dados_lanc["notas"]
+                    })
+
+    return resultado
+
+
+@app.post("/api/v1/diario/salvar")
+async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
+    checar_db()
+    lista_itens = payload.lancamentos if payload.lancamentos else (payload.registros or [])
+
+    for reg in lista_itens:
+        turma_id = f"{reg.curso_id}_{reg.disciplina}"
+        docs_existentes = db.collection("diarios").where("turma_id", "==", turma_id).stream()
+        for doc in docs_existentes:
+            d = doc.to_dict()
+            novas_avals = [av for av in d.get("avaliacoes", []) if str(av.get("aluno_id")) != str(reg.aluno_id)]
+            if len(novas_avals) != len(d.get("avaliacoes", [])):
+                if novas_avals:
+                    doc.reference.update({"avaliacoes": novas_avals})
+                else:
+                    doc.reference.delete()
+
+        doc_id = f"ADMIN__{reg.curso_id}__{reg.disciplina.strip().upper()}__{reg.aluno_id}".replace("/", "-")
+        db.collection("diarios").document(doc_id).set({
+            "docente_id": "SECRETARIA_ADMIN",
+            "turma_id": turma_id,
+            "data_aula": datetime.now().strftime("%Y-%m-%d"),
+            "conteudo_ministrado": "Consolidação Oficial - Secretaria Acadêmica",
+            "origem": "Admin",
+            "avaliacoes": [{
+                "aluno_id": reg.aluno_id,
+                "faltas": reg.faltas,
+                "notas": reg.notas
+            }],
+            "data_registro": datetime.now().isoformat()
+        })
+
+    return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
 
 
 # ==========================================
@@ -1087,7 +1777,7 @@ async def atualizar_configuracoes(
 
 
 # ==========================================
-# 9. MÓDULO DE DOCUMENTOS ACADÊMICOS
+# 9. MÓDULO DE DOCUMENTOS E RELATÓRIOS PDF
 # ==========================================
 @app.get("/api/v1/documentos")
 async def listar_documentos():
@@ -1130,9 +1820,36 @@ async def registrar_emissao_documento(
     }
 
 
-# ==========================================
-# 9.1 GERAÇÃO DE PDF DE DOCUMENTOS ACADÊMICOS
-# ==========================================
+@app.put("/api/v1/documentos/{documento_id}")
+async def atualizar_documento_emitido(
+    documento_id: str,
+    tipo_documento: str = Form(...),
+    observacao: str = Form("")
+):
+    checar_db()
+    ref = db.collection("documentos").document(documento_id)
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+    ref.update({
+        "tipo_documento": tipo_documento,
+        "observacao": observacao,
+        "data_atualizacao": datetime.now().isoformat()
+    })
+    return {"sucesso": True, "mensagem": "Documento atualizado com sucesso."}
+
+
+@app.delete("/api/v1/documentos/{documento_id}")
+async def excluir_documento_emitido(documento_id: str):
+    checar_db()
+    ref = db.collection("documentos").document(documento_id)
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Documento não encontrado.")
+
+    ref.delete()
+    return {"sucesso": True, "mensagem": "Documento excluído com sucesso."}
+
+
 @app.get("/api/v1/documentos/{documento_id}/pdf")
 async def gerar_pdf_documento(documento_id: str):
     try:
@@ -1247,9 +1964,6 @@ async def gerar_pdf_documento(documento_id: str):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
-# ==========================================
-# GERAÇÃO DO PDF DE RELATÓRIO DO CORPO DOCENTE
-# ==========================================
 @app.get("/api/v1/docentes/pdf")
 async def gerar_relatorio_docentes_pdf(q: str = None):
     try:
@@ -1361,9 +2075,6 @@ async def gerar_relatorio_docentes_pdf(q: str = None):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
-# ==========================================
-# GERAÇÃO DO PDF DE RELATÓRIO DE ALUNOS
-# ==========================================
 @app.get("/api/v1/alunos/pdf")
 async def gerar_relatorio_alunos_pdf(q: str = None):
     try:
@@ -1459,65 +2170,6 @@ async def gerar_relatorio_alunos_pdf(q: str = None):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
-@app.delete("/api/v1/docente/material/{material_id}")
-async def excluir_material_didatico(material_id: str, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-
-    ref = db.collection("materiais_didaticos").document(material_id)
-    doc = ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Material não encontrado.")
-
-    if doc.to_dict().get("docente_id") != docente_id:
-        raise HTTPException(status_code=403, detail="Você não tem permissão para excluir este material.")
-
-    ref.delete()
-    return {"sucesso": True, "mensagem": "Material excluído com sucesso."}
-
-
-@app.put("/api/v1/docente/material/{material_id}")
-async def editar_material_didatico(material_id: str, payload: MaterialEdicaoPayload, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-
-    ref = db.collection("materiais_didaticos").document(material_id)
-    doc = ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Material não encontrado.")
-
-    if doc.to_dict().get("docente_id") != docente_id:
-        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este material.")
-
-    ref.update({
-        "titulo": payload.titulo,
-        "url_arquivo": payload.url_arquivo
-    })
-
-    return {"sucesso": True, "mensagem": "Material atualizado com sucesso."}
-
-
-@app.put("/api/v1/docente/perfil/atualizar")
-async def atualizar_perfil_docente(payload: PerfilDocentePayload, authorization: str = Header(None)):
-    checar_db()
-    docente_id = validar_token_docente(authorization)
-
-    ref = db.collection("docentes").document(docente_id)
-    doc = ref.get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Docente não encontrado.")
-
-    ref.update({
-        "email": payload.email,
-        "telefone": payload.telefone
-    })
-
-    return {"sucesso": True, "mensagem": "Contatos atualizados com sucesso."}
-
-
 # ==========================================
 # 10. MÓDULO DO ALUNO (PORTAL DO ESTUDANTE)
 # ==========================================
@@ -1525,6 +2177,28 @@ def validar_token_aluno(authorization: str):
     if not authorization or not authorization.startswith("Bearer aluno_"):
         raise HTTPException(status_code=401, detail="Acesso não autorizado para aluno.")
     return authorization.replace("Bearer aluno_", "")
+
+
+def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> float:
+    if not isinstance(avaliacoes_config, list) or not avaliacoes_config:
+        return 1.0
+
+    if chave_nota.startswith("av_"):
+        partes = chave_nota.split("_", 2)
+        if len(partes) >= 2 and partes[1].isdigit():
+            idx = int(partes[1])
+            if 0 <= idx < len(avaliacoes_config):
+                av = avaliacoes_config[idx]
+                if isinstance(av, dict):
+                    return float(av.get("peso", 1) or 1)
+
+    chave_upper = chave_nota.strip().upper()
+    for av in avaliacoes_config:
+        if isinstance(av, dict):
+            tipo_av = str(av.get("tipo") or av.get("nome") or "").strip().upper()
+            if tipo_av == chave_upper:
+                return float(av.get("peso", 1) or 1)
+    return 1.0
 
 
 @app.get("/api/v1/aluno/dashboard")
@@ -1602,7 +2276,7 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
             medias_disciplinas.append(soma_ponderada / soma_pesos)
 
     media_geral = round(sum(medias_disciplinas) / len(medias_disciplinas), 1) if medias_disciplinas else 0.0
-    is_pendente = aluno_dados.get("possui_pendencia_financeira") == "Sim"
+    is_pendente = aluno_esta_pendente_financeiro(aluno_dados)
 
     return {
         "media_geral": media_geral,
@@ -1833,528 +2507,6 @@ async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None
     return materiais
 
 
-@app.get("/api/v1/aluno/perfil")
-async def obter_perfil_aluno(authorization: str = Header(None)):
-    checar_db()
-    aluno_id = validar_token_aluno(authorization)
-    doc = db.collection("alunos").document(aluno_id).get()
-
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado")
-
-    dados = doc.to_dict()
-    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
-    valor_mensalidade = calcular_valor_mensal_aluno(dados, cursos_map)
-
-    return {
-        "cpf": dados.get("cpf"),
-        "email": dados.get("email"),
-        "telefone": dados.get("telefone"),
-        "endereco": dados.get("endereco"),
-        "dia_vencimento": dados.get("dia_vencimento", 10),
-        "valor_mensalidade": valor_mensalidade,
-        "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não"),
-        "detalhes_pendencia_financeira": dados.get("detalhes_pendencia_financeira", ""),
-        "status_comprovante": dados.get("status_comprovante", "Nenhum"),
-        "numero_nf": dados.get("numero_nf", ""),
-        "mensalidades_json": dados.get("mensalidades_json", "{}")
-    }
-
-
-@app.post("/api/v1/aluno/financeiro/comprovante")
-async def aluno_enviar_comprovante_portal(
-        comprovante: UploadFile = File(...),
-        competencia: str = Form(""),
-        authorization: str = Header(None)
-):
-    checar_db()
-    aluno_id = validar_token_aluno(authorization)
-
-    conteudo_bytes = await comprovante.read()
-    if len(conteudo_bytes) > 2097152:
-        raise HTTPException(status_code=400, detail="O arquivo excede o limite máximo de 2MB.")
-
-    mime_type = comprovante.content_type or "application/octet-stream"
-    b64_str = base64.b64encode(conteudo_bytes).decode("utf-8")
-    data_uri = f"data:{mime_type};base64,{b64_str}"
-
-    mes_ref = competencia.strip() or datetime.now().strftime("%Y-%m")
-
-    dados_comp = {
-        "aluno_id": aluno_id,
-        "competencia": mes_ref,
-        "nome_arquivo": comprovante.filename,
-        "content_type": mime_type,
-        "arquivo_base64": data_uri,
-        "status": "Em Análise",
-        "data_envio": datetime.now().isoformat()
-    }
-    _, doc_ref = db.collection("comprovantes_pagamento").add(dados_comp)
-
-    aluno_ref = db.collection("alunos").document(aluno_id)
-    aluno_snap = aluno_ref.get()
-    aluno_dados = aluno_snap.to_dict() if aluno_snap.exists else {}
-
-    mapa_raw = aluno_dados.get("mensalidades_json", "{}")
-    try:
-        mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else dict(mapa_raw or {})
-    except Exception:
-        mapa = {}
-
-    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
-    valor_aluno = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
-
-    parcela_mes = mapa.get(mes_ref, {"competencia": mes_ref, "valor": valor_aluno, "numero_nf": ""})
-    if not parcela_mes.get("valor"):
-        parcela_mes["valor"] = valor_aluno
-    parcela_mes["status"] = "Em Análise"
-    parcela_mes["comprovante_id"] = doc_ref.id
-    parcela_mes["comprovante_nome"] = comprovante.filename
-    parcela_mes["atualizado_em"] = datetime.now().isoformat()
-    mapa[mes_ref] = parcela_mes
-
-    aluno_ref.update({
-        "status_comprovante": "Em Análise",
-        "ultimo_comprovante_id": doc_ref.id,
-        "ultimo_comprovante_nome": comprovante.filename,
-        "ultimo_comprovante_data": datetime.now().isoformat(),
-        "mensalidades_json": json.dumps(mapa, ensure_ascii=False)
-    })
-
-    return {"sucesso": True, "mensagem": f"Comprovante da competência {mes_ref} enviado com sucesso!"}
-
-
-@app.get("/api/v1/financeiro/comprovante/{aluno_id}")
-async def visualizar_comprovante_aluno(aluno_id: str, competencia: str = ""):
-    checar_db()
-    aluno_doc = db.collection("alunos").document(aluno_id).get()
-    if not aluno_doc.exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-
-    aluno_dados = aluno_doc.to_dict() or {}
-    comp_id = None
-
-    if competencia:
-        mapa_raw = aluno_dados.get("mensalidades_json", "{}")
-        try:
-            mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else (mapa_raw or {})
-            parcela_mes = mapa.get(competencia, {})
-            comp_id = parcela_mes.get("comprovante_id")
-        except Exception:
-            comp_id = None
-
-        if not comp_id:
-            docs_comp = (
-                db.collection("comprovantes_pagamento")
-                .where("aluno_id", "==", str(aluno_id))
-                .where("competencia", "==", competencia)
-                .stream()
-            )
-            lista_comp = [{"id": d.id, **d.to_dict()} for d in docs_comp]
-            if lista_comp:
-                lista_comp.sort(key=lambda x: x.get("data_envio", ""), reverse=True)
-                comp_id = lista_comp[0]["id"]
-
-    if not comp_id:
-        comp_id = aluno_dados.get("ultimo_comprovante_id")
-
-    if not comp_id:
-        raise HTTPException(status_code=404, detail="Nenhum comprovante anexado para este mês.")
-
-    comp_doc = db.collection("comprovantes_pagamento").document(comp_id).get()
-    if not comp_doc.exists:
-        raise HTTPException(status_code=404, detail="Arquivo do comprovante não localizado.")
-
-    comp = comp_doc.to_dict()
-    return {
-        "nome_arquivo": comp.get("nome_arquivo"),
-        "content_type": comp.get("content_type"),
-        "arquivo_base64": comp.get("arquivo_base64"),
-        "data_envio": comp.get("data_envio"),
-        "competencia": comp.get("competencia", competencia)
-    }
-
-
-def aluno_esta_pendente_financeiro(aluno_dict: dict) -> bool:
-    flag = aluno_dict.get("possui_pendencia_financeira")
-    if flag == "Sim":
-        return True
-    if aluno_dict.get("status") == "Pendente" and flag != "Não":
-        return True
-    return False
-
-
-def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
-    ids_cursos = set()
-    if aluno_dict.get("curso_id") or aluno_dict.get("curso"):
-        ids_cursos.add(str(aluno_dict.get("curso_id") or aluno_dict.get("curso")))
-
-    c_json = aluno_dict.get("cursos_json", [])
-    if isinstance(c_json, str):
-        try:
-            c_json = json.loads(c_json)
-        except Exception:
-            c_json = []
-
-    if isinstance(c_json, list):
-        for item in c_json:
-            if isinstance(item, dict) and item.get("curso_id"):
-                ids_cursos.add(str(item["curso_id"]))
-
-    total = 0.0
-    for cid in ids_cursos:
-        curso = cursos_map.get(cid)
-        if not curso:
-            continue
-        if str(curso.get("promocao_ativa")).lower() in ["sim", "true", "1"] and curso.get("valor_promocional"):
-            try:
-                total += float(str(curso.get("valor_promocional")).replace(",", "."))
-                continue
-            except Exception:
-                pass
-        try:
-            total += float(str(curso.get("valor_mensalidade", 0) or 0).replace(",", "."))
-        except Exception:
-            pass
-
-    return round(total, 2)
-
-
-@app.get("/api/v1/financeiro/indicadores")
-async def obter_indicadores_financeiros():
-    checar_db()
-    alunos_docs = [doc.to_dict() for doc in db.collection("alunos").stream()]
-    cursos_map = {doc.id: doc.to_dict() for doc in db.collection("cursos").stream()}
-
-    total_recebido = 0.0
-    total_receber = 0.0
-    inadimplencia_qtd = 0
-    pagamentos_mes_qtd = 0
-
-    for a in alunos_docs:
-        if a.get("status") in ["Trancado", "Concluído"]:
-            continue
-        valor = calcular_valor_mensal_aluno(a, cursos_map)
-        if aluno_esta_pendente_financeiro(a):
-            total_receber += valor
-            inadimplencia_qtd += 1
-        else:
-            total_recebido += valor
-            pagamentos_mes_qtd += 1
-
-    return {
-        "total_recebido": round(total_recebido, 2),
-        "total_receber": round(total_receber, 2),
-        "inadimplencia": inadimplencia_qtd,
-        "pagamentos_mes": pagamentos_mes_qtd
-    }
-
-
-@app.post("/api/v1/alunos/{aluno_id}/pendencia")
-async def atualizar_pendencia_aluno(
-        aluno_id: str,
-        possui_pendencia_financeira: str = Form("Não"),
-        detalhes_pendencia_financeira: str = Form(""),
-        numero_nf: str = Form(""),
-        mensalidades_json: str = Form("")
-):
-    checar_db()
-    ref = db.collection("alunos").document(aluno_id)
-    doc_snap = ref.get()
-    if not doc_snap.exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-
-    aluno_atual = doc_snap.to_dict() or {}
-    status_atual = aluno_atual.get("status", "Pendente")
-
-    update_data = {
-        "possui_pendencia_financeira": possui_pendencia_financeira,
-        "detalhes_pendencia_financeira": detalhes_pendencia_financeira if possui_pendencia_financeira == "Sim" else "",
-        "numero_nf": numero_nf,
-        "data_atualizacao_financeira": datetime.now().isoformat()
-    }
-
-    if mensalidades_json:
-        update_data["mensalidades_json"] = mensalidades_json
-        try:
-            mapa = json.loads(mensalidades_json) if isinstance(mensalidades_json, str) else mensalidades_json
-            if isinstance(mapa, dict):
-                for comp, info in mapa.items():
-                    if isinstance(info, dict):
-                        db.collection("mensalidades").document(f"{aluno_id}__{comp}").set({
-                            "aluno_id": str(aluno_id),
-                            "competencia": comp,
-                            "valor": float(info.get("valor", 0) or 0),
-                            "status": info.get("status", "Pendente"),
-                            "numero_nf": info.get("numero_nf", ""),
-                            "atualizado_em": info.get("atualizado_em", datetime.now().isoformat())
-                        }, merge=True)
-        except Exception:
-            pass
-
-    tem_pendencia_real = (possui_pendencia_financeira == "Sim")
-    if mensalidades_json:
-        try:
-            mapa_check = json.loads(mensalidades_json) if isinstance(mensalidades_json, str) else mensalidades_json
-            if isinstance(mapa_check, dict) and len(mapa_check) > 0:
-                tem_pendencia_real = any(
-                    isinstance(v, dict) and v.get("status") == "Pendente"
-                    for v in mapa_check.values()
-                )
-        except Exception:
-            pass
-
-    update_data["possui_pendencia_financeira"] = "Sim" if tem_pendencia_real else "Não"
-    if not tem_pendencia_real:
-        update_data["detalhes_pendencia_financeira"] = ""
-        update_data["status_comprovante"] = "Aprovado"
-        if status_atual not in ["Trancado", "Concluído"]:
-            update_data["status"] = "Ativo"
-    else:
-        update_data["status_comprovante"] = "Pendente"
-        if status_atual == "Ativo":
-            update_data["status"] = "Pendente"
-
-    ref.update(update_data)
-    return {"sucesso": True, "mensagem": "Situação financeira mensal atualizada com sucesso."}
-
-@app.post("/api/v1/alunos/{aluno_id}/nf")
-async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form("")):
-    checar_db()
-    ref = db.collection("alunos").document(aluno_id)
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
-
-    ref.update({"numero_nf": numero_nf})
-    return {"sucesso": True, "mensagem": "Nota Fiscal atualizada."}
-
-
-class DiarioAdminItem(BaseModel):
-    aluno_id: str
-    curso_id: str
-    disciplina: str
-    periodo: Optional[str] = "Módulo Único"
-    matricula: Optional[str] = None
-    nome: Optional[str] = None
-    faltas: int = 0
-    notas: dict = {}
-    media: Optional[float] = None
-    situacao: Optional[str] = None
-
-
-class DiarioAdminPayload(BaseModel):
-    curso_id: Optional[str] = None
-    modulo: Optional[str] = None
-    periodo: Optional[str] = None
-    lancamentos: List[DiarioAdminItem] = []
-    registros: Optional[List[DiarioAdminItem]] = None
-
-
-@app.get("/api/v1/diario")
-async def listar_diario_consolidado_admin(
-    curso_id: Optional[str] = None,
-    modulo: Optional[str] = None,
-    periodo: Optional[str] = None
-):
-    checar_db()
-    alunos = [{"id": d.id, **d.to_dict()} for d in db.collection("alunos").stream()]
-    cursos = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
-
-    agregado = {}
-    diarios_lista = [doc.to_dict() for doc in db.collection("diarios").stream()]
-    diarios_lista.sort(key=lambda x: x.get("data_registro", ""))
-    for d in diarios_lista:
-        t_id = d.get("turma_id", "")
-        if "_" not in t_id:
-            continue
-        c_id, disc_nome = t_id.split("_", 1)
-        if curso_id and str(c_id) != str(curso_id):
-            continue
-        disc_key = disc_nome.strip().upper()
-        if modulo and disc_key != modulo.strip().upper():
-            continue
-
-        for lanc in d.get("avaliacoes", []):
-            aid = str(lanc.get("aluno_id"))
-            chave = (aid, c_id, disc_key)
-            if chave not in agregado:
-                agregado[chave] = {"faltas": 0, "notas": {}}
-            agregado[chave]["faltas"] += int(lanc.get("faltas", 0))
-            agregado[chave]["notas"].update(lanc.get("notas", {}))
-
-    resultado = []
-    for a in alunos:
-        if a.get("status") in ["Trancado", "Concluído", "Cancelado"]:
-            continue
-
-        ids_cursos = set()
-        if a.get("curso_id") or a.get("curso"):
-            ids_cursos.add(str(a.get("curso_id") or a.get("curso")))
-        c_json = a.get("cursos_json", [])
-        if isinstance(c_json, str):
-            try:
-                c_json = json.loads(c_json)
-            except Exception:
-                c_json = []
-        if isinstance(c_json, list):
-            for item in c_json:
-                if isinstance(item, dict) and item.get("curso_id"):
-                    ids_cursos.add(str(item["curso_id"]))
-
-        for cid in ids_cursos:
-            if curso_id and str(cid) != str(curso_id):
-                continue
-            curso_obj = cursos.get(cid)
-            if not curso_obj:
-                continue
-            nome_curso = curso_obj.get("nome_curso", "Curso")
-
-            for m in curso_obj.get("grade_curricular", []):
-                if not isinstance(m, dict):
-                    continue
-                sub_lista = m.get("disciplinas", [])
-                itens = sub_lista if (isinstance(sub_lista, list) and len(sub_lista) > 0) else [m]
-
-                for disc in itens:
-                    if not isinstance(disc, dict):
-                        continue
-                    nome_disc = disc.get("nome") or disc.get("disciplina")
-                    if not nome_disc:
-                        continue
-                    if modulo and nome_disc.strip().upper() != modulo.strip().upper():
-                        continue
-
-                    dados_lanc = agregado.get((a["id"], cid, nome_disc.strip().upper()), {"faltas": 0, "notas": {}})
-                    avals = [
-                        av.get("tipo") if isinstance(av, dict) else av
-                        for av in disc.get("avaliacoes", ["AV1", "AV2", "Final"])
-                    ]
-
-                    resultado.append({
-                        "aluno_id": a["id"],
-                        "nome": a.get("nome", "Aluno"),
-                        "nome_aluno": a.get("nome", "Aluno"),
-                        "matricula": a.get("matricula", "S/N"),
-                        "curso_id": cid,
-                        "nome_curso": nome_curso,
-                        "disciplina": nome_disc,
-                        "modulo": nome_disc,
-                        "periodo": periodo or "Módulo Único",
-                        "avaliacoes_previstas": avals,
-                        "faltas": dados_lanc["faltas"],
-                        "notas": dados_lanc["notas"]
-                    })
-
-    return resultado
-
-
-@app.post("/api/v1/diario/salvar")
-async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
-    checar_db()
-    lista_itens = payload.lancamentos if payload.lancamentos else (payload.registros or [])
-
-    for reg in lista_itens:
-        turma_id = f"{reg.curso_id}_{reg.disciplina}"
-        docs_existentes = db.collection("diarios").where("turma_id", "==", turma_id).stream()
-        for doc in docs_existentes:
-            d = doc.to_dict()
-            novas_avals = [av for av in d.get("avaliacoes", []) if str(av.get("aluno_id")) != str(reg.aluno_id)]
-            if len(novas_avals) != len(d.get("avaliacoes", [])):
-                if novas_avals:
-                    doc.reference.update({"avaliacoes": novas_avals})
-                else:
-                    doc.reference.delete()
-
-        doc_id = f"ADMIN__{reg.curso_id}__{reg.disciplina.strip().upper()}__{reg.aluno_id}".replace("/", "-")
-        db.collection("diarios").document(doc_id).set({
-            "docente_id": "SECRETARIA_ADMIN",
-            "turma_id": turma_id,
-            "data_aula": datetime.now().strftime("%Y-%m-%d"),
-            "conteudo_ministrado": "Consolidação Oficial - Secretaria Acadêmica",
-            "origem": "Admin",
-            "avaliacoes": [{
-                "aluno_id": reg.aluno_id,
-                "faltas": reg.faltas,
-                "notas": reg.notas
-            }],
-            "data_registro": datetime.now().isoformat()
-        })
-
-    return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
-
-
-@app.put("/api/v1/documentos/{documento_id}")
-async def atualizar_documento_emitido(
-    documento_id: str,
-    tipo_documento: str = Form(...),
-    observacao: str = Form("")
-):
-    checar_db()
-    ref = db.collection("documentos").document(documento_id)
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Documento não encontrado.")
-
-    ref.update({
-        "tipo_documento": tipo_documento,
-        "observacao": observacao,
-        "data_atualizacao": datetime.now().isoformat()
-    })
-    return {"sucesso": True, "mensagem": "Documento atualizado com sucesso."}
-
-
-@app.delete("/api/v1/documentos/{documento_id}")
-async def excluir_documento_emitido(documento_id: str):
-    checar_db()
-    ref = db.collection("documentos").document(documento_id)
-    if not ref.get().exists:
-        raise HTTPException(status_code=404, detail="Documento não encontrado.")
-
-    ref.delete()
-    return {"sucesso": True, "mensagem": "Documento excluído com sucesso."}
-
-
-@app.put("/api/v1/cursos/{curso_id}")
-async def atualizar_curso(
-        curso_id: str,
-        codigo: str = Form(...),
-        nome_curso: str = Form(...),
-        categoria: str = Form("Técnico"),
-        modalidade: str = Form("Presencial"),
-        duracao: str = Form(None),
-        valor_matricula: float = Form(0.0),
-        valor_mensalidade: float = Form(...),
-        promocao_ativa: str = Form("Não"),
-        valor_promocional: str = Form(None),
-        descricao: str = Form(""),
-        foto_capa: str = Form(""),
-        disciplinas_json: str = Form("[]")
-):
-    checar_db()
-    try:
-        grade = json.loads(disciplinas_json)
-    except Exception:
-        grade = []
-
-    dados_atualizados = {
-        "codigo": codigo,
-        "nome_curso": nome_curso.upper(),
-        "categoria": categoria,
-        "modalidade": modalidade,
-        "duracao": duracao,
-        "valor_matricula": valor_matricula,
-        "valor_mensalidade": valor_mensalidade,
-        "promocao_ativa": promocao_ativa,
-        "valor_promocional": valor_promocional,
-        "descricao": descricao,
-        "foto_capa": foto_capa,
-        "grade_curricular": grade,
-        "data_atualizacao": datetime.now().isoformat()
-    }
-
-    db.collection("cursos").document(curso_id).update(dados_atualizados)
-    return {"sucesso": True, "mensagem": "Curso atualizado com sucesso"}
-
-
 @app.get("/api/v1/aluno/notificacoes")
 async def listar_notificacoes_aluno(authorization: str = Header(None)):
     checar_db()
@@ -2404,10 +2556,32 @@ async def listar_notificacoes_aluno(authorization: str = Header(None)):
     return notificacoes
 
 
-class PerfilAlunoUpdatePayload(BaseModel):
-    email: Optional[str] = None
-    telefone: Optional[str] = None
-    endereco: Optional[str] = None
+@app.get("/api/v1/aluno/perfil")
+async def obter_perfil_aluno(authorization: str = Header(None)):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+    doc = db.collection("alunos").document(aluno_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    dados = doc.to_dict()
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    valor_mensalidade = calcular_valor_mensal_aluno(dados, cursos_map)
+
+    return {
+        "cpf": dados.get("cpf"),
+        "email": dados.get("email"),
+        "telefone": dados.get("telefone"),
+        "endereco": dados.get("endereco"),
+        "dia_vencimento": dados.get("dia_vencimento", 10),
+        "valor_mensalidade": valor_mensalidade,
+        "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não"),
+        "detalhes_pendencia_financeira": dados.get("detalhes_pendencia_financeira", ""),
+        "status_comprovante": dados.get("status_comprovante", "Nenhum"),
+        "numero_nf": dados.get("numero_nf", ""),
+        "mensalidades_json": dados.get("mensalidades_json", "{}")
+    }
 
 
 @app.put("/api/v1/aluno/perfil")
@@ -2430,87 +2604,6 @@ async def atualizar_perfil_aluno(payload: PerfilAlunoUpdatePayload, authorizatio
     return {"sucesso": True, "mensagem": "Dados cadastrais atualizados com sucesso!"}
 
 
-def extrair_peso_nota_firestore(chave_nota: str, avaliacoes_config: list) -> float:
-    if not isinstance(avaliacoes_config, list) or not avaliacoes_config:
-        return 1.0
-
-    if chave_nota.startswith("av_"):
-        partes = chave_nota.split("_", 2)
-        if len(partes) >= 2 and partes[1].isdigit():
-            idx = int(partes[1])
-            if 0 <= idx < len(avaliacoes_config):
-                av = avaliacoes_config[idx]
-                if isinstance(av, dict):
-                    return float(av.get("peso", 1) or 1)
-
-    chave_upper = chave_nota.strip().upper()
-    for av in avaliacoes_config:
-        if isinstance(av, dict):
-            tipo_av = str(av.get("tipo") or av.get("nome") or "").strip().upper()
-            if tipo_av == chave_upper:
-                return float(av.get("peso", 1) or 1)
-    return 1.0
-
-
-class ParcelaUpdatePayload(BaseModel):
-    aluno_id: str
-    competencia: str
-    referencia_label: Optional[str] = None
-    vencimento: Optional[str] = None
-    valor: float = 0.0
-    status: str
-    numero_nf: Optional[str] = ""
-    data_pagamento: Optional[str] = None
-
-
-def consolidar_status_financeiro_aluno(aluno_id: str):
-    parcelas_docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
-    parcelas = [p.to_dict() for p in parcelas_docs]
-
-    pendentes = [p for p in parcelas if p.get("status") == "Pendente"]
-    em_analise = [p for p in parcelas if p.get("status") == "Em Análise"]
-
-    tem_pendencia = "Sim" if len(pendentes) > 0 else "Não"
-    status_comp = "Em Análise" if len(em_analise) > 0 else ("Quitado" if len(pendentes) == 0 else "Pendente")
-    detalhes = ", ".join([p.get("referencia_label") or p.get("competencia") for p in pendentes])
-
-    db.collection("alunos").document(str(aluno_id)).set({
-        "possui_pendencia_financeira": tem_pendencia,
-        "status_comprovante": status_comp,
-        "detalhes_pendencia_financeira": detalhes
-    }, merge=True)
-
-
-@app.get("/api/v1/financeiro/parcelas/{aluno_id}")
-def listar_parcelas_aluno(aluno_id: str):
-    docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
-    lista = []
-    for d in docs:
-        item = d.to_dict()
-        item["id"] = d.id
-        lista.append(item)
-    lista.sort(key=lambda x: x.get("competencia", ""))
-    return lista
-
-
-@app.post("/api/v1/financeiro/parcela/salvar")
-def salvar_parcela_individual(payload: ParcelaUpdatePayload):
-    doc_id = f"{payload.aluno_id}__{payload.competencia}"
-    dados = {
-        "aluno_id": str(payload.aluno_id),
-        "competencia": payload.competencia,
-        "referencia_label": payload.referencia_label or payload.competencia,
-        "vencimento": payload.vencimento or "",
-        "valor": float(payload.valor or 0),
-        "status": payload.status,
-        "numero_nf": payload.numero_nf or "",
-        "data_pagamento": payload.data_pagamento or (datetime.now().strftime("%Y-%m-%d") if payload.status == "Pago" else None)
-    }
-    db.collection("mensalidades").document(doc_id).set(dados, merge=True)
-    consolidar_status_financeiro_aluno(str(payload.aluno_id))
-    return {"sucesso": True, "parcela": dados}
-
-
 @app.get("/api/v1/aluno/mensalidades")
 def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
     checar_db()
@@ -2520,51 +2613,73 @@ def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
     aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
 
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
-    valor_base = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
 
-    mapa_final = {}
-
-    # 1. Lê da coleção 'mensalidades'
-    for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream():
-        item = d.to_dict()
-        comp = item.get("competencia")
-        if comp:
-            item["id"] = d.id
-            mapa_final[comp] = item
-
-    # 2. Sobrepõe com 'mensalidades_json' do cadastro do aluno (Admin tem prioridade)
-    m_json_raw = aluno_dados.get("mensalidades_json", "{}")
-    try:
-        m_json = json.loads(m_json_raw) if isinstance(m_json_raw, str) else (m_json_raw or {})
-        if isinstance(m_json, dict):
-            for comp, val in m_json.items():
-                if isinstance(val, dict):
-                    mapa_final[comp] = {**mapa_final.get(comp, {}), **val, "competencia": comp}
-    except Exception:
-        pass
-
-    # 3. Só cria o mês atual padrão se não existir NADA nem na coleção nem no JSON
-    if not mapa_final:
-        hoje = datetime.now()
-        mes_atual_key = f"{hoje.year}-{str(hoje.month).zfill(2)}"
-        is_pend = aluno_dados.get("possui_pendencia_financeira") == "Sim" or (
-            aluno_dados.get("status") == "Pendente" and aluno_dados.get("possui_pendencia_financeira") != "Não"
-        )
-        parcela_padrao = {
-            "aluno_id": str(aluno_id),
-            "competencia": mes_atual_key,
-            "referencia_label": f"Mensalidade {hoje.strftime('%B/%Y')}",
-            "vencimento": f"{hoje.year}-{str(hoje.month).zfill(2)}-{str(aluno_dados.get('dia_vencimento', '10')).zfill(2)}",
-            "valor": valor_base if valor_base > 0 else 150.0,
-            "status": "Pendente" if is_pend else "Pago",
-            "numero_nf": aluno_dados.get("numero_nf", "")
-        }
-        db.collection("mensalidades").document(f"{aluno_id}__{mes_atual_key}").set(parcela_padrao, merge=True)
-        mapa_final[mes_atual_key] = parcela_padrao
-
+    mapa_final = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_dados, cursos_map, mens_docs)
     lista = list(mapa_final.values())
     lista.sort(key=lambda x: x.get("competencia", ""), reverse=True)
     return lista
+
+
+@app.post("/api/v1/aluno/financeiro/comprovante")
+async def aluno_enviar_comprovante_portal(
+        comprovante: UploadFile = File(...),
+        competencia: str = Form(""),
+        authorization: str = Header(None)
+):
+    checar_db()
+    aluno_id = validar_token_aluno(authorization)
+
+    conteudo_bytes = await comprovante.read()
+    if len(conteudo_bytes) > 2097152:
+        raise HTTPException(status_code=400, detail="O arquivo excede o limite máximo de 2MB.")
+
+    mime_type = comprovante.content_type or "application/octet-stream"
+    b64_str = base64.b64encode(conteudo_bytes).decode("utf-8")
+    data_uri = f"data:{mime_type};base64,{b64_str}"
+
+    mes_ref = competencia.strip() or datetime.now().strftime("%Y-%m")
+
+    dados_comp = {
+        "aluno_id": aluno_id,
+        "competencia": mes_ref,
+        "nome_arquivo": comprovante.filename,
+        "content_type": mime_type,
+        "arquivo_base64": data_uri,
+        "status": "Em Análise",
+        "data_envio": datetime.now().isoformat()
+    }
+    _, doc_ref = db.collection("comprovantes_pagamento").add(dados_comp)
+
+    aluno_ref = db.collection("alunos").document(aluno_id)
+    aluno_snap = aluno_ref.get()
+    aluno_dados = aluno_snap.to_dict() if aluno_snap.exists else {}
+
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+    mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_dados, cursos_map, mens_docs)
+
+    valor_aluno = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
+    parcela_mes = mapa.get(mes_ref, {"aluno_id": str(aluno_id), "competencia": mes_ref, "valor": valor_aluno, "numero_nf": ""})
+    if not parcela_mes.get("valor"):
+        parcela_mes["valor"] = valor_aluno
+    parcela_mes["status"] = "Em Análise"
+    parcela_mes["comprovante_id"] = doc_ref.id
+    parcela_mes["comprovante_nome"] = comprovante.filename
+    parcela_mes["atualizado_em"] = datetime.now().isoformat()
+    mapa[mes_ref] = parcela_mes
+
+    db.collection("mensalidades").document(f"{aluno_id}__{mes_ref}").set(parcela_mes, merge=True)
+
+    aluno_ref.update({
+        "ultimo_comprovante_id": doc_ref.id,
+        "ultimo_comprovante_nome": comprovante.filename,
+        "ultimo_comprovante_data": datetime.now().isoformat()
+    })
+    sincronizar_estado_aluno(str(aluno_id), mapa)
+
+    return {"sucesso": True, "mensagem": f"Comprovante da competência {mes_ref} enviado com sucesso!"}
+
 
 def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
     checar_db()
@@ -2574,29 +2689,9 @@ def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
 
     aluno = aluno_doc.to_dict() or {}
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
-
-    mapa_raw = aluno.get("mensalidades_json", "{}")
-    try:
-        mapa = json.loads(mapa_raw) if isinstance(mapa_raw, str) else (mapa_raw or {})
-    except Exception:
-        mapa = {}
-
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+    mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno, cursos_map, mens_docs)
     parcela = mapa.get(competencia)
-
-    if not parcela:
-        m_doc = db.collection("mensalidades").document(f"{aluno_id}__{competencia}").get()
-        if m_doc.exists:
-            parcela = m_doc.to_dict()
-
-    mes_atual = datetime.now().strftime("%Y-%m")
-    if not parcela and competencia == mes_atual and aluno.get("possui_pendencia_financeira") != "Sim":
-        parcela = {
-            "competencia": competencia,
-            "status": "Pago",
-            "valor": calcular_valor_mensal_aluno(aluno, cursos_map),
-            "numero_nf": aluno.get("numero_nf", ""),
-            "atualizado_em": aluno.get("data_atualizacao_financeira", datetime.now().isoformat())
-        }
 
     if not parcela or parcela.get("status") != "Pago":
         raise HTTPException(status_code=400, detail="Recibo disponível apenas para mensalidades com status Pago.")
