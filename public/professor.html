@@ -1086,10 +1086,15 @@ async function salvarDiario(btnElement) {
         const falta = linha.querySelector('.input-falta').value;
 
         let dictNotas = {};
+        let notasRemovidas = [];
         linha.querySelectorAll('.input-nota-dinamica').forEach(inp => {
+            const chave = inp.getAttribute('data-chave');
+            const tipo = inp.getAttribute('data-tipo');
             if (inp.value !== '') {
-                const chave = inp.getAttribute('data-chave');
                 dictNotas[chave] = parseFloat(inp.value);
+            } else {
+                notasRemovidas.push(chave);
+                if (tipo) notasRemovidas.push(tipo);
             }
         });
 
@@ -1100,7 +1105,8 @@ async function salvarDiario(btnElement) {
                 aluno_id: alunoId,
                 faltas: parseInt(falta) || 0,
                 notas: dictNotas,
-                media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null,
+                notas_removidas: notasRemovidas,
+                media: mediaNum !== null ? Number(mediaNum.toFixed(1)) : null,
                 situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
             });
         }
@@ -1113,6 +1119,7 @@ async function salvarDiario(btnElement) {
         periodo: 'Módulo Único',
         data_aula: dataAula,
         conteudo_ministrado: conteudo.trim(),
+        avaliacoes_config: avaliacoesAtuaisDiario.map(av => ({ tipo: av.tipo, peso: av.peso, data: av.data })),
         lancamentos: arrayAlunos
     };
 
