@@ -200,20 +200,80 @@ def calcular_valor_mensal_aluno(aluno_dict: dict, cursos_map: dict) -> float:
     return round(total, 2)
 
 
-def obter_mapa_mensalidades_unificado(aluno_id: str, aluno_dict: dict, cursos_map: dict, colecao_mensalidades: list) -> dict:
-    """Mescla dados de alunos.mensalidades_json + coleção mensalidades + legado do aluno sem perder nada."""
+def calcular_valor_com_pontualidade(
+    valor_integral: float,
+    competencia: str,
+    data_referencia: Optional[datetime] = None
+) -> dict:
+    """
+    Regra oficial UNIVEAS:
+    - Pagamentos efetuados até o dia 05 do mês da competência (ou adiantados) têm 23% de desconto fixo.
+    - Passando o dia 05 da competência, perde o desconto e paga o valor integral cadastrado no curso.
+    """
+    ref = data_referencia or datetime.now()
+    valor_base = round(float(valor_integral or 0), 2)
+
+    try:
+        ano_comp, mes_comp = map(int, str(competencia).split("-")[:2])
+        data_limite = datetime(ano_comp, mes_comp, 5, 23, 59, 59)
+        tem_desconto = ref <= data_limite
+    except Exception:
+        tem_desconto = ref.day <= 5
+
+    if tem_desconto and valor_base > 0:
+        valor_final = round(valor_base * 0.77, 2)
+        desconto_valor = round(valor_base - valor_final, 2)
+        desconto_pct = 23
+    else:
+        valor_final = valor_base
+        desconto_valor = 0.0
+        desconto_pct = 0
+
+    return {
+        "valor_integral": valor_base,
+        "valor_final": valor_final,
+        "desconto_percentual": desconto_pct,
+        "desconto_valor": desconto_valor,
+        "elegivel_desconto": tem_desconto
+    }
+
+
+def _parse_data_pagamento_para_dt(data_pag_raw) -> Optional[datetime]:
+    if not data_pag_raw:
+        return None
+    s = str(data_pag_raw).strip()
+    try:
+        if "/" in s:
+            parte_data = s.split(" ")[0]
+            d, m, a = map(int, parte_data.split("/"))
+            return datetime(a, m, d, 12, 0, 0)
+        return datetime.fromisoformat(s.replace("Z", ""))
+    except Exception:
+        return None
+
+
+def obter_mapa_mensalidades_unificado(
+    aluno_id: str,
+    aluno_dict: dict,
+    cursos_map: dict,
+    colecao_mensalidades: list
+) -> dict:
+    """Mescla dados de alunos.mensalidades_json + coleção mensalidades + legado com regra do dia 05 (23% OFF)."""
     mapa = {}
-    valor_padrao = calcular_valor_mensal_aluno(aluno_dict, cursos_map)
+    valor_integral_curso = calcular_valor_mensal_aluno(aluno_dict, cursos_map)
 
     for m in colecao_mensalidades:
         if str(m.get("aluno_id")) == str(aluno_id) and m.get("competencia"):
             comp = str(m["competencia"])
+            v_int = float(m.get("valor_integral") or valor_integral_curso or m.get("valor") or 0)
             mapa[comp] = {
                 "id": m.get("id", f"{aluno_id}__{comp}"),
                 "aluno_id": str(aluno_id),
                 "competencia": comp,
                 "status": m.get("status", "Pendente"),
-                "valor": float(m.get("valor") or valor_padrao or 0),
+                "valor_integral": v_int,
+                "valor": float(m.get("valor") or v_int or 0),
+                "desconto_percentual": int(m.get("desconto_percentual") or 0),
                 "numero_nf": m.get("numero_nf", ""),
                 "comprovante_id": m.get("comprovante_id"),
                 "comprovante_nome": m.get("comprovante_nome", ""),
@@ -232,6 +292,7 @@ def obter_mapa_mensalidades_unificado(aluno_id: str, aluno_dict: dict, cursos_ma
         for comp, info in m_json.items():
             if isinstance(info, dict):
                 base = mapa.get(comp, {})
+                v_int = float(info.get("valor_integral") or base.get("valor_integral") or valor_integral_curso or 0)
                 val_raw = info.get("valor")
                 mapa[comp] = {
                     **base,
@@ -239,30 +300,52 @@ def obter_mapa_mensalidades_unificado(aluno_id: str, aluno_dict: dict, cursos_ma
                     "id": base.get("id", f"{aluno_id}__{comp}"),
                     "aluno_id": str(aluno_id),
                     "competencia": comp,
-                    "valor": float(val_raw if val_raw not in [None, ""] else (base.get("valor") or valor_padrao or 0))
+                    "valor_integral": v_int,
+                    "valor": float(val_raw if val_raw not in [None, ""] else (base.get("valor") or v_int or 0))
                 }
 
     if not mapa:
         mes_atual = datetime.now().strftime("%Y-%m")
         is_pendente = aluno_esta_pendente_financeiro(aluno_dict)
-        status_legado = "Em Análise" if aluno_dict.get("status_comprovante") == "Em Análise" else ("Pendente" if is_pendente else "Pago")
+        status_legado = "Pendente" if is_pendente else "Pago"
+        calc = calcular_valor_com_pontualidade(valor_integral_curso, mes_atual)
         mapa[mes_atual] = {
             "id": f"{aluno_id}__{mes_atual}",
             "aluno_id": str(aluno_id),
             "competencia": mes_atual,
             "status": status_legado,
-            "valor": valor_padrao,
+            "valor_integral": calc["valor_integral"],
+            "valor": calc["valor_final"],
+            "desconto_percentual": calc["desconto_percentual"],
+            "elegivel_desconto": calc["elegivel_desconto"],
             "numero_nf": aluno_dict.get("numero_nf", ""),
-            "comprovante_id": aluno_dict.get("ultimo_comprovante_id"),
-            "comprovante_nome": aluno_dict.get("ultimo_comprovante_nome", ""),
             "detalhes": aluno_dict.get("detalhes_pendencia_financeira", "")
         }
+
+    # Recalcula dinamicamente o valor de parcelas EM ABERTO conforme a data atual (antes/depois do dia 05)
+    # e preserva o valor congelado das parcelas já PAGAS
+    for comp, parcela in mapa.items():
+        v_int = float(parcela.get("valor_integral") or valor_integral_curso or parcela.get("valor") or 0)
+        parcela["valor_integral"] = v_int
+        if parcela.get("status") != "Pago":
+            calc = calcular_valor_com_pontualidade(v_int, comp)
+            parcela["valor"] = calc["valor_final"]
+            parcela["desconto_percentual"] = calc["desconto_percentual"]
+            parcela["desconto_valor"] = calc["desconto_valor"]
+            parcela["elegivel_desconto"] = calc["elegivel_desconto"]
+        else:
+            if not parcela.get("valor") or float(parcela.get("valor")) <= 0:
+                dt_pag = _parse_data_pagamento_para_dt(parcela.get("data_pagamento"))
+                calc_pag = calcular_valor_com_pontualidade(v_int, comp, dt_pag)
+                parcela["valor"] = calc_pag["valor_final"]
+                parcela["desconto_percentual"] = calc_pag["desconto_percentual"]
+            parcela["elegivel_desconto"] = int(parcela.get("desconto_percentual") or 0) > 0
 
     return mapa
 
 
 def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
-    """Mantém o documento do aluno e a coleção 'mensalidades' 100% espelhados, ignorando parcelas futuras."""
+    """Mantém o documento do aluno e a coleção 'mensalidades' 100% espelhados, sem marcar parcelas futuras como atraso."""
     aluno_ref = db.collection("alunos").document(str(aluno_id))
     snap = aluno_ref.get()
     if not snap.exists:
@@ -272,7 +355,6 @@ def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
     status_atual = aluno_atual.get("status", "Pendente")
     mes_atual = datetime.now().strftime("%Y-%m")
 
-    # Considera inadimplente apenas competências vencidas ou do mês atual
     pendentes = [
         v for v in mapa_mensalidades.values()
         if v.get("status") == "Pendente" and str(v.get("competencia", "")) <= mes_atual
@@ -898,7 +980,7 @@ async def gerar_pdf_curso(curso_id: str):
 
 
 # ==========================================
-# 5. MÓDULO FINANCEIRO UNIFICADO (SEM DUPLICAÇÃO)
+# 5. MÓDULO FINANCEIRO UNIFICADO (REGRA DIA 05 - 23% OFF)
 # ==========================================
 @app.get("/api/v1/financeiro/mensalidades")
 async def listar_mensalidades(competencia: Optional[str] = None):
@@ -917,19 +999,24 @@ async def listar_mensalidades(competencia: Optional[str] = None):
         if mes_alvo in mapa:
             parcela = mapa[mes_alvo]
         else:
+            v_int = calcular_valor_mensal_aluno(a, cursos_map)
+            calc = calcular_valor_com_pontualidade(v_int, mes_alvo)
             parcela = {
                 "id": f"{a['id']}__{mes_alvo}",
                 "aluno_id": a["id"],
                 "competencia": mes_alvo,
                 "status": "Pendente",
-                "valor": calcular_valor_mensal_aluno(a, cursos_map),
+                "valor_integral": calc["valor_integral"],
+                "valor": calc["valor_final"],
+                "desconto_percentual": calc["desconto_percentual"],
+                "elegivel_desconto": calc["elegivel_desconto"],
                 "numero_nf": ""
             }
         lista_unificada.append({
             **parcela,
             "nome_aluno": a.get("nome", "Aluno"),
             "matricula": a.get("matricula", "S/N"),
-            "dia_vencimento": a.get("dia_vencimento", "10"),
+            "dia_vencimento": "05",
             "forma_pagamento": a.get("forma_pagamento", "PIX")
         })
 
@@ -953,10 +1040,13 @@ async def obter_indicadores_financeiros(competencia: Optional[str] = None):
         if a.get("status") in ["Trancado", "Concluído"]:
             continue
         mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
-        parcela = mapa.get(mes_alvo) or {
-            "status": "Pendente",
-            "valor": calcular_valor_mensal_aluno(a, cursos_map)
-        }
+        if mes_alvo in mapa:
+            parcela = mapa[mes_alvo]
+        else:
+            v_int = calcular_valor_mensal_aluno(a, cursos_map)
+            calc = calcular_valor_com_pontualidade(v_int, mes_alvo)
+            parcela = {"status": "Pendente", "valor": calc["valor_final"]}
+
         valor = float(parcela.get("valor") or 0)
         if parcela.get("status") == "Pago":
             total_recebido += valor
@@ -994,12 +1084,23 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
     comp = payload.competencia
     doc_id = f"{aluno_id}__{comp}"
 
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+    v_int = calcular_valor_mensal_aluno(aluno_dados, cursos_map) or float(payload.valor or 0)
+
+    dt_ref = _parse_data_pagamento_para_dt(payload.data_pagamento) or datetime.now()
+    calc = calcular_valor_com_pontualidade(v_int, comp, dt_ref)
+    valor_gravar = float(payload.valor) if payload.valor and float(payload.valor) > 0 else calc["valor_final"]
+
     dados = {
         "aluno_id": aluno_id,
         "competencia": comp,
         "referencia_label": payload.referencia_label or comp,
-        "vencimento": payload.vencimento or "",
-        "valor": float(payload.valor or 0),
+        "vencimento": payload.vencimento or f"{comp}-05",
+        "valor_integral": v_int,
+        "valor": valor_gravar,
+        "desconto_percentual": calc["desconto_percentual"] if round(valor_gravar, 2) <= calc["valor_final"] else 0,
         "status": payload.status,
         "numero_nf": payload.numero_nf or "",
         "data_pagamento": payload.data_pagamento or (datetime.now().strftime("%Y-%m-%d") if payload.status == "Pago" else None),
@@ -1007,11 +1108,9 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
     }
     db.collection("mensalidades").document(doc_id).set(dados, merge=True)
 
-    aluno_doc = db.collection("alunos").document(aluno_id).get()
     if aluno_doc.exists:
-        cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
         mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
-        mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_doc.to_dict(), cursos_map, mens_docs)
+        mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_dados, cursos_map, mens_docs)
         mapa[comp] = {**mapa.get(comp, {}), **dados}
         sincronizar_estado_aluno(aluno_id, mapa)
 
@@ -1036,8 +1135,10 @@ async def atualizar_pendencia_aluno(
     cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
     mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
     mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_atual, cursos_map, mens_docs)
+
+    v_int_curso = calcular_valor_mensal_aluno(aluno_atual, cursos_map)
     agora_iso = datetime.now().isoformat()
-    hoje_br = datetime.now().strftime("%d/%m/%Y")
+    hoje_iso = datetime.now().strftime("%Y-%m-%d")
 
     if mensalidades_json:
         try:
@@ -1046,13 +1147,22 @@ async def atualizar_pendencia_aluno(
                 for comp, info in recebido.items():
                     if isinstance(info, dict):
                         status_item = info.get("status", "Pendente")
+                        v_int = float(info.get("valor_integral") or v_int_curso or info.get("valor") or 0)
+                        dt_pag_obj = _parse_data_pagamento_para_dt(info.get("data_pagamento")) or datetime.now()
+                        calc = calcular_valor_com_pontualidade(v_int, comp, dt_pag_obj)
+
+                        val_informado = float(info.get("valor") or 0)
+                        valor_final_item = val_informado if val_informado > 0 else calc["valor_final"]
+
                         parcela_atualizada = {
                             **mapa.get(comp, {}),
                             **info,
                             "aluno_id": str(aluno_id),
                             "competencia": comp,
-                            "valor": float(info.get("valor") or calcular_valor_mensal_aluno(aluno_atual, cursos_map) or 0),
-                            "data_pagamento": (info.get("data_pagamento") or hoje_br) if status_item == "Pago" else None,
+                            "valor_integral": v_int,
+                            "valor": valor_final_item,
+                            "desconto_percentual": calc["desconto_percentual"] if round(valor_final_item, 2) <= calc["valor_final"] else 0,
+                            "data_pagamento": (info.get("data_pagamento") or hoje_iso) if status_item == "Pago" else None,
                             "atualizado_em": agora_iso
                         }
                         mapa[comp] = parcela_atualizada
@@ -1062,6 +1172,7 @@ async def atualizar_pendencia_aluno(
     else:
         mes_atual = datetime.now().strftime("%Y-%m")
         status_novo = "Pendente" if possui_pendencia_financeira == "Sim" else "Pago"
+        calc = calcular_valor_com_pontualidade(v_int_curso, mes_atual)
         parcela_atualizada = {
             **mapa.get(mes_atual, {}),
             "aluno_id": str(aluno_id),
@@ -1069,8 +1180,10 @@ async def atualizar_pendencia_aluno(
             "status": status_novo,
             "detalhes": detalhes_pendencia_financeira if status_novo == "Pendente" else "",
             "numero_nf": numero_nf,
-            "data_pagamento": hoje_br if status_novo == "Pago" else None,
-            "valor": float(mapa.get(mes_atual, {}).get("valor") or calcular_valor_mensal_aluno(aluno_atual, cursos_map) or 0),
+            "valor_integral": v_int_curso,
+            "valor": calc["valor_final"],
+            "desconto_percentual": calc["desconto_percentual"],
+            "data_pagamento": hoje_iso if status_novo == "Pago" else None,
             "atualizado_em": agora_iso
         }
         mapa[mes_atual] = parcela_atualizada
@@ -1099,68 +1212,92 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
     checar_db()
     m_ref = db.collection("mensalidades").document(mensalidade_id)
     m_snap = m_ref.get()
-    agora = datetime.now().isoformat()
+    agora = datetime.now()
+    agora_iso = agora.isoformat()
 
     if m_snap.exists:
         m_dados = m_snap.to_dict()
-        m_ref.update({"status": "Pago", "data_pagamento": agora, "atualizado_em": agora})
         aluno_id = str(m_dados.get("aluno_id", ""))
-        comp = m_dados.get("competencia")
+        comp = m_dados.get("competencia") or datetime.now().strftime("%Y-%m")
     elif "__" in mensalidade_id:
         aluno_id, comp = mensalidade_id.split("__", 1)
-        m_ref.set({"aluno_id": aluno_id, "competencia": comp, "status": "Pago", "data_pagamento": agora, "atualizado_em": agora}, merge=True)
     else:
         raise HTTPException(status_code=404, detail="Mensalidade não encontrada.")
 
-    if aluno_id:
-        aluno_doc = db.collection("alunos").document(aluno_id).get()
-        if aluno_doc.exists:
-            cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
-            mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
-            mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_doc.to_dict(), cursos_map, mens_docs)
-            if comp and comp in mapa:
-                mapa[comp]["status"] = "Pago"
-                mapa[comp]["data_pagamento"] = agora
-            sincronizar_estado_aluno(aluno_id, mapa)
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
 
-    return {"sucesso": True, "mensagem": "Baixa realizada."}
+    v_int = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
+    calc = calcular_valor_com_pontualidade(v_int, comp, agora)
+
+    dados_baixa = {
+        "aluno_id": aluno_id,
+        "competencia": comp,
+        "status": "Pago",
+        "valor_integral": calc["valor_integral"],
+        "valor": calc["valor_final"],
+        "desconto_percentual": calc["desconto_percentual"],
+        "data_pagamento": agora.strftime("%Y-%m-%d"),
+        "atualizado_em": agora_iso
+    }
+    m_ref.set(dados_baixa, merge=True)
+
+    if aluno_doc.exists:
+        mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
+        mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_dados, cursos_map, mens_docs)
+        mapa[comp] = {**mapa.get(comp, {}), **dados_baixa}
+        sincronizar_estado_aluno(aluno_id, mapa)
+
+    return {"sucesso": True, "mensagem": "Baixa realizada com sucesso.", "valor_cobrado": calc["valor_final"], "desconto_percentual": calc["desconto_percentual"]}
 
 
 @app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
 async def auditar_e_quitar_mensalidade(mensalidade_id: str, acao: str = Form(...)):
     checar_db()
     novo_status = "Pago" if acao == "aprovar" else "Pendente"
-    agora = datetime.now().isoformat()
+    agora = datetime.now()
+    agora_iso = agora.isoformat()
     m_ref = db.collection("mensalidades").document(mensalidade_id)
     m_snap = m_ref.get()
 
     if m_snap.exists:
         m_dados = m_snap.to_dict()
         aluno_id = str(m_dados.get("aluno_id", ""))
-        comp = m_dados.get("competencia")
+        comp = m_dados.get("competencia") or datetime.now().strftime("%Y-%m")
     elif "__" in mensalidade_id:
         aluno_id, comp = mensalidade_id.split("__", 1)
     else:
         raise HTTPException(status_code=404, detail="Mensalidade não encontrada.")
 
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
+    cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
+
+    v_int = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
+    calc = calcular_valor_com_pontualidade(v_int, comp, agora)
+
     m_ref.set({
         "aluno_id": aluno_id,
         "competencia": comp,
         "status": novo_status,
-        "data_pagamento": agora if acao == "aprovar" else None,
-        "atualizado_em": agora
+        "valor_integral": calc["valor_integral"],
+        "valor": calc["valor_final"],
+        "desconto_percentual": calc["desconto_percentual"],
+        "data_pagamento": agora.strftime("%Y-%m-%d") if acao == "aprovar" else None,
+        "atualizado_em": agora_iso
     }, merge=True)
 
-    if aluno_id:
-        aluno_doc = db.collection("alunos").document(aluno_id).get()
-        if aluno_doc.exists:
-            cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
-            mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
-            mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_doc.to_dict(), cursos_map, mens_docs)
-            if comp and comp in mapa:
-                mapa[comp]["status"] = novo_status
-                mapa[comp]["data_pagamento"] = agora if acao == "aprovar" else None
-            sincronizar_estado_aluno(aluno_id, mapa)
+    if aluno_doc.exists:
+        mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
+        mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_dados, cursos_map, mens_docs)
+        if comp and comp in mapa:
+            mapa[comp]["status"] = novo_status
+            mapa[comp]["valor_integral"] = calc["valor_integral"]
+            mapa[comp]["valor"] = calc["valor_final"]
+            mapa[comp]["desconto_percentual"] = calc["desconto_percentual"]
+            mapa[comp]["data_pagamento"] = agora.strftime("%Y-%m-%d") if acao == "aprovar" else None
+        sincronizar_estado_aluno(aluno_id, mapa)
 
     return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
 
@@ -2677,15 +2814,6 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
     valor_mensalidade = calcular_valor_mensal_aluno(dados, cursos_map)
     mapa_unificado = obter_mapa_mensalidades_unificado(str(aluno_id), dados, cursos_map, mens_docs)
 
-    # Descobre a duração em meses do curso vinculado
-    duracao_meses = int(dados.get("duracao_meses") or 0)
-    if not duracao_meses:
-        curso_id = str(dados.get("curso_id") or dados.get("curso") or "")
-        curso_obj = cursos_map.get(curso_id, {})
-        match_dur = re.search(r"\d+", str(curso_obj.get("duracao") or ""))
-        if match_dur:
-            duracao_meses = int(match_dur.group(0))
-
     return {
         "nome": dados.get("nome"),
         "matricula": dados.get("matricula"),
@@ -2693,15 +2821,16 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
         "email": dados.get("email"),
         "telefone": dados.get("telefone"),
         "endereco": dados.get("endereco"),
-        "dia_vencimento": dados.get("dia_vencimento", 10),
+        "dia_vencimento": 5,
+        "desconto_pontualidade_pct": 23,
         "valor_mensalidade": valor_mensalidade,
-        "duracao_meses": duracao_meses or 12,
         "data_matricula": dados.get("data_cadastro") or dados.get("created_at") or "",
         "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não"),
         "detalhes_pendencia_financeira": dados.get("detalhes_pendencia_financeira", ""),
         "numero_nf": dados.get("numero_nf", ""),
         "mensalidades_json": mapa_unificado
     }
+
 
 @app.put("/api/v1/aluno/perfil")
 @app.post("/api/v1/aluno/perfil")
@@ -2739,6 +2868,172 @@ def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
     lista.sort(key=lambda x: x.get("competencia", ""), reverse=True)
     return lista
 
+
+def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
+    checar_db()
+    aluno_doc = db.collection("alunos").document(aluno_id).get()
+    if not aluno_doc.exists:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado.")
+
+    aluno = aluno_doc.to_dict() or {}
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+    mapa = obter_mapa_mensalidades_unificado(str(aluno_id), aluno, cursos_map, mens_docs)
+    parcela = mapa.get(competencia)
+
+    if not parcela or parcela.get("status") != "Pago":
+        raise HTTPException(status_code=400, detail="Recibo disponível apenas para mensalidades com status Pago.")
+
+    sys_ref = db.collection("sistema").document("configuracoes").get()
+    sys_dados = sys_ref.to_dict() if sys_ref.exists else {
+        "nome_instituicao": "UNIVEAS",
+        "cnpj": "53.199.321/0001-23",
+        "endereco": "Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA"
+    }
+
+    valor_integral = float(parcela.get("valor_integral") or calcular_valor_mensal_aluno(aluno, cursos_map) or 0)
+    valor_pago = float(parcela.get("valor") or valor_integral)
+    desconto_pct = int(parcela.get("desconto_percentual") or 0)
+    desconto_reais = max(0.0, round(valor_integral - valor_pago, 2))
+
+    def fmt_brl(v: float) -> str:
+        return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    valor_int_fmt = fmt_brl(valor_integral)
+    valor_fmt = fmt_brl(valor_pago)
+    desc_fmt = f"{fmt_brl(desconto_reais)} ({desconto_pct}% Pontualidade até dia 05)" if desconto_pct > 0 else "Sem desconto (após dia 05)"
+
+    matricula_limpa = str(aluno.get("matricula", "000")).replace("#", "")
+    numero_nf = parcela.get("numero_nf") or f"REC-{matricula_limpa}-{competencia.replace('-', '')}"
+
+    partes_comp = competencia.split("-")
+    comp_fmt = f"{partes_comp[1]}/{partes_comp[0]}" if len(partes_comp) == 2 else competencia
+
+    data_baixa_raw = parcela.get("data_pagamento") or parcela.get("atualizado_em") or datetime.now().isoformat()
+    try:
+        data_baixa_fmt = datetime.fromisoformat(str(data_baixa_raw).replace("Z", "")).strftime("%d/%m/%Y")
+    except Exception:
+        data_baixa_fmt = str(data_baixa_raw)
+
+    curso_id = aluno.get("curso_id") or aluno.get("curso")
+    nome_curso = cursos_map.get(str(curso_id), {}).get("nome_curso", "Curso Técnico / Profissionalizante").upper()
+
+    buffer = io.BytesIO()
+    pdf = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'RecTitle', parent=styles['Normal'], fontName='Helvetica-Bold',
+        fontSize=15, alignment=TA_CENTER, spaceAfter=4, textColor=colors.HexColor('#0f766e')
+    )
+    sub_style = ParagraphStyle(
+        'RecSub', parent=styles['Normal'], fontName='Helvetica',
+        fontSize=9, alignment=TA_CENTER, spaceAfter=20, textColor=colors.HexColor('#334155')
+    )
+    body_style = ParagraphStyle(
+        'RecBody', parent=styles['Normal'], fontName='Helvetica',
+        fontSize=11, alignment=TA_JUSTIFY, leading=17, spaceAfter=18
+    )
+    footer_style = ParagraphStyle(
+        'RecFooter', parent=styles['Normal'], fontName='Helvetica-Oblique',
+        fontSize=8.5, alignment=TA_CENTER, textColor=colors.gray
+    )
+
+    elements = []
+    try:
+        req = urllib.request.Request("https://i.imgur.com/ki7mdS2.png", headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            img = Image(io.BytesIO(response.read()), width=65, height=65)
+            img.hAlign = 'CENTER'
+            elements.append(img)
+            elements.append(Spacer(1, 8))
+    except Exception:
+        pass
+
+    elements.append(Paragraph(f"<b>{sys_dados.get('nome_instituicao', 'UNIVEAS')}</b>", title_style))
+    elements.append(Paragraph(f"CNPJ: {sys_dados.get('cnpj')} | {sys_dados.get('endereco')}", sub_style))
+    elements.append(Paragraph(
+        f"<b>RECIBO DE PAGAMENTO DE MENSALIDADE • Nº {numero_nf}</b>",
+        ParagraphStyle('DocHeading', parent=title_style, fontSize=12, textColor=colors.HexColor('#0f172a'), spaceAfter=18)
+    ))
+
+    nome_aluno = str(aluno.get("nome", "ALUNO")).upper()
+    cpf_aluno = aluno.get("cpf", "Não informado")
+    matricula_aluno = aluno.get("matricula", "S/N")
+
+    texto_declaracao = (
+        f"Recebemos de <b>{nome_aluno}</b>, inscrito(a) no CPF nº <b>{cpf_aluno}</b>, "
+        f"regularmente matriculado(a) sob o registro <b>{matricula_aluno}</b> no curso de "
+        f"<b>{nome_curso}</b>, a importância de <b>{valor_fmt}</b>, referente à quitação integral "
+        f"da mensalidade escolar da competência <b>{comp_fmt}</b>."
+    )
+    elements.append(Paragraph(texto_declaracao, body_style))
+
+    resumo_data = [
+        ['CAMPO', 'DETALHAMENTO DO LANÇAMENTO'],
+        ['Aluno(a) / Matrícula', f"{nome_aluno} ({matricula_aluno})"],
+        ['Curso Vinculado', nome_curso],
+        ['Competência Quitada', comp_fmt],
+        ['Data de Quitação', data_baixa_fmt],
+        ['Valor Integral do Curso', valor_int_fmt],
+        ['Desconto Aplicado', desc_fmt],
+        ['Documento / NF', numero_nf],
+        ['Valor Total Pago', valor_fmt],
+    ]
+
+    tabela_resumo = Table(resumo_data, colWidths=[165, 335])
+    tabela_resumo.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f766e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 1), (0, -1), colors.HexColor('#334155')),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecfdf5')),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (1, -1), (1, -1), colors.HexColor('#047857')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('TOPPADDING', (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(tabela_resumo)
+    elements.append(Spacer(1, 30))
+
+    elements.append(Paragraph(
+        f"Vigia/PA, {datetime.now().strftime('%d/%m/%Y')}.",
+        ParagraphStyle('CidadeData', parent=body_style, alignment=TA_CENTER)
+    ))
+    elements.append(Spacer(1, 35))
+
+    sig_table = Table([
+        ['________________________________________'],
+        ['Tesouraria / Secretaria Financeira — UNIVEAS']
+    ], colWidths=[300])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+    ]))
+    elements.append(sig_table)
+    elements.append(Spacer(1, 25))
+
+    hash_aut = f"REC-{aluno_id[:6].upper()}-{competencia.replace('-', '')}"
+    elements.append(Paragraph(
+        f"Comprovante financeiro emitido eletronicamente pelo SIGA UNIVEAS.<br/>"
+        f"Código de Autenticidade: <b>{hash_aut}</b>",
+        footer_style
+    ))
+
+    pdf.build(elements)
+    buffer.seek(0)
+    nome_arq = f"Recibo_UNIVEAS_{competencia}_{matricula_limpa}.pdf"
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={nome_arq}"}
+    )
 
 @app.post("/api/v1/aluno/financeiro/comprovante")
 async def aluno_enviar_comprovante_portal(
