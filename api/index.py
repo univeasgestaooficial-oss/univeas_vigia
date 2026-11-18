@@ -1400,34 +1400,39 @@ def _calcular_media_backend(notas: dict, avaliacoes_config: list):
     if not isinstance(notas, dict) or not notas:
         return None, "Cursando"
 
-    soma_ponderada = 0.0
-    soma_pesos = 0.0
+    # Filtra apenas as chaves principais (av_0_..., av_1_...) ou chaves únicas para não duplicar aliases
+    chaves_indexadas = [k for k in notas.keys() if str(k).startswith("av_")]
+    chaves_usar = chaves_indexadas if chaves_indexadas else [
+        k for k in notas.keys() if k not in ("AV1", "AV2", "nota1", "nota2")
+    ]
+    if not chaves_usar:
+        chaves_usar = list(notas.keys())
+
+    soma_notas = 0.0
     qtd_validas = 0
 
-    for k, v in notas.items():
+    for k in chaves_usar:
+        v = notas.get(k)
         if v is not None and str(v).strip() != "":
             try:
-                nota_f = float(v)
-                peso = extrair_peso_nota_firestore(k, avaliacoes_config)
-                soma_ponderada += nota_f * peso
-                soma_pesos += peso
+                soma_notas += float(v)
                 qtd_validas += 1
             except Exception:
                 pass
 
-    if soma_pesos == 0 or qtd_validas == 0:
+    if qtd_validas == 0:
         return None, "Cursando"
 
-    media = round(soma_ponderada / soma_pesos, 1)
+    # Regra oficial UNIVEAS: Soma das notas dividida por 2
+    media = round(soma_notas / 2.0, 1)
     total_previsto = len(avaliacoes_config) if isinstance(avaliacoes_config, list) and len(avaliacoes_config) > 0 else qtd_validas
 
     if qtd_validas < total_previsto:
         situacao = "Parcial"
     else:
-        situacao = "Aprovado" if media >= 8.0 else "Em Recuperação"
+        situacao = "Aprovado" if media >= 8.0 else "Recuperação"
 
     return media, situacao
-
 
 @app.get("/api/v1/docente/diario/{turma_id}")
 async def obter_diario_turma_docente(turma_id: str, authorization: str = Header(None)):
@@ -1804,33 +1809,38 @@ async def listar_diario_consolidado_admin(
     return resultado
 
 
+
+
 @app.post("/api/v1/diario/salvar")
 async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
     checar_db()
     lista_itens = payload.lancamentos if payload.lancamentos else (payload.registros or [])
+    todos_diarios = list(db.collection("diarios").stream())
 
     for reg in lista_itens:
-        turma_id = f"{reg.curso_id}_{reg.disciplina}"
-        docs_existentes = db.collection("diarios").where("turma_id", "==", turma_id).stream()
-        for doc in docs_existentes:
+        alvo_norm = _normalizar_turma_key(f"{reg.curso_id}_{reg.disciplina}")
+        turma_id_oficial = f"{reg.curso_id}_{reg.disciplina.strip()}"
+
+        for doc in todos_diarios:
             d = doc.to_dict()
-            novas_avals = [av for av in d.get("avaliacoes", []) if str(av.get("aluno_id")) != str(reg.aluno_id)]
-            if len(novas_avals) != len(d.get("avaliacoes", [])):
-                if novas_avals:
-                    doc.reference.update({"avaliacoes": novas_avals})
-                else:
-                    doc.reference.delete()
+            if _normalizar_turma_key(str(d.get("turma_id", ""))) == alvo_norm:
+                novas_avals = [av for av in d.get("avaliacoes", []) if str(av.get("aluno_id")) != str(reg.aluno_id)]
+                if len(novas_avals) != len(d.get("avaliacoes", [])):
+                    if novas_avals:
+                        doc.reference.update({"avaliacoes": novas_avals})
+                    else:
+                        doc.reference.delete()
 
         doc_id = f"ADMIN__{reg.curso_id}__{reg.disciplina.strip().upper()}__{reg.aluno_id}".replace("/", "-")
         db.collection("diarios").document(doc_id).set({
             "docente_id": "SECRETARIA_ADMIN",
-            "turma_id": turma_id,
+            "turma_id": turma_id_oficial,
             "data_aula": datetime.now().strftime("%Y-%m-%d"),
             "conteudo_ministrado": "Consolidação Oficial - Secretaria Acadêmica",
             "origem": "Admin",
             "avaliacoes": [{
-                "aluno_id": reg.aluno_id,
-                "faltas": reg.faltas,
+                "aluno_id": str(reg.aluno_id),
+                "faltas": int(reg.faltas or 0),
                 "notas": reg.notas,
                 "media": reg.media,
                 "situacao": reg.situacao
@@ -1838,43 +1848,7 @@ async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
             "data_registro": datetime.now().isoformat()
         })
 
-    return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
-
-
-@app.post("/api/v1/diario/salvar")
-async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
-    checar_db()
-    lista_itens = payload.lancamentos if payload.lancamentos else (payload.registros or [])
-
-    for reg in lista_itens:
-        turma_id = f"{reg.curso_id}_{reg.disciplina}"
-        docs_existentes = db.collection("diarios").where("turma_id", "==", turma_id).stream()
-        for doc in docs_existentes:
-            d = doc.to_dict()
-            novas_avals = [av for av in d.get("avaliacoes", []) if str(av.get("aluno_id")) != str(reg.aluno_id)]
-            if len(novas_avals) != len(d.get("avaliacoes", [])):
-                if novas_avals:
-                    doc.reference.update({"avaliacoes": novas_avals})
-                else:
-                    doc.reference.delete()
-
-        doc_id = f"ADMIN__{reg.curso_id}__{reg.disciplina.strip().upper()}__{reg.aluno_id}".replace("/", "-")
-        db.collection("diarios").document(doc_id).set({
-            "docente_id": "SECRETARIA_ADMIN",
-            "turma_id": turma_id,
-            "data_aula": datetime.now().strftime("%Y-%m-%d"),
-            "conteudo_ministrado": "Consolidação Oficial - Secretaria Acadêmica",
-            "origem": "Admin",
-            "avaliacoes": [{
-                "aluno_id": reg.aluno_id,
-                "faltas": reg.faltas,
-                "notas": reg.notas
-            }],
-            "data_registro": datetime.now().isoformat()
-        })
-
-    return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
-
+    return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com sucesso!"}
 
 # ==========================================
 # 8. MÓDULO CONFIGURAÇÕES DO SISTEMA
