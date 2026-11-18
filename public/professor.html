@@ -775,32 +775,58 @@ function extrairNotaDocente(notasObj, avConfig, idx) {
 }
 
 function calcularSituacaoPonderadaDocente(notasObj, avaliacoesConfig) {
-    let somaPonderada = 0;
-    let somaPesosLancados = 0;
-    const totalAvaliacoes = avaliacoesConfig.length;
+    let somaNotas = 0;
+    let totalAvaliacoes = avaliacoesConfig.length;
     let avaliacoesLancadas = 0;
 
     avaliacoesConfig.forEach(av => {
         const raw = notasObj ? notasObj[av.chave] : null;
-        if (raw !== undefined && raw !== null && raw !== '' && !isNaN(parseFloat(raw))) {
-            const nota = Math.min(10, Math.max(0, parseFloat(raw)));
-            const peso = parseFloat(av.peso) || 1;
-            somaPonderada += nota * peso;
-            somaPesosLancados += peso;
+        if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
+            const nota = Math.max(0, parseFloat(raw));
+            somaNotas += nota;
             avaliacoesLancadas++;
         }
     });
 
-    if (somaPesosLancados === 0) {
-        return { mediaNum: null, completo: false };
+    if (avaliacoesLancadas === 0) {
+        return {
+            mediaNum: null,
+            completo: false,
+            mediaTexto: '-',
+            situacaoHtml: '<span class="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-md text-[10px] font-bold uppercase">Cursando</span>'
+        };
     }
 
-    return {
-        mediaNum: somaPonderada / somaPesosLancados,
-        completo: avaliacoesLancadas === totalAvaliacoes
-    };
-}
+    // Regra oficial UNIVEAS: Soma de todas as notas dividida por 2
+    const media = somaNotas / 2;
+    const mediaTexto = media.toFixed(1).replace('.', ',');
+    const completo = avaliacoesLancadas === totalAvaliacoes;
 
+    if (!completo) {
+        return {
+            mediaNum: media,
+            completo: false,
+            mediaTexto: `${mediaTexto}*`,
+            situacaoHtml: '<span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-[10px] font-bold uppercase">Parcial</span>'
+        };
+    }
+
+    if (media >= 8.0) {
+        return {
+            mediaNum: media,
+            completo: true,
+            mediaTexto,
+            situacaoHtml: '<span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-md text-[10px] font-bold uppercase">Aprovado</span>'
+        };
+    } else {
+        return {
+            mediaNum: media,
+            completo: true,
+            mediaTexto,
+            situacaoHtml: '<span class="px-2.5 py-1 bg-red-100 text-red-700 rounded-md text-[10px] font-bold uppercase">Recuperação</span>'
+        };
+    }
+}
 function recalcularLinhaDiarioDocente(inputElement) {
     if (inputElement && inputElement.value !== '') {
         let valNum = parseFloat(inputElement.value);
