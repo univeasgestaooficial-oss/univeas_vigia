@@ -2378,20 +2378,9 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
     medias_disciplinas = []
     for disc_key, notas_dict in lancamentos_por_disc.items():
         avaliacoes_config = avaliacoes_por_disciplina.get(disc_key, [])
-        soma_ponderada = 0.0
-        soma_pesos = 0.0
-
-        for tipo_nota, val_nota in notas_dict.items():
-            if val_nota is not None and str(val_nota) != "":
-                try:
-                    peso = extrair_peso_nota_firestore(tipo_nota, avaliacoes_config)
-                    soma_ponderada += float(val_nota) * peso
-                    soma_pesos += peso
-                except Exception:
-                    pass
-
-        if soma_pesos > 0:
-            medias_disciplinas.append(soma_ponderada / soma_pesos)
+        media_calc, _ = _calcular_media_backend(notas_dict, avaliacoes_config)
+        if media_calc is not None:
+            medias_disciplinas.append(media_calc)
 
     media_geral = round(sum(medias_disciplinas) / len(medias_disciplinas), 1) if medias_disciplinas else 0.0
     is_pendente = aluno_esta_pendente_financeiro(aluno_dados)
@@ -2432,7 +2421,6 @@ async def listar_cursos_aluno(authorization: str = Header(None)):
 
     return resultado
 
-
 @app.get("/api/v1/aluno/boletim/{curso_id}")
 async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
     checar_db()
@@ -2470,7 +2458,18 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
 
                 faltas_aula = int(lanc.get("faltas", 0))
                 lancamentos_aluno[nome_disc_limpo]["faltas"] += faltas_aula
-                lancamentos_aluno[nome_disc_limpo]["notas"].update(lanc.get("notas", {}))
+
+                for rem in lanc.get("notas_removidas", []):
+                    lancamentos_aluno[nome_disc_limpo]["notas"].pop(rem, None)
+
+                for k, v in (lanc.get("notas") or {}).items():
+                    if v is None or str(v).strip() == "":
+                        lancamentos_aluno[nome_disc_limpo]["notas"].pop(k, None)
+                    else:
+                        try:
+                            lancamentos_aluno[nome_disc_limpo]["notas"][k] = float(v)
+                        except Exception:
+                            pass
 
                 if d_data.get("origem") != "Admin":
                     lancamentos_aluno[nome_disc_limpo]["historico_aulas"].append({
@@ -2522,29 +2521,8 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 avaliacoes_previstas = ["AV1", "AV2", "Final"]
                 pesos_avaliacoes = {"AV1": 1.0, "AV2": 1.0, "Final": 1.0}
 
-            soma_ponderada = 0.0
-            soma_pesos = 0.0
-            qtd_notas_validas = 0
-            for chave_nota, val_nota in dados_lancados["notas"].items():
-                if val_nota is not None and str(val_nota) != '':
-                    try:
-                        nota_float = float(val_nota)
-                        peso = extrair_peso_nota_firestore(chave_nota, avaliacoes_config)
-                        soma_ponderada += nota_float * peso
-                        soma_pesos += peso
-                        qtd_notas_validas += 1
-                    except Exception:
-                        pass
-            media_final = round(soma_ponderada / soma_pesos, 1) if soma_pesos > 0 else None
-            total_avals_matriz = len(avaliacoes_previstas)
-            notas_completas = (total_avals_matriz > 0) and (qtd_notas_validas >= total_avals_matriz)
-
-            if media_final is None:
-                situacao = "Cursando"
-            elif not notas_completas:
-                situacao = "Parcial"
-            else:
-                situacao = "Aprovado" if media_final >= 8.0 else "Em Recuperação"
+            media_final, situacao_calc = _calcular_media_backend(dados_lancados["notas"], avaliacoes_config)
+            situacao = "Em Recuperação" if situacao_calc == "Recuperação" else situacao_calc
 
             aulas_ordenadas = sorted(
                 dados_lancados["historico_aulas"],
