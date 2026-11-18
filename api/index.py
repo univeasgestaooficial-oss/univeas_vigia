@@ -24,16 +24,23 @@ import base64
 # ==========================================
 class LancamentoAluno(BaseModel):
     aluno_id: str
-    faltas: int
+    faltas: int = 0
     notas: dict = {}
+    notas_removidas: List[str] = []
+    media: Optional[float] = None
+    situacao: Optional[str] = None
     nota_1: Optional[float] = None
     nota_2: Optional[float] = None
 
 
 class DiarioPayload(BaseModel):
     turma_id: str
+    curso_id: Optional[str] = None
+    modulo: Optional[str] = None
+    periodo: Optional[str] = None
     data_aula: str
     conteudo_ministrado: str
+    avaliacoes_config: List[dict] = []
     lancamentos: List[LancamentoAluno]
 
 
@@ -1382,29 +1389,71 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
 
     return {"sucesso": True, "mensagem": mensagem_retorno}
 
+def _normalizar_turma_key(turma_id: str) -> str:
+    if "_" in turma_id:
+        c_id, d_nome = turma_id.split("_", 1)
+        return f"{c_id}_{d_nome.strip().upper()}"
+    return turma_id.strip().upper()
+
+
+def _calcular_media_backend(notas: dict, avaliacoes_config: list):
+    if not isinstance(notas, dict) or not notas:
+        return None, "Cursando"
+
+    soma_ponderada = 0.0
+    soma_pesos = 0.0
+    qtd_validas = 0
+
+    for k, v in notas.items():
+        if v is not None and str(v).strip() != "":
+            try:
+                nota_f = float(v)
+                peso = extrair_peso_nota_firestore(k, avaliacoes_config)
+                soma_ponderada += nota_f * peso
+                soma_pesos += peso
+                qtd_validas += 1
+            except Exception:
+                pass
+
+    if soma_pesos == 0 or qtd_validas == 0:
+        return None, "Cursando"
+
+    media = round(soma_ponderada / soma_pesos, 1)
+    total_previsto = len(avaliacoes_config) if isinstance(avaliacoes_config, list) and len(avaliacoes_config) > 0 else qtd_validas
+
+    if qtd_validas < total_previsto:
+        situacao = "Parcial"
+    else:
+        situacao = "Aprovado" if media >= 8.0 else "Em Recuperação"
+
+    return media, situacao
+
 
 @app.get("/api/v1/docente/diario/{turma_id}")
 async def obter_diario_turma_docente(turma_id: str, authorization: str = Header(None)):
     checar_db()
     validar_token_docente(authorization)
 
+    alvo_norm = _normalizar_turma_key(turma_id)
+    avaliacoes_config = []
     if "_" in turma_id:
-        c_alvo, d_alvo = turma_id.split("_", 1)
-        alvo_norm = f"{c_alvo}_{d_alvo.strip().upper()}"
-    else:
-        alvo_norm = turma_id.strip().upper()
+        c_id, d_nome = turma_id.split("_", 1)
+        c_doc = db.collection("cursos").document(c_id).get()
+        if c_doc.exists:
+            alvo_disc = d_nome.strip().upper()
+            for m in c_doc.to_dict().get("grade_curricular", []):
+                if not isinstance(m, dict):
+                    continue
+                itens = m.get("disciplinas") if (isinstance(m.get("disciplinas"), list) and m.get("disciplinas")) else [m]
+                for disc in itens:
+                    if isinstance(disc, dict) and str(disc.get("nome") or disc.get("disciplina") or "").strip().upper() == alvo_disc:
+                        avaliacoes_config = disc.get("avaliacoes", [])
+                        break
 
     docs_filtrados = []
     for doc in db.collection("diarios").stream():
         d = doc.to_dict()
-        t_id = str(d.get("turma_id", ""))
-        if "_" in t_id:
-            c_doc, d_doc = t_id.split("_", 1)
-            t_norm = f"{c_doc}_{d_doc.strip().upper()}"
-        else:
-            t_norm = t_id.strip().upper()
-
-        if t_norm == alvo_norm:
+        if _normalizar_turma_key(str(d.get("turma_id", ""))) == alvo_norm:
             docs_filtrados.append(d)
 
     docs_filtrados.sort(key=lambda x: x.get("data_registro", ""))
@@ -1414,9 +1463,22 @@ async def obter_diario_turma_docente(turma_id: str, authorization: str = Header(
         for lanc in d.get("avaliacoes", []):
             aid = str(lanc.get("aluno_id"))
             if aid not in consolidado:
-                consolidado[aid] = {"faltas": 0, "notas": {}}
+                consolidado[aid] = {"faltas": 0, "notas": {}, "media": None, "situacao": "Cursando"}
             consolidado[aid]["faltas"] += int(lanc.get("faltas", 0))
-            consolidado[aid]["notas"].update(lanc.get("notas", {}))
+
+            for rem in lanc.get("notas_removidas", []):
+                consolidado[aid]["notas"].pop(rem, None)
+
+            for k, v in (lanc.get("notas") or {}).items():
+                if v is None or str(v).strip() == "":
+                    consolidado[aid]["notas"].pop(k, None)
+                else:
+                    consolidado[aid]["notas"][k] = float(v)
+
+    for aid, info in consolidado.items():
+        media_calc, sit_calc = _calcular_media_backend(info["notas"], avaliacoes_config)
+        info["media"] = media_calc
+        info["situacao"] = sit_calc
 
     return consolidado
 
@@ -1429,11 +1491,42 @@ async def salvar_diario_eletronico(
     checar_db()
     docente_id = validar_token_docente(authorization)
 
-    avaliacoes_dict = [lancamento.model_dump() for lancamento in payload.lancamentos]
+    avaliacoes_config = payload.avaliacoes_config or []
+    if not avaliacoes_config and "_" in payload.turma_id:
+        c_id, d_nome = payload.turma_id.split("_", 1)
+        c_doc = db.collection("cursos").document(c_id).get()
+        if c_doc.exists:
+            alvo_disc = d_nome.strip().upper()
+            for m in c_doc.to_dict().get("grade_curricular", []):
+                if not isinstance(m, dict):
+                    continue
+                itens = m.get("disciplinas") if (isinstance(m.get("disciplinas"), list) and m.get("disciplinas")) else [m]
+                for disc in itens:
+                    if isinstance(disc, dict) and str(disc.get("nome") or disc.get("disciplina") or "").strip().upper() == alvo_disc:
+                        avaliacoes_config = disc.get("avaliacoes", [])
+                        break
 
     safe_turma = payload.turma_id.replace("/", "-")
     safe_data = payload.data_aula.replace("/", "-")
     doc_id = f"{safe_turma}__{safe_data}"
+
+    # Preserva faltas já registradas nesta mesma data caso o professor reabra o dia só para lançar/editar notas
+    doc_existente = db.collection("diarios").document(doc_id).get()
+    faltas_anteriores_dia = {}
+    if doc_existente.exists:
+        for av_ant in doc_existente.to_dict().get("avaliacoes", []):
+            faltas_anteriores_dia[str(av_ant.get("aluno_id"))] = int(av_ant.get("faltas", 0))
+
+    avaliacoes_dict = []
+    for lanc in payload.lancamentos:
+        item = lanc.model_dump()
+        if item["faltas"] == 0 and str(lanc.aluno_id) in faltas_anteriores_dia:
+            item["faltas"] = faltas_anteriores_dia[str(lanc.aluno_id)]
+
+        media_calc, sit_calc = _calcular_media_backend(item.get("notas", {}), avaliacoes_config)
+        item["media"] = item["media"] if item.get("media") is not None else media_calc
+        item["situacao"] = item["situacao"] or sit_calc
+        avaliacoes_dict.append(item)
 
     registro_diario = {
         "docente_id": docente_id,
@@ -1446,8 +1539,7 @@ async def salvar_diario_eletronico(
     }
 
     db.collection("diarios").document(doc_id).set(registro_diario)
-    return {"sucesso": True, "mensagem": "Diário registrado e sincronizado com o boletim!"}
-
+    return {"sucesso": True, "mensagem": "Diário registrado e médias sincronizadas com o boletim!"}
 
 @app.post("/api/v1/docente/material/upload")
 async def upload_material_didatico(
@@ -1629,7 +1721,13 @@ async def listar_diario_consolidado_admin(
             if chave not in agregado:
                 agregado[chave] = {"faltas": 0, "notas": {}}
             agregado[chave]["faltas"] += int(lanc.get("faltas", 0))
-            agregado[chave]["notas"].update(lanc.get("notas", {}))
+            for rem in lanc.get("notas_removidas", []):
+                agregado[chave]["notas"].pop(rem, None)
+            for k, v in (lanc.get("notas") or {}).items():
+                if v is None or str(v).strip() == "":
+                    agregado[chave]["notas"].pop(k, None)
+                else:
+                    agregado[chave]["notas"][k] = float(v)
 
     resultado = []
     for a in alunos:
@@ -1674,10 +1772,16 @@ async def listar_diario_consolidado_admin(
                         continue
 
                     dados_lanc = agregado.get((a["id"], cid, nome_disc.strip().upper()), {"faltas": 0, "notas": {}})
+                    avals_raw = disc.get("avaliacoes", ["Primeira avaliação", "Segunda avaliação"])
                     avals = [
                         av.get("tipo") if isinstance(av, dict) else av
-                        for av in disc.get("avaliacoes", ["AV1", "AV2", "Final"])
+                        for av in avals_raw
                     ]
+                    pesos_map = {
+                        (av.get("tipo") if isinstance(av, dict) else av): (float(av.get("peso", 1) or 1) if isinstance(av, dict) else 1.0)
+                        for av in avals_raw
+                    }
+                    media_calc, sit_calc = _calcular_media_backend(dados_lanc["notas"], avals_raw)
 
                     resultado.append({
                         "aluno_id": a["id"],
@@ -1690,11 +1794,51 @@ async def listar_diario_consolidado_admin(
                         "modulo": nome_disc,
                         "periodo": periodo or "Módulo Único",
                         "avaliacoes_previstas": avals,
+                        "pesos_avaliacoes": pesos_map,
                         "faltas": dados_lanc["faltas"],
-                        "notas": dados_lanc["notas"]
+                        "notas": dados_lanc["notas"],
+                        "media": media_calc,
+                        "situacao": sit_calc
                     })
 
     return resultado
+
+
+@app.post("/api/v1/diario/salvar")
+async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
+    checar_db()
+    lista_itens = payload.lancamentos if payload.lancamentos else (payload.registros or [])
+
+    for reg in lista_itens:
+        turma_id = f"{reg.curso_id}_{reg.disciplina}"
+        docs_existentes = db.collection("diarios").where("turma_id", "==", turma_id).stream()
+        for doc in docs_existentes:
+            d = doc.to_dict()
+            novas_avals = [av for av in d.get("avaliacoes", []) if str(av.get("aluno_id")) != str(reg.aluno_id)]
+            if len(novas_avals) != len(d.get("avaliacoes", [])):
+                if novas_avals:
+                    doc.reference.update({"avaliacoes": novas_avals})
+                else:
+                    doc.reference.delete()
+
+        doc_id = f"ADMIN__{reg.curso_id}__{reg.disciplina.strip().upper()}__{reg.aluno_id}".replace("/", "-")
+        db.collection("diarios").document(doc_id).set({
+            "docente_id": "SECRETARIA_ADMIN",
+            "turma_id": turma_id,
+            "data_aula": datetime.now().strftime("%Y-%m-%d"),
+            "conteudo_ministrado": "Consolidação Oficial - Secretaria Acadêmica",
+            "origem": "Admin",
+            "avaliacoes": [{
+                "aluno_id": reg.aluno_id,
+                "faltas": reg.faltas,
+                "notas": reg.notas,
+                "media": reg.media,
+                "situacao": reg.situacao
+            }],
+            "data_registro": datetime.now().isoformat()
+        })
+
+    return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com o Portal do Aluno!"}
 
 
 @app.post("/api/v1/diario/salvar")
