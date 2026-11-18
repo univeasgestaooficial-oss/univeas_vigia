@@ -1421,48 +1421,6 @@ async function carregarPautaDiario() {
     renderizarLinhasDiario();
 }
 
-function renderizarLinhasDiario() {
-    const tbody = document.getElementById('tabela-diario');
-    tbody.innerHTML = '';
-
-    pautaAtualDiario.forEach((item, idx) => {
-        const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
-
-        let tdsNotas = '';
-        colunasAvaliacaoDiarioAtual.forEach(av => {
-            const val = item.notas[av.chave] !== undefined && item.notas[av.chave] !== null ? item.notas[av.chave] : '';
-            const safeChave = av.chave.replace(/'/g, "\\'");
-            tdsNotas += `
-                <td class="py-2.5 px-3 text-center">
-                    <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${val}"
-                        oninput="atualizarNotaLinhaDiario(${idx}, '${safeChave}', this.value)"
-                        class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
-                </td>
-            `;
-        });
-
-        tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 transition" data-index="${idx}">
-                <td class="py-3 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${item.matricula}</td>
-                <td class="py-3 px-4 text-gray-800 font-bold text-xs whitespace-nowrap">${item.nome}</td>
-                <td class="py-2.5 px-3 text-center">
-                    <input type="number" min="0" max="200" value="${item.faltas}" onchange="atualizarFaltaLinhaDiario(${idx}, this.value)"
-                        class="w-16 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
-                </td>
-                ${tdsNotas}
-                <td class="py-3 px-4 text-center font-black text-xs text-gray-800" id="diario-media-${idx}">
-                    ${mediaTexto}
-                </td>
-                <td class="py-3 px-4 text-center" id="diario-situacao-${idx}">
-                    ${situacaoHtml}
-                </td>
-            </tr>
-        `;
-    });
-
-    atualizarResumoEstatisticoDiario(pautaAtualDiario);
-}
-
 function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
     let somaPonderada = 0;
     let somaPesosLancados = 0;
@@ -1524,25 +1482,7 @@ function atualizarFaltaLinhaDiario(idx, valor) {
     pautaAtualDiario[idx].faltas = parseInt(valor) || 0;
 }
 
-function atualizarNotaLinhaDiario(idx, chaveAvaliacao, valor) {
-    if (!pautaAtualDiario[idx]) return;
-    if (valor === '') {
-        delete pautaAtualDiario[idx].notas[chaveAvaliacao];
-    } else {
-        let num = parseFloat(valor);
-        if (num > 10) num = 10;
-        if (num < 0) num = 0;
-        pautaAtualDiario[idx].notas[chaveAvaliacao] = num;
-    }
 
-    const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(pautaAtualDiario[idx].notas, colunasAvaliacaoDiarioAtual);
-    const elMedia = document.getElementById(`diario-media-${idx}`);
-    const elSit = document.getElementById(`diario-situacao-${idx}`);
-    if (elMedia) elMedia.innerText = mediaTexto;
-    if (elSit) elSit.innerHTML = situacaoHtml;
-
-    atualizarResumoEstatisticoDiario(pautaAtualDiario);
-}
 
 function atualizarResumoEstatisticoDiario(lista) {
     const total = lista.length;
@@ -1565,6 +1505,74 @@ function atualizarResumoEstatisticoDiario(lista) {
     document.getElementById('diario-badge-media-turma').innerText = `Média Turma: ${mediaTurma}`;
 }
 
+function renderizarLinhasDiario() {
+    const tbody = document.getElementById('tabela-diario');
+    tbody.innerHTML = '';
+
+    pautaAtualDiario.forEach((item, idx) => {
+        const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
+
+        let tdsNotas = '';
+        colunasAvaliacaoDiarioAtual.forEach((av, avIdx) => {
+            const val = item.notas[av.chave] !== undefined && item.notas[av.chave] !== null ? item.notas[av.chave] : '';
+            tdsNotas += `
+                <td class="py-2.5 px-3 text-center">
+                    <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${val}"
+                        oninput="atualizarNotaLinhaDiario(${idx}, ${avIdx}, this.value)"
+                        class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
+                </td>
+            `;
+        });
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-gray-50 transition" data-index="${idx}">
+                <td class="py-3 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${item.matricula}</td>
+                <td class="py-3 px-4 text-gray-800 font-bold text-xs whitespace-nowrap">${item.nome}</td>
+                <td class="py-2.5 px-3 text-center">
+                    <input type="number" min="0" max="200" value="${item.faltas}" onchange="atualizarFaltaLinhaDiario(${idx}, this.value)"
+                        class="w-16 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
+                </td>
+                ${tdsNotas}
+                <td class="py-3 px-4 text-center font-black text-xs text-gray-800" id="diario-media-${idx}">
+                    ${mediaTexto}
+                </td>
+                <td class="py-3 px-4 text-center" id="diario-situacao-${idx}">
+                    ${situacaoHtml}
+                </td>
+            </tr>
+        `;
+    });
+
+    atualizarResumoEstatisticoDiario(pautaAtualDiario);
+}
+
+function atualizarNotaLinhaDiario(idx, avIdx, valor) {
+    const avConfig = colunasAvaliacaoDiarioAtual[avIdx];
+    if (!pautaAtualDiario[idx] || !avConfig) return;
+
+    const chaveAvaliacao = avConfig.chave;
+    if (valor === '' || valor === null) {
+        delete pautaAtualDiario[idx].notas[chaveAvaliacao];
+    } else {
+        let num = parseFloat(String(valor).replace(',', '.'));
+        if (isNaN(num)) {
+            delete pautaAtualDiario[idx].notas[chaveAvaliacao];
+        } else {
+            if (num > 10) num = 10;
+            if (num < 0) num = 0;
+            pautaAtualDiario[idx].notas[chaveAvaliacao] = num;
+        }
+    }
+
+    const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(pautaAtualDiario[idx].notas, colunasAvaliacaoDiarioAtual);
+    const elMedia = document.getElementById(`diario-media-${idx}`);
+    const elSit = document.getElementById(`diario-situacao-${idx}`);
+    if (elMedia) elMedia.innerText = mediaTexto;
+    if (elSit) elSit.innerHTML = situacaoHtml;
+
+    atualizarResumoEstatisticoDiario(pautaAtualDiario);
+}
+
 async function salvarDiarioEletronico() {
     const cursoId = document.getElementById('diario-select-curso').value;
     const modulo = document.getElementById('diario-select-modulo').value;
@@ -1580,39 +1588,58 @@ async function salvarDiarioEletronico() {
     btn.innerHTML = "Salvando...";
     btn.disabled = true;
 
-    const payload = {
-        curso_id: cursoId,
-        modulo: modulo,
-        periodo: periodo,
-        lancamentos: pautaAtualDiario.map(item => {
-            const { mediaNum, completo } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
-            return {
-                aluno_id: item.aluno_id,
-                curso_id: cursoId,
-                disciplina: modulo,
-                periodo: periodo,
-                matricula: item.matricula,
-                nome: item.nome,
-                faltas: parseInt(item.faltas) || 0,
-                notas: item.notas,
-                media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null,
-                situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
-            };
-        })
-    };
+    try {
+        const payload = {
+            curso_id: String(cursoId),
+            modulo: String(modulo),
+            periodo: String(periodo),
+            lancamentos: pautaAtualDiario.map(item => {
+                const { mediaNum, completo } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
 
-    const result = await apiRequest('/diario/salvar', 'POST', payload);
+                // Monta objeto de notas compatível com chave única e com leitura legada
+                const notasParaSalvar = { ...item.notas };
+                colunasAvaliacaoDiarioAtual.forEach((av, idx) => {
+                    if (item.notas[av.chave] !== undefined) {
+                        notasParaSalvar[av.tipo] = item.notas[av.chave];
+                        if (idx === 0) notasParaSalvar['AV1'] = item.notas[av.chave];
+                        if (idx === 1) notasParaSalvar['AV2'] = item.notas[av.chave];
+                    }
+                });
 
-    if (result && result.sucesso) {
-        alert(result.mensagem || "Diário Eletrônico salvo e consolidado com sucesso!");
-    } else {
-        alert(result?.detail || "Erro ao salvar lançamentos no servidor.");
+                return {
+                    aluno_id: String(item.aluno_id),
+                    curso_id: String(cursoId),
+                    disciplina: String(modulo),
+                    modulo: String(modulo),
+                    periodo: String(periodo),
+                    matricula: item.matricula,
+                    nome: item.nome,
+                    faltas: parseInt(item.faltas) || 0,
+                    notas: notasParaSalvar,
+                    media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null,
+                    situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
+                };
+            })
+        };
+
+        const result = await apiRequest('/diario/salvar', 'POST', payload);
+
+        if (result && result.sucesso) {
+            alert(result.mensagem || "Diário Eletrônico salvo e consolidado com sucesso!");
+            await carregarPautaDiario();
+        } else {
+            alert(typeof result?.detail === 'string' ? result.detail : JSON.stringify(result?.detail || "Erro ao salvar lançamentos no servidor."));
+        }
+    } catch (err) {
+        console.error("Erro ao salvar diário:", err);
+        alert("Falha inesperada ao salvar o Diário Eletrônico.");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        if (typeof feather !== 'undefined') feather.replace();
     }
-
-    btn.innerHTML = originalHtml;
-    btn.disabled = false;
-    feather.replace();
 }
+
 
 function imprimirPautaDiario() {
     if (!pautaAtualDiario || pautaAtualDiario.length === 0) {
@@ -3051,99 +3078,7 @@ document.getElementById('busca-aluno')?.addEventListener('input', function (e) {
 // ==========================================
 // GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
 // ==========================================
-function obterParcelaDoMes(aluno, mesRef) {
-    let mapa = {};
-    try {
-        if (aluno.mensalidades_json) {
-            mapa = typeof aluno.mensalidades_json === 'string'
-                ? JSON.parse(aluno.mensalidades_json)
-                : aluno.mensalidades_json;
-        }
-    } catch (e) {}
 
-    const valorPadrao = calcularValorMensalidadeAluno(aluno);
-
-    if (mapa && mapa[mesRef]) {
-        return {
-            competencia: mesRef,
-            status: mapa[mesRef].status || 'Pendente',
-            detalhes: mapa[mesRef].detalhes || '',
-            numero_nf: mapa[mesRef].numero_nf || '',
-            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
-            comprovante_id: mapa[mesRef].comprovante_id || null,
-            comprovante_nome: mapa[mesRef].comprovante_nome || '',
-            atualizado_em: mapa[mesRef].atualizado_em || null
-        };
-    }
-
-    const hoje = new Date();
-    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-
-    if (mesRef === mesAtual && Object.keys(mapa || {}).length === 0) {
-        const isPendente = aluno.possui_pendencia_financeira === 'Sim' ||
-            (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
-        return {
-            competencia: mesRef,
-            status: isPendente ? 'Pendente' : 'Pago',
-            detalhes: aluno.detalhes_pendencia_financeira || '',
-            numero_nf: aluno.numero_nf || '',
-            valor: valorPadrao,
-            comprovante_id: aluno.ultimo_comprovante_id || null,
-            comprovante_nome: ''
-        };
-    }
-
-    return {
-        competencia: mesRef,
-        status: 'Pendente',
-        detalhes: '',
-        numero_nf: '',
-        valor: valorPadrao,
-        comprovante_id: null,
-        comprovante_nome: ''
-    };
-}
-
-function obterParcelaDoMes(aluno, mesRef) {
-    const mapa = getMapaMensalidadesAluno(aluno);
-    const valorPadrao = getValorMensalidadeAluno(aluno);
-
-    if (mapa[mesRef]) {
-        return {
-            competencia: mesRef,
-            status: mapa[mesRef].status || 'Pendente',
-            numero_nf: mapa[mesRef].numero_nf || '',
-            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
-            comprovante_id: mapa[mesRef].comprovante_id || null,
-            atualizado_em: mapa[mesRef].atualizado_em || null
-        };
-    }
-
-    const hoje = new Date();
-    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-
-    // Fallback legado apenas para o mês atual se o cadastro ainda não tiver mapa mensal
-    if (mesRef === mesAtual && Object.keys(mapa).length === 0) {
-        const isPendente = aluno.possui_pendencia_financeira === 'Sim' ||
-            (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
-        return {
-            competencia: mesRef,
-            status: isPendente ? 'Pendente' : 'Pago',
-            numero_nf: aluno.numero_nf || '',
-            valor: valorPadrao,
-            comprovante_id: aluno.ultimo_comprovante_id || null
-        };
-    }
-
-    // Meses ainda não lançados no mapa aparecem como Pendente (em aberto) por padrão
-    return {
-        competencia: mesRef,
-        status: 'Pendente',
-        numero_nf: '',
-        valor: valorPadrao,
-        comprovante_id: null
-    };
-}
 
 async function loadFinanceiro() {
     const inputMes = document.getElementById('filtro-mes-financeiro');
@@ -3758,6 +3693,94 @@ async function verComprovanteMes(alunoId, competencia) {
 
     document.body.insertAdjacentHTML('beforeend', html);
     if (typeof feather !== 'undefined') feather.replace();
+}
+
+// ==========================================
+// GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
+// ==========================================
+function calcularValorMensalidadeAluno(aluno) {
+    if (!aluno) return 0;
+    if (aluno.valor_mensalidade !== undefined && aluno.valor_mensalidade !== null && aluno.valor_mensalidade !== '') {
+        return parseFloat(aluno.valor_mensalidade) || 0;
+    }
+
+    let cursosIds = [];
+    try {
+        if (aluno.cursos_json) {
+            const lista = typeof aluno.cursos_json === 'string' ? JSON.parse(aluno.cursos_json) : aluno.cursos_json;
+            if (Array.isArray(lista)) cursosIds = lista.map(c => String(c.curso_id));
+        }
+    } catch (e) {}
+
+    if (cursosIds.length === 0 && (aluno.curso_id || aluno.curso)) {
+        cursosIds = [String(aluno.curso_id || aluno.curso)];
+    }
+
+    let soma = 0;
+    cursosIds.forEach(cid => {
+        const curso = cursosGlobais.find(c => String(c.id) === cid);
+        if (curso) {
+            const val = (curso.promocao_ativa === 'Sim' && parseFloat(curso.valor_promocional) > 0)
+                ? parseFloat(curso.valor_promocional)
+                : parseFloat(curso.valor_mensalidade || 0);
+            soma += val || 0;
+        }
+    });
+
+    return soma;
+}
+
+function obterParcelaDoMes(aluno, mesRef) {
+    let mapa = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapa = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : aluno.mensalidades_json;
+        }
+    } catch (e) {}
+
+    const valorPadrao = calcularValorMensalidadeAluno(aluno);
+
+    if (mapa && mapa[mesRef]) {
+        return {
+            competencia: mesRef,
+            status: mapa[mesRef].status || 'Pendente',
+            detalhes: mapa[mesRef].detalhes || '',
+            numero_nf: mapa[mesRef].numero_nf || '',
+            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
+            comprovante_id: mapa[mesRef].comprovante_id || null,
+            comprovante_nome: mapa[mesRef].comprovante_nome || '',
+            atualizado_em: mapa[mesRef].atualizado_em || null
+        };
+    }
+
+    const hoje = new Date();
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    if (mesRef === mesAtual && Object.keys(mapa || {}).length === 0) {
+        const isPendente = aluno.possui_pendencia_financeira === 'Sim' ||
+            (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
+        return {
+            competencia: mesRef,
+            status: isPendente ? 'Pendente' : 'Pago',
+            detalhes: aluno.detalhes_pendencia_financeira || '',
+            numero_nf: aluno.numero_nf || '',
+            valor: valorPadrao,
+            comprovante_id: aluno.ultimo_comprovante_id || null,
+            comprovante_nome: ''
+        };
+    }
+
+    return {
+        competencia: mesRef,
+        status: 'Pendente',
+        detalhes: '',
+        numero_nf: '',
+        valor: valorPadrao,
+        comprovante_id: null,
+        comprovante_nome: ''
+    };
 }
 
 function fecharModalSistema() {
