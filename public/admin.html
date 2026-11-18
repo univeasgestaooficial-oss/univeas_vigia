@@ -1422,23 +1422,19 @@ async function carregarPautaDiario() {
 }
 
 function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
-    let somaPonderada = 0;
-    let somaPesosLancados = 0;
+    let somaNotas = 0;
     let totalAvaliacoes = avaliacoesConfig.length;
     let avaliacoesLancadas = 0;
 
     avaliacoesConfig.forEach(av => {
         const raw = notasObj ? notasObj[av.chave] : null;
         if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
-            const nota = Math.min(10, Math.max(0, parseFloat(raw)));
-            const peso = parseFloat(av.peso) || 1;
-            somaPonderada += nota * peso;
-            somaPesosLancados += peso;
+            somaNotas += Math.max(0, parseFloat(raw));
             avaliacoesLancadas++;
         }
     });
 
-    if (somaPesosLancados === 0) {
+    if (avaliacoesLancadas === 0) {
         return {
             mediaNum: null,
             completo: false,
@@ -1447,7 +1443,8 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
         };
     }
 
-    const media = somaPonderada / somaPesosLancados;
+    // Regra oficial UNIVEAS: Soma das notas dividida por 2
+    const media = somaNotas / 2;
     const mediaTexto = media.toFixed(1).replace('.', ',');
     const completo = avaliacoesLancadas === totalAvaliacoes;
 
@@ -1456,7 +1453,7 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
             mediaNum: media,
             completo: false,
             mediaTexto: `${mediaTexto}*`,
-            situacaoHtml: '<span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase" title="Aguardando lançamento de todas as avaliações">Parcial</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase">Parcial</span>'
         };
     }
 
@@ -1472,7 +1469,7 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
             mediaNum: media,
             completo: true,
             mediaTexto,
-            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Em Recuperação</span>'
+            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Recuperação</span>'
         };
     }
 }
