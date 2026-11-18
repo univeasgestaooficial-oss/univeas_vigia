@@ -482,8 +482,6 @@ function getIniciais(nome) {
     return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
-
-
 function obterFaltas(d) {
     if (!d) return 0;
     const raw = d.faltas ?? d.faltas_totais ?? d.total_faltas ?? d.qtd_faltas ?? 0;
@@ -534,9 +532,6 @@ function calcularMediaDisciplina(d) {
     return somaPonderada / somaPesos;
 }
 
-
-
-
 function liberarAcessoAluno() {
     document.getElementById('tela-login').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
@@ -555,8 +550,7 @@ function liberarAcessoAluno() {
 
     loadDashboardAluno();
     loadNotificacoesAluno();
-    loadCursosAluno();
-    loadPerfilFinanceiro();
+    loadCursosAluno().then(() => loadPerfilFinanceiro());
 
     mudarTela('dashboard');
 }
@@ -604,17 +598,6 @@ async function loadDashboardAluno() {
         const faltasApi = parseInt(data.faltas_totais ?? data.total_faltas ?? 0, 10);
         if (!isNaN(faltasApi) && faltasApi > 0) {
             document.getElementById('dash-faltas').innerText = faltasApi;
-        }
-
-        const statusFin = document.getElementById('dash-financeiro');
-        if (data.status_financeiro === 'Pendente') {
-            statusFin.innerText = 'PENDENTE';
-            statusFin.className = 'text-xl font-black text-red-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
-        } else {
-            statusFin.innerText = 'REGULAR';
-            statusFin.className = 'text-xl font-black text-green-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
         }
         feather.replace();
     }
@@ -666,7 +649,6 @@ async function loadCursosAluno() {
             if (selectSeletorTop) selectSeletorTop.innerHTML += `<option value="${c.id}">${c.nome_curso}</option>`;
         });
 
-        // Se houver mais de 1 curso, exibe o seletor do topo criado agora
         if (cursos.length > 1) {
             if (wrapperSeletorTop) wrapperSeletorTop.classList.remove('hidden');
             if (boxDash) boxDash.classList.remove('hidden');
@@ -675,7 +657,6 @@ async function loadCursosAluno() {
             if (boxDash) boxDash.classList.add('hidden');
         }
 
-        // Recupera o curso salvo no navegador ou usa o primeiro da lista
         const cursoSalvo = localStorage.getItem('curso_ativo_id');
         const cursoInicial = cursos.some(c => String(c.id) === String(cursoSalvo)) ? cursoSalvo : cursos[0].id;
 
@@ -689,11 +670,9 @@ async function loadCursosAluno() {
     }
 }
 
-// Função disparada quando o aluno troca de curso no seletor do topo
 async function mudarCursoAtivoAluno(novoCursoId) {
     localStorage.setItem('curso_ativo_id', novoCursoId);
 
-    // Sincroniza os outros selects internos da página
     const selectBoletim = document.getElementById('select-curso-boletim');
     const selectDash = document.getElementById('select-curso-dash');
     const selectMaterial = document.getElementById('select-curso-material');
@@ -704,7 +683,6 @@ async function mudarCursoAtivoAluno(novoCursoId) {
     if (selectMaterial) selectMaterial.value = novoCursoId;
     if (selectSeletorTop) selectSeletorTop.value = novoCursoId;
 
-    // Recarrega as informações acadêmicas do novo curso selecionado
     await carregarBoletim();
     await carregarMateriais();
 }
@@ -967,131 +945,154 @@ function filtrarMateriaisPorDisciplina() {
 }
 
 async function loadPerfilFinanceiro() {
-    const dados = await apiRequest('/aluno/perfil');
-    const parcelasColecao = await apiRequest('/aluno/mensalidades') || [];
-
-    if (dados) {
-        document.getElementById('perfil-cpf').value = dados.cpf || '';
-        document.getElementById('perfil-email').value = dados.email || '';
-        document.getElementById('perfil-telefone').value = dados.telefone || '';
-        document.getElementById('perfil-endereco').value = dados.endereco || '';
-    }
-
     const tbody = document.getElementById('tbody-financeiro');
-    const diaVenc = String(dados?.dia_vencimento || '10').padStart(2, '0');
-    const valorBaseCurso = parseFloat(dados?.valor_mensalidade || 0);
-
-    let mapaMeses = {};
-
-    // 1. Primeiro carrega da coleção de parcelas
-    if (Array.isArray(parcelasColecao)) {
-        parcelasColecao.forEach(p => {
-            if (p.competencia) {
-                mapaMeses[p.competencia] = { ...p };
-            }
-        });
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Buscando faturas...</td></tr>';
     }
 
-    // 2. Depois aplica o mapa oficial do cadastro do aluno (Admin tem prioridade)
     try {
-        if (dados?.mensalidades_json) {
-            const mapaAdmin = typeof dados.mensalidades_json === 'string'
-                ? JSON.parse(dados.mensalidades_json)
-                : dados.mensalidades_json;
+        const dados = await apiRequest('/aluno/perfil');
 
-            if (mapaAdmin && typeof mapaAdmin === 'object') {
-                Object.keys(mapaAdmin).forEach(comp => {
-                    if (mapaAdmin[comp] && typeof mapaAdmin[comp] === 'object') {
-                        mapaMeses[comp] = { ...(mapaMeses[comp] || {}), ...mapaAdmin[comp], competencia: comp };
-                    }
-                });
+        if (dados && !dados.detail) {
+            const elCpf = document.getElementById('perfil-cpf');
+            const elEmail = document.getElementById('perfil-email');
+            const elTel = document.getElementById('perfil-telefone');
+            const elEnd = document.getElementById('perfil-endereco');
+            if (elCpf) elCpf.value = dados.cpf || '';
+            if (elEmail) elEmail.value = dados.email || '';
+            if (elTel) elTel.value = dados.telefone || '';
+            if (elEnd) elEnd.value = dados.endereco || '';
+        }
+
+        const diaVenc = String(dados?.dia_vencimento || '10').padStart(2, '0');
+
+        let valorBaseCurso = parseFloat(dados?.valor_mensalidade || 0);
+        if (!valorBaseCurso && Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0) {
+            valorBaseCurso = cursosDoAluno.reduce((acc, c) => {
+                const v = (c.promocao_ativa === 'Sim' && parseFloat(c.valor_promocional) > 0)
+                    ? parseFloat(c.valor_promocional)
+                    : parseFloat(c.valor_mensalidade || 0);
+                return acc + (v || 0);
+            }, 0);
+        }
+
+        let mapaMeses = {};
+
+        try {
+            if (dados?.mensalidades_json) {
+                const mapaAdmin = typeof dados.mensalidades_json === 'string'
+                    ? JSON.parse(dados.mensalidades_json)
+                    : dados.mensalidades_json;
+
+                if (mapaAdmin && typeof mapaAdmin === 'object') {
+                    Object.keys(mapaAdmin).forEach(comp => {
+                        if (mapaAdmin[comp] && typeof mapaAdmin[comp] === 'object') {
+                            mapaMeses[comp] = { ...mapaAdmin[comp], competencia: comp };
+                        }
+                    });
+                }
+            }
+        } catch (e) {}
+
+        const hoje = new Date();
+        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+        if (!mapaMeses[mesAtualKey]) {
+            const estaPendente =
+                dados?.status === 'Pendente' ||
+                dados?.possui_pendencia === 'Sim' ||
+                dados?.possui_pendencia_financeira === 'Sim' ||
+                Object.keys(mapaMeses).length === 0;
+
+            mapaMeses[mesAtualKey] = {
+                competencia: mesAtualKey,
+                status: estaPendente ? 'Pendente' : 'Pago',
+                valor: valorBaseCurso,
+                numero_nf: dados?.numero_nf || ''
+            };
+        }
+
+        const competencias = Object.keys(mapaMeses).sort().reverse();
+        const temAlgumaPendente = competencias.some(k => mapaMeses[k].status === 'Pendente');
+
+        const statusFin = document.getElementById('dash-financeiro');
+        if (statusFin) {
+            if (temAlgumaPendente) {
+                statusFin.innerText = 'PENDENTE';
+                statusFin.className = 'text-xl font-black text-red-500 mt-1';
+                if (statusFin.nextElementSibling) statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
+            } else {
+                statusFin.innerText = 'REGULAR';
+                statusFin.className = 'text-xl font-black text-green-500 mt-1';
+                if (statusFin.nextElementSibling) statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
             }
         }
-    } catch (e) {}
 
-    // 3. Garante que o mês atual sempre esteja presente
-    const hoje = new Date();
-    const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-    if (!mapaMeses[mesAtualKey]) {
-        mapaMeses[mesAtualKey] = {
-            competencia: mesAtualKey,
-            status: dados?.possui_pendencia_financeira === 'Sim' ? 'Pendente' : 'Pago',
-            valor: valorBaseCurso,
-            numero_nf: dados?.numero_nf || ''
-        };
-    }
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
-    const competencias = Object.keys(mapaMeses).sort().reverse();
-    const temAlgumaPendente = competencias.some(k => mapaMeses[k].status === 'Pendente');
+        competencias.forEach(comp => {
+            const p = mapaMeses[comp];
+            const [ano, mes] = comp.split('-');
+            const nomeMes = (ano && mes)
+                ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+                : comp;
 
-    const statusFin = document.getElementById('dash-financeiro');
-    if (statusFin) {
-        if (temAlgumaPendente) {
-            statusFin.innerText = 'PENDENTE';
-            statusFin.className = 'text-xl font-black text-red-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
-        } else {
-            statusFin.innerText = 'REGULAR';
-            statusFin.className = 'text-xl font-black text-green-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
-        }
-    }
+            const valorNum = parseFloat(p.valor || valorBaseCurso || 0);
+            const valorFormatado = valorNum > 0
+                ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                : 'Conforme Contrato';
 
-    tbody.innerHTML = '';
-    competencias.forEach(comp => {
-        const p = mapaMeses[comp];
-        const [ano, mes] = comp.split('-');
-        const nomeMes = (ano && mes)
-            ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
-            : comp;
+            const vencFmt = p.vencimento && p.vencimento.includes('-')
+                ? p.vencimento.split('-').reverse().join('/')
+                : `Dia ${diaVenc}/${mes}/${ano}`;
 
-        const valorNum = parseFloat(p.valor || valorBaseCurso || 0);
-        const valorFormatado = valorNum > 0
-            ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-            : 'Conforme Contrato';
+            let statusBadge = '';
+            let acaoBtn = '';
 
-        const vencFmt = p.vencimento && p.vencimento.includes('-')
-            ? p.vencimento.split('-').reverse().join('/')
-            : `Dia ${diaVenc}/${mes}/${ano}`;
+            if (p.status === 'Pago') {
+                const nfTexto = p.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${p.numero_nf}</p>` : '';
+                statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>${nfTexto}`;
+                acaoBtn = `
+                    <button onclick="baixarReciboPdf('${comp}', this)" class="bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition px-3.5 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto">
+                        <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Baixar Recibo
+                    </button>
+                `;
+            } else if (p.status === 'Em Análise') {
+                statusBadge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Análise</span>`;
+                acaoBtn = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline mr-1"></i> Aguardando Baixa</span>`;
+            } else {
+                statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Pendente</span>`;
+                acaoBtn = `
+                    <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
+                        <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
+                        <input type="file" accept="image/*,.pdf" class="hidden" onchange="enviarComprovante(this, '${comp}')">
+                    </label>
+                `;
+            }
 
-        let statusBadge = '';
-        let acaoBtn = '';
-
-        if (p.status === 'Pago') {
-            const nfTexto = p.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${p.numero_nf}</p>` : '';
-            statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>${nfTexto}`;
-            acaoBtn = `
-                <button onclick="baixarReciboPdf('${comp}', this)" class="bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition px-3.5 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto">
-                    <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Baixar Recibo
-                </button>
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                    <td class="py-4 px-4 font-bold text-gray-900 capitalize">
+                        ${p.referencia_label || nomeMes}
+                        <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${vencFmt}</span>
+                    </td>
+                    <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
+                    <td class="py-4 px-4 text-center">${statusBadge}</td>
+                    <td class="py-4 px-4 text-right">${acaoBtn}</td>
+                </tr>
             `;
-        } else if (p.status === 'Em Análise') {
-            statusBadge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Análise</span>`;
-            acaoBtn = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline mr-1"></i> Aguardando Baixa</span>`;
-        } else {
-            statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Pendente</span>`;
-            acaoBtn = `
-                <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
-                    <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
-                    <input type="file" class="hidden" onchange="enviarComprovante(this, '${comp}')">
-                </label>
-            `;
+        });
+    } catch (erro) {
+        console.error("Erro ao carregar financeiro do aluno:", erro);
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-red-500 text-xs font-bold">Não foi possível carregar as mensalidades agora. Tente atualizar a página.</td></tr>';
         }
-
-        tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 font-bold text-gray-900 capitalize">
-                    ${p.referencia_label || nomeMes}
-                    <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${vencFmt}</span>
-                </td>
-                <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
-                <td class="py-4 px-4 text-center">${statusBadge}</td>
-                <td class="py-4 px-4 text-right">${acaoBtn}</td>
-            </tr>
-        `;
-    });
-    feather.replace();
+    } finally {
+        if (typeof feather !== 'undefined') feather.replace();
+    }
 }
+
 async function baixarReciboPdf(competencia, btnElement) {
     const textoOriginal = btnElement ? btnElement.innerHTML : '';
     if (btnElement) {
@@ -1121,7 +1122,7 @@ async function baixarReciboPdf(competencia, btnElement) {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        window.URL.revokeObjectURL(urlBlob);
+        setTimeout(() => window.URL.revokeObjectURL(urlBlob), 4000);
     } catch (e) {
         alert('Erro de conexão ao baixar o recibo PDF.');
     } finally {
@@ -1188,7 +1189,6 @@ async function salvarPerfilAluno(event) {
     }
 }
 
-
 function mudarTela(idTela) {
     document.querySelectorAll('.tela').forEach(tela => {
         tela.classList.add('hidden');
@@ -1237,6 +1237,7 @@ function mudarTela(idTela) {
             toggleMenuMobile();
         }
     }
+    if (idTela === 'financeiro') loadPerfilFinanceiro();
 }
 
 function toggleMenuMobile() {
@@ -1549,8 +1550,7 @@ async function abrirTelaDisciplina(indexBoletim) {
     const ulAval = document.getElementById('disc-lista-avaliacoes');
     ulAval.innerHTML = '';
 
-
-   const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
+    const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
         ? d.avaliacoes_previstas
         : Object.keys(d.notas || {}).map(k => k.replace(/^av_\d+_/, ''));
 
