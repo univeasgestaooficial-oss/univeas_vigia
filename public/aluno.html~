@@ -79,17 +79,12 @@
             </button>
 
             <p class="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-6">Conta</p>
-            <button onclick="mudarTela('perfil')" id="btn-perfil" class="menu-btn w-full flex items-center px-4 py-2.5 text-gray-500 border-l-4 border-transparent hover:bg-gray-50 hover:text-blue-600 font-medium rounded-r-lg transition-colors">
-                <i data-feather="user" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Meu Perfil</span>
-            </button>
-        </div>
 
-    <!-- BOTÃO TUTORIAL DO ALUNO -->
-            <a href="tutorial_aluno.html" class="menu-btn w-full flex items-center px-4 py-2.5 text-blue-700 bg-blue-50/60 border-l-4 border-transparent hover:bg-blue-50 hover:border-blue-500 font-bold rounded-r-lg transition-colors mt-2">
-                <i data-feather="help-circle" class="h-5 w-5 mr-3"></i>
-                <span class="text-sm">Tutorial do Aluno</span>
+            <a href="tutorial_aluno.html" class="w-full flex items-center justify-center px-4 py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+                <i data-feather="help-circle" class="h-4 w-4 mr-2 shrink-0"></i>
+                <span>Manual &amp; Tutorial</span>
             </a>
+        </div>
 
         <div class="p-4 border-t border-gray-100">
             <button onclick="fazerLogout()" class="w-full flex items-center px-4 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium">
@@ -121,7 +116,7 @@
 
         <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
 
-            <!-- SELETOR DE MÚLTIPLOS CURSOS (Coloque logo abaixo do cabeçalho do aluno) -->
+            <!-- SELETOR DE MÚLTIPLOS CURSOS -->
             <div id="wrapper-seletor-curso" class="hidden mb-6 bg-teal-50 border border-teal-200 p-4 rounded-2xl shadow-sm flex items-center justify-between">
                 <div class="flex-1 mr-3">
                     <label class="block text-[10px] font-black text-teal-700 uppercase tracking-wider mb-1">Curso Ativo no Momento</label>
@@ -141,14 +136,13 @@
                 <!-- AVISOS E ALTERAÇÕES DE CRONOGRAMA DO PROFESSOR -->
                 <div id="container-notificacoes-aluno" class="hidden mb-6 space-y-3"></div>
 
-                
                 <!-- CARROSSÉIS DE DISCIPLINAS POR SEMESTRE -->
                 <div id="container-semestres-dash" class="space-y-8 mt-4">
                     <div class="text-center py-10">
                         <p class="text-gray-400 text-sm animate-pulse">Carregando matriz curricular...</p>
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
@@ -178,9 +172,6 @@
                         </div>
                     </div>
                 </div>
-                
-
-                
             </div>
 
             <!-- ==========================================
@@ -252,7 +243,7 @@
                            <!-- Preenchido via JS -->
                         </div>
                         <div class="mt-4 pt-3 border-t border-orange-100/80 text-[10px] text-orange-700 font-semibold flex items-center justify-between">
-                            <span>Média mínima para aprovação:</span>
+                            <span>Soma das notas ÷ 2 • Média mínima:</span>
                             <span class="bg-orange-100 px-2 py-0.5 rounded font-black">8,0</span>
                         </div>
                     </div>
@@ -303,7 +294,7 @@
                             <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
                                 <i data-feather="bar-chart-2" class="w-4 h-4 text-blue-500 mr-1.5"></i> Notas por Avaliação
                             </h5>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase">Corte de Aprovação: 8,0</span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase">Soma das Notas ÷ 2 • Corte: 8,0</span>
                         </div>
                         <div class="relative h-48 w-full">
                             <canvas id="graficoDesempenhoAluno"></canvas>
@@ -494,6 +485,20 @@ function obterFaltas(d) {
     return isNaN(num) ? 0 : num;
 }
 
+function extrairNotaAluno(notasObj, tipo, idx) {
+    if (!notasObj || typeof notasObj !== 'object') return null;
+    const chaveIndexada = `av_${idx}_${tipo}`;
+    if (notasObj[chaveIndexada] !== undefined && notasObj[chaveIndexada] !== null && notasObj[chaveIndexada] !== '') {
+        return parseFloat(notasObj[chaveIndexada]);
+    }
+    if (notasObj[tipo] !== undefined && notasObj[tipo] !== null && notasObj[tipo] !== '') {
+        return parseFloat(notasObj[tipo]);
+    }
+    const chaveSufixo = Object.keys(notasObj).find(k => k.endsWith(`_${tipo}`) && notasObj[k] !== '' && notasObj[k] !== null);
+    if (chaveSufixo) return parseFloat(notasObj[chaveSufixo]);
+    return null;
+}
+
 function calcularMediaDisciplina(d) {
     if (!d) return null;
     if (d.media_final !== undefined && d.media_final !== null && d.media_final !== '') {
@@ -502,28 +507,23 @@ function calcularMediaDisciplina(d) {
     }
 
     const notasObj = d.notas || {};
-    const pesosObj = d.pesos_avaliacoes || {};
     const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
         ? d.avaliacoes_previstas
-        : Object.keys(notasObj);
+        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
 
-    let somaPonderada = 0;
-    let somaPesos = 0;
+    let somaNotas = 0;
+    let qtdValidas = 0;
 
-    avalPrevistas.forEach(tipo => {
-        const val = notasObj[tipo];
-        if (val !== undefined && val !== null && val !== '') {
-            const num = parseFloat(val);
-            const peso = parseFloat(pesosObj[tipo] ?? 1) || 1;
-            if (!isNaN(num)) {
-                somaPonderada += num * peso;
-                somaPesos += peso;
-            }
+    avalPrevistas.forEach((tipo, idx) => {
+        const num = extrairNotaAluno(notasObj, tipo, idx);
+        if (num !== null && !isNaN(num)) {
+            somaNotas += Math.max(0, num);
+            qtdValidas++;
         }
     });
 
-    if (somaPesos === 0) return null;
-    return somaPonderada / somaPesos;
+    if (qtdValidas === 0) return null;
+    return somaNotas / 2;
 }
 
 function liberarAcessoAluno() {
@@ -544,8 +544,7 @@ function liberarAcessoAluno() {
 
     loadDashboardAluno();
     loadNotificacoesAluno();
-    loadCursosAluno();
-    loadPerfilFinanceiro();
+    loadCursosAluno().then(() => loadPerfilFinanceiro());
 
     mudarTela('dashboard');
 }
@@ -593,17 +592,6 @@ async function loadDashboardAluno() {
         const faltasApi = parseInt(data.faltas_totais ?? data.total_faltas ?? 0, 10);
         if (!isNaN(faltasApi) && faltasApi > 0) {
             document.getElementById('dash-faltas').innerText = faltasApi;
-        }
-
-        const statusFin = document.getElementById('dash-financeiro');
-        if (data.status_financeiro === 'Pendente') {
-            statusFin.innerText = 'PENDENTE';
-            statusFin.className = 'text-xl font-black text-red-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
-        } else {
-            statusFin.innerText = 'REGULAR';
-            statusFin.className = 'text-xl font-black text-green-500 mt-1';
-            statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
         }
         feather.replace();
     }
@@ -655,7 +643,6 @@ async function loadCursosAluno() {
             if (selectSeletorTop) selectSeletorTop.innerHTML += `<option value="${c.id}">${c.nome_curso}</option>`;
         });
 
-        // Se houver mais de 1 curso, exibe o seletor do topo criado agora
         if (cursos.length > 1) {
             if (wrapperSeletorTop) wrapperSeletorTop.classList.remove('hidden');
             if (boxDash) boxDash.classList.remove('hidden');
@@ -664,7 +651,6 @@ async function loadCursosAluno() {
             if (boxDash) boxDash.classList.add('hidden');
         }
 
-        // Recupera o curso salvo no navegador ou usa o primeiro da lista
         const cursoSalvo = localStorage.getItem('curso_ativo_id');
         const cursoInicial = cursos.some(c => String(c.id) === String(cursoSalvo)) ? cursoSalvo : cursos[0].id;
 
@@ -678,11 +664,9 @@ async function loadCursosAluno() {
     }
 }
 
-// Função disparada quando o aluno troca de curso no seletor do topo
 async function mudarCursoAtivoAluno(novoCursoId) {
     localStorage.setItem('curso_ativo_id', novoCursoId);
 
-    // Sincroniza os outros selects internos da página
     const selectBoletim = document.getElementById('select-curso-boletim');
     const selectDash = document.getElementById('select-curso-dash');
     const selectMaterial = document.getElementById('select-curso-material');
@@ -693,7 +677,6 @@ async function mudarCursoAtivoAluno(novoCursoId) {
     if (selectMaterial) selectMaterial.value = novoCursoId;
     if (selectSeletorTop) selectSeletorTop.value = novoCursoId;
 
-    // Recarrega as informações acadêmicas do novo curso selecionado
     await carregarBoletim();
     await carregarMateriais();
 }
@@ -771,18 +754,16 @@ function renderizarDisciplinaSelecionada() {
     const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
     const faltas = obterFaltas(n);
     const notasObj = n.notas || {};
-    const pesosObj = n.pesos_avaliacoes || {};
     const tiposAvaliacoes = Array.isArray(n.avaliacoes_previstas) && n.avaliacoes_previstas.length > 0
         ? n.avaliacoes_previstas
-        : Object.keys(notasObj);
+        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
 
     let thHTML = `
         <th class="py-3 px-4">Disciplina / Módulo</th>
         <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
     `;
     tiposAvaliacoes.forEach(tipo => {
-        const pesoLabel = pesosObj[tipo] ? ` <span class="text-[10px] text-gray-400 font-normal">(Peso ${pesosObj[tipo]})</span>` : '';
-        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}${pesoLabel}</th>`;
+        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
     });
     thHTML += `
         <th class="py-3 px-4 text-center">Média</th>
@@ -795,10 +776,8 @@ function renderizarDisciplinaSelecionada() {
     let labelsGrafico = [];
     let dadosGrafico = [];
 
-    tiposAvaliacoes.forEach(tipo => {
-        const valNota = notasObj[tipo] !== undefined && notasObj[tipo] !== null && notasObj[tipo] !== ''
-            ? parseFloat(notasObj[tipo])
-            : null;
+    tiposAvaliacoes.forEach((tipo, idx) => {
+        const valNota = extrairNotaAluno(notasObj, tipo, idx);
 
         if (valNota !== null && !isNaN(valNota)) {
             qtdNotasValidas++;
@@ -818,18 +797,23 @@ function renderizarDisciplinaSelecionada() {
     const situacaoOficial = n.situacao || null;
 
     if (situacaoOficial) {
-        if (situacaoOficial.toLowerCase().includes('aprovado')) {
+        const sitLower = situacaoOficial.toLowerCase();
+        if (sitLower.includes('aprovado')) {
             badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
-        } else if (situacaoOficial.toLowerCase().includes('reprovado')) {
+        } else if (sitLower.includes('recupera') || sitLower.includes('reprovado')) {
             badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+        } else if (sitLower.includes('parcial')) {
+            badge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
         } else {
-            badge = `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
+            badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
         }
     } else if (mediaFinal !== null && !isNaN(mediaFinal)) {
-        if (mediaFinal >= 8.0) {
+        if (tiposAvaliacoes.length > 0 && qtdNotasValidas < tiposAvaliacoes.length) {
+            badge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">Parcial</span>`;
+        } else if (mediaFinal >= 8.0) {
             badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
-        } else if (tiposAvaliacoes.length > 0 && qtdNotasValidas === tiposAvaliacoes.length) {
-            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Recuperação</span>`;
+        } else {
+            badge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Recuperação</span>`;
         }
     }
 
@@ -957,55 +941,215 @@ function filtrarMateriaisPorDisciplina() {
 }
 
 async function loadPerfilFinanceiro() {
-    const dados = await apiRequest('/aluno/perfil');
-    if (dados) {
-        document.getElementById('perfil-cpf').value = dados.cpf || '';
-        document.getElementById('perfil-email').value = dados.email || '';
-        document.getElementById('perfil-telefone').value = dados.telefone || '';
-        document.getElementById('perfil-endereco').value = dados.endereco || '';
+    const tbody = document.getElementById('tbody-financeiro');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400">Buscando faturas...</td></tr>';
+    }
 
-        const tbody = document.getElementById('tbody-financeiro');
-        const isPendente = dados.possui_pendencia_financeira === 'Sim';
-        const emAnalise = dados.status_comprovante === 'Em Análise';
-        const detalhesPendencia = dados.detalhes_pendencia_financeira || 'Mensalidade Atual';
-        const valorCurso = dados.valor_mensalidade || 0;
+    try {
+        const dados = await apiRequest('/aluno/perfil');
 
-        tbody.innerHTML = '';
+        if (dados && !dados.detail) {
+            const elCpf = document.getElementById('perfil-cpf');
+            const elEmail = document.getElementById('perfil-email');
+            const elTel = document.getElementById('perfil-telefone');
+            const elEnd = document.getElementById('perfil-endereco');
+            if (elCpf) elCpf.value = dados.cpf || '';
+            if (elEmail) elEmail.value = dados.email || '';
+            if (elTel) elTel.value = dados.telefone || '';
+            if (elEnd) elEnd.value = dados.endereco || '';
+        }
+
+        const diaVenc = String(dados?.dia_vencimento || '10').padStart(2, '0');
+
+        let valorBaseCurso = parseFloat(dados?.valor_mensalidade || 0);
+        if (!valorBaseCurso && Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0) {
+            valorBaseCurso = cursosDoAluno.reduce((acc, c) => {
+                const v = (c.promocao_ativa === 'Sim' && parseFloat(c.valor_promocional) > 0)
+                    ? parseFloat(c.valor_promocional)
+                    : parseFloat(c.valor_mensalidade || 0);
+                return acc + (v || 0);
+            }, 0);
+        }
+
+        let mapaMeses = {};
+
+        try {
+            if (dados?.mensalidades_json) {
+                const mapaAdmin = typeof dados.mensalidades_json === 'string'
+                    ? JSON.parse(dados.mensalidades_json)
+                    : dados.mensalidades_json;
+
+                if (mapaAdmin && typeof mapaAdmin === 'object') {
+                    Object.keys(mapaAdmin).forEach(comp => {
+                        if (mapaAdmin[comp] && typeof mapaAdmin[comp] === 'object') {
+                            mapaMeses[comp] = { ...mapaAdmin[comp], competencia: comp };
+                        }
+                    });
+                }
+            }
+        } catch (e) {}
 
         const hoje = new Date();
-        const mesRef = hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-        const valorFormatado = parseFloat(valorCurso).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 
-        let statusBadge = '';
-        let acaoBtn = '';
+        if (!mapaMeses[mesAtualKey]) {
+            const estaPendente =
+                dados?.status === 'Pendente' ||
+                dados?.possui_pendencia === 'Sim' ||
+                dados?.possui_pendencia_financeira === 'Sim' ||
+                Object.keys(mapaMeses).length === 0;
 
-        if (isPendente) {
-            statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Atrasada / Pendente</span><p class="text-[10px] text-gray-400 mt-1">${detalhesPendencia}</p>`;
-            if (emAnalise) {
-                acaoBtn = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline mr-1"></i> Em Análise pela Secretaria</span>`;
+            mapaMeses[mesAtualKey] = {
+                competencia: mesAtualKey,
+                status: estaPendente ? 'Pendente' : 'Pago',
+                valor: valorBaseCurso,
+                numero_nf: dados?.numero_nf || ''
+            };
+        }
+
+        const competencias = Object.keys(mapaMeses).sort().reverse();
+        const temAlgumaPendente = competencias.some(k => mapaMeses[k].status === 'Pendente');
+
+        const statusFin = document.getElementById('dash-financeiro');
+        if (statusFin) {
+            if (temAlgumaPendente) {
+                statusFin.innerText = 'PENDENTE';
+                statusFin.className = 'text-xl font-black text-red-500 mt-1';
+                if (statusFin.nextElementSibling) statusFin.nextElementSibling.className = 'p-4 bg-red-50 text-red-500 rounded-xl';
             } else {
+                statusFin.innerText = 'REGULAR';
+                statusFin.className = 'text-xl font-black text-green-500 mt-1';
+                if (statusFin.nextElementSibling) statusFin.nextElementSibling.className = 'p-4 bg-green-50 text-green-500 rounded-xl';
+            }
+        }
+
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        competencias.forEach(comp => {
+            const p = mapaMeses[comp];
+            const [ano, mes] = comp.split('-');
+            const nomeMes = (ano && mes)
+                ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+                : comp;
+
+            const valorNum = parseFloat(p.valor || valorBaseCurso || 0);
+            const valorFormatado = valorNum > 0
+                ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                : 'Conforme Contrato';
+
+            const vencFmt = p.vencimento && p.vencimento.includes('-')
+                ? p.vencimento.split('-').reverse().join('/')
+                : `Dia ${diaVenc}/${mes}/${ano}`;
+
+            let statusBadge = '';
+            let acaoBtn = '';
+
+            if (p.status === 'Pago') {
+                const nfTexto = p.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${p.numero_nf}</p>` : '';
+                statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>${nfTexto}`;
+                acaoBtn = `
+                    <button onclick="baixarReciboPdf('${comp}', this)" class="bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition px-3.5 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto">
+                        <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Baixar Recibo
+                    </button>
+                `;
+            } else if (p.status === 'Em Análise') {
+                statusBadge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Análise</span>`;
+                acaoBtn = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline mr-1"></i> Aguardando Baixa</span>`;
+            } else {
+                statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Pendente</span>`;
                 acaoBtn = `
                     <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 transition flex items-center justify-end w-max ml-auto">
                         <i data-feather="upload" class="w-3 h-3 mr-2"></i> Enviar Comprovante
-                        <input type="file" class="hidden" onchange="enviarComprovante(this)">
+                        <input type="file" accept="image/*,.pdf" class="hidden" onchange="enviarComprovante(this, '${comp}')">
                     </label>
                 `;
             }
-        } else {
-            const nfTexto = dados.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${dados.numero_nf}</p>` : '';
-            statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga / Regular</span>${nfTexto}`;
-            acaoBtn = `<span class="text-xs text-gray-400 font-bold"><i data-feather="check" class="w-4 h-4 inline text-green-500"></i> Tudo Certo</span>`;
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-50">
+                    <td class="py-4 px-4 font-bold text-gray-900 capitalize">
+                        ${p.referencia_label || nomeMes}
+                        <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${vencFmt}</span>
+                    </td>
+                    <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
+                    <td class="py-4 px-4 text-center">${statusBadge}</td>
+                    <td class="py-4 px-4 text-right">${acaoBtn}</td>
+                </tr>
+            `;
+        });
+    } catch (erro) {
+        console.error("Erro ao carregar financeiro do aluno:", erro);
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-red-500 text-xs font-bold">Não foi possível carregar as mensalidades agora. Tente atualizar a página.</td></tr>';
+        }
+    } finally {
+        if (typeof feather !== 'undefined') feather.replace();
+    }
+}
+
+async function baixarReciboPdf(competencia, btnElement) {
+    const textoOriginal = btnElement ? btnElement.innerHTML : '';
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = 'Gerando PDF...';
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/aluno/financeiro/recibo/${encodeURIComponent(competencia)}/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}`
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            alert(err.detail || 'Não foi possível gerar o recibo deste mês.');
+            return;
         }
 
-        tbody.innerHTML = `
-            <tr class="hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 font-bold text-gray-900 capitalize">${mesRef}<br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Venc. Dia ${dados.dia_vencimento || 10}</span></td>
-                <td class="py-4 px-4 text-gray-800 font-black">${valorFormatado}</td>
-                <td class="py-4 px-4 text-center">${statusBadge}</td>
-                <td class="py-4 px-4 text-right">${acaoBtn}</td>
-            </tr>
-        `;
-        feather.replace();
+        const blob = await response.blob();
+        const urlBlob = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = urlBlob;
+        a.download = `Recibo_UNIVEAS_${competencia}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => window.URL.revokeObjectURL(urlBlob), 4000);
+    } catch (e) {
+        alert('Erro de conexão ao baixar o recibo PDF.');
+    } finally {
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = textoOriginal;
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+    }
+}
+
+async function enviarComprovante(inputElement, competencia) {
+    if (inputElement.files.length === 0) return;
+
+    const file = inputElement.files[0];
+    const formData = new FormData();
+    formData.append('comprovante', file);
+    formData.append('competencia', competencia);
+
+    const labelParent = inputElement.parentElement;
+    const textOriginal = labelParent.innerHTML;
+    labelParent.innerHTML = "Enviando...";
+
+    const result = await apiRequest('/aluno/financeiro/comprovante', 'POST', formData);
+
+    if (result && result.sucesso) {
+        alert("Comprovante enviado com sucesso! A secretaria analisará este mês em breve.");
+        await loadPerfilFinanceiro();
+    } else {
+        alert("Erro ao enviar comprovante. Tente novamente.");
+        labelParent.innerHTML = textOriginal;
     }
 }
 
@@ -1041,29 +1185,6 @@ async function salvarPerfilAluno(event) {
     }
 }
 
-async function enviarComprovante(inputElement) {
-    if (inputElement.files.length === 0) return;
-
-    const file = inputElement.files[0];
-    const formData = new FormData();
-    formData.append('comprovante', file);
-
-    const labelParent = inputElement.parentElement;
-    const textOriginal = labelParent.innerHTML;
-    labelParent.innerHTML = "Enviando...";
-
-    const result = await apiRequest('/aluno/financeiro/comprovante', 'POST', formData);
-
-    if (result && result.sucesso) {
-        alert("Comprovante enviado com sucesso! A secretaria analisará e dará baixa em breve.");
-        labelParent.innerHTML = `<span class="text-xs text-blue-600 font-bold"><i data-feather="clock" class="w-4 h-4 inline"></i> Em Análise</span>`;
-        feather.replace();
-    } else {
-        alert("Erro ao enviar comprovante. Tente novamente.");
-        labelParent.innerHTML = textOriginal;
-    }
-}
-
 function mudarTela(idTela) {
     document.querySelectorAll('.tela').forEach(tela => {
         tela.classList.add('hidden');
@@ -1087,6 +1208,15 @@ function mudarTela(idTela) {
         btnAtivo.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-500', 'font-bold');
     }
 
+    const wrapperSeletor = document.getElementById('wrapper-seletor-curso');
+    if (wrapperSeletor) {
+        if ((idTela === 'dashboard' || idTela === 'boletim' || idTela === 'material') && cursosDoAluno.length > 1) {
+            wrapperSeletor.classList.remove('hidden');
+        } else {
+            wrapperSeletor.classList.add('hidden');
+        }
+    }
+
     const titulos = {
         'dashboard': 'Painel Principal',
         'disciplina': 'Detalhes da Disciplina',
@@ -1103,6 +1233,7 @@ function mudarTela(idTela) {
             toggleMenuMobile();
         }
     }
+    if (idTela === 'financeiro') loadPerfilFinanceiro();
 }
 
 function toggleMenuMobile() {
@@ -1148,7 +1279,8 @@ async function renderizarDashboardAluno() {
         if (!semestres[sem]) semestres[sem] = { nome: sem, disciplinas: [], temCursando: false };
         disc.indexOriginal = index;
 
-        if (disc.situacao && disc.situacao.toLowerCase() === 'cursando') {
+        const sitLower = (disc.situacao || '').toLowerCase();
+        if (sitLower === 'cursando' || sitLower === 'parcial') {
             semestres[sem].temCursando = true;
             semestreAtivo = sem;
         }
@@ -1176,14 +1308,15 @@ async function renderizarDashboardAluno() {
                 ? d.foto_modulo.trim()
                 : capaPadraoCurso;
 
-            let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Pendente</span>';
+            let badge = '<span class="absolute top-3 right-3 bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-1 rounded shadow uppercase">Cursando</span>';
+            const sitCard = (d.situacao || '').toLowerCase();
 
-            if (d.situacao && d.situacao.toLowerCase() === 'aprovado') {
-                badge = '<span class="absolute top-3 right-3 bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Concluído</span>';
-            } else if (d.situacao && d.situacao.toLowerCase() === 'reprovado') {
-                badge = '<span class="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Reprovado</span>';
-            } else if (d.situacao && d.situacao.toLowerCase() === 'cursando') {
-                badge = '<span class="absolute top-3 right-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase animate-pulse">Em Andamento</span>';
+            if (sitCard.includes('aprovado')) {
+                badge = '<span class="absolute top-3 right-3 bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Aprovado</span>';
+            } else if (sitCard.includes('recupera') || sitCard.includes('reprovado')) {
+                badge = '<span class="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Recuperação</span>';
+            } else if (sitCard.includes('parcial')) {
+                badge = '<span class="absolute top-3 right-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded shadow uppercase">Parcial</span>';
             }
 
             const nomeDisciplina = d.disciplina || d.nome_disciplina || 'Disciplina';
@@ -1368,72 +1501,6 @@ function formatarCronogramaDisciplina(d) {
     return 'Horário a definir';
 }
 
-
-// Variável global para guardar os dados completos do aluno logado
-let dadosAlunoLogado = null;
-
-// 1. Chame esta função logo após carregar os dados do aluno logado (ex: após o fetch('/aluno/perfil'))
-function inicializarSeletorCursosAluno(alunoData) {
-    dadosAlunoLogado = alunoData;
-    const wrapper = document.getElementById('wrapper-seletor-curso');
-    const select = document.getElementById('select-curso-ativo-aluno');
-
-    if (!wrapper || !select) return;
-
-    // Extrai os cursos do aluno (suporta o formato novo 'cursos_json' ou o antigo 'curso_id')
-    let listaCursos = [];
-    try {
-        if (alunoData.cursos_json) {
-            listaCursos = typeof alunoData.cursos_json === 'string' ? JSON.parse(alunoData.cursos_json) : alunoData.cursos_json;
-        } else if (alunoData.curso_id) {
-            listaCursos = [{ curso_id: alunoData.curso_id, nome_curso: alunoData.nome_curso || 'Curso Principal' }];
-        }
-    } catch (e) {
-        console.error("Erro ao ler cursos do aluno:", e);
-    }
-
-    // Se o aluno tiver apenas 1 curso ou nenhum, esconde o seletor para não poluir a tela
-    if (listaCursos.length <= 1) {
-        wrapper.classList.add('hidden');
-        if (listaCursos.length === 1) {
-            localStorage.setItem('curso_ativo_id', listaCursos[0].curso_id);
-        }
-        return;
-    }
-
-    // Se tiver mais de 1 curso, exibe o seletor e preenche as opções
-    wrapper.classList.remove('hidden');
-
-    let cursoAtivoSalvo = localStorage.getItem('curso_ativo_id') || listaCursos[0].curso_id;
-
-    let optionsHtml = '';
-    listaCursos.forEach(c => {
-        // Tenta buscar o nome do curso pelo ID se não vier direto no objeto
-        let nomeExibicao = c.nome_curso || `Curso ID: ${c.curso_id}`;
-        let selected = String(c.curso_id) === String(cursoAtivoSalvo) ? 'selected' : '';
-        optionsHtml += `<option value="${c.curso_id}" ${selected}>${nomeExibicao}</option>`;
-    });
-
-    select.innerHTML = optionsHtml;
-
-    // Garante que o ID salvo é o atual
-    localStorage.setItem('curso_ativo_id', select.value);
-    if (window.feather) feather.replace();
-}
-
-// 2. Executado toda vez que o aluno troca de curso no <select>
-function mudarCursoAtivoAluno(novoCursoId) {
-    localStorage.setItem('curso_ativo_id', novoCursoId);
-
-    // Dispara a atualização das telas do aluno filtrando pelo novo curso
-    if (typeof carregarNotasE_FrequenciasAluno === 'function') {
-        carregarNotasE_FrequenciasAluno(novoCursoId);
-    } else {
-        // Se a função específica não existir, recarrega a página aplicando o contexto
-        location.reload();
-    }
-}
-
 async function abrirTelaDisciplina(indexBoletim) {
     const d = dadosBoletimAtual[indexBoletim];
     if (!d) return;
@@ -1480,23 +1547,23 @@ async function abrirTelaDisciplina(indexBoletim) {
 
     const ulAval = document.getElementById('disc-lista-avaliacoes');
     ulAval.innerHTML = '';
+
     const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
         ? d.avaliacoes_previstas
-        : Object.keys(d.notas || {});
+        : Object.keys(d.notas || {}).map(k => k.replace(/^av_\d+_/, ''));
 
     if (avalPrevistas.length === 0) {
         ulAval.innerHTML = '<p class="text-xs text-orange-400">Nenhuma avaliação configurada.</p>';
     } else {
-        const pesosObj = d.pesos_avaliacoes || {};
-        avalPrevistas.forEach(tipo => {
-            const nota = (d.notas && d.notas[tipo] !== undefined && d.notas[tipo] !== null && d.notas[tipo] !== '') ? d.notas[tipo] : 'Pendente';
+        avalPrevistas.forEach((tipo, idx) => {
+            const notaNum = extrairNotaAluno(d.notas || {}, tipo, idx);
+            const nota = (notaNum !== null && !isNaN(notaNum)) ? notaNum.toFixed(1) : 'Pendente';
             const bgCor = nota === 'Pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-700';
-            const textoPeso = pesosObj[tipo] ? `Peso ${pesosObj[tipo]}` : 'Avaliação Oficial';
             ulAval.innerHTML += `
                 <div class="bg-white border border-orange-100 p-3 rounded-xl flex items-center justify-between shadow-sm">
                     <div>
                         <p class="text-xs font-bold text-gray-800 uppercase">${tipo}</p>
-                        <p class="text-[9px] text-gray-400 uppercase mt-0.5">${textoPeso}</p>
+                        <p class="text-[9px] text-gray-400 uppercase mt-0.5">Avaliação Oficial</p>
                     </div>
                     <span class="${bgCor} px-2 py-1 rounded text-xs font-black">${nota}</span>
                 </div>
@@ -1543,10 +1610,11 @@ async function abrirTelaDisciplina(indexBoletim) {
         const mats = await apiRequest(`/aluno/materiais/${cursoId}`);
 
         containerMat.innerHTML = '';
-        if (mats && mats.length > 0) {
-            let filtrados = mats.filter(m => (m.disciplina || '').trim().toUpperCase() === nomeDisc.trim().toUpperCase());
-            if (filtrados.length === 0) filtrados = mats;
+        const filtrados = Array.isArray(mats)
+            ? mats.filter(m => (m.disciplina || '').trim().toUpperCase() === nomeDisc.trim().toUpperCase())
+            : [];
 
+        if (filtrados.length > 0) {
             filtrados.forEach(m => {
                 containerMat.innerHTML += `
                     <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl">
