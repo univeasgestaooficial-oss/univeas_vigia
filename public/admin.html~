@@ -62,7 +62,7 @@
 <div id="app-container" class="hidden h-full w-full flex-1 flex relative">
 
     <!-- BACKDROP MOBILE (Fecha o menu ao tocar fora) -->
-    <div id="mobile-backdrop" onclick="fecharMenuMobile()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
+    <div id="mobile-backdrop" onclick="fecharMenuMobile()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 hidden md:hidden transition-opacity"></div>
 
     <!-- ==========================================
          MENU LATERAL RESPONSIVO (OFF-CANVAS NO MOBILE)
@@ -127,7 +127,7 @@
                 <span>Manual & Tutorial</span>
             </a>
 
-            <button onclick="logoutSistema()" class="w-full flex items-center justify-center px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+            <button onclick="fazerLogout()" class="w-full flex items-center justify-center px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
                 <i data-feather="log-out" class="h-4 w-4 mr-2 shrink-0"></i>
                 <span>Sair do Sistema</span>
             </button>
@@ -436,7 +436,7 @@
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Lista de Documentos Emitidos</p>
                             <div class="flex space-x-2 w-full sm:w-auto">
                                 <div class="relative flex-1 sm:w-64">
-                                    <input type="text" placeholder="Nome, Tipo, Matrícula..." class="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-teal-500">
+                                    <input type="text" id="filtro-docs-emitidos" oninput="filtrarTabelaDocumentosEmitidos()" placeholder="Nome, Tipo, Matrícula..." class="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-univeas-orange">
                                     <i data-feather="search" class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"></i>
                                 </div>
                                 <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
@@ -587,7 +587,8 @@
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-5">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Registro (Auto)</label>
-                                    <input type="text" name="registro" value="#PR014" disabled class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400 font-mono">
+                                        <input type="hidden" id="docente_id_edit" value="">
+                                        <input type="text" id="docente-registro-auto" value="#PR001" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-500 font-mono">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF do Prestador</label>
@@ -732,7 +733,7 @@
                         </div>
                         <div class="md:col-span-4">
                             <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">2. Módulo / Disciplina</label>
-                            <select id="diario-select-modulo" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-teal-500 font-medium">
+                            <select id="diario-select-modulo" onchange="onTrocaModuloDiario()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none">
                                 <option value="">Selecione um curso primeiro...</option>
                             </select>
                         </div>
@@ -1161,10 +1162,25 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 }
 
 // ==========================================
-// 4. DIÁRIO ELETRÔNICO CONSOLIDADO (ADMIN - MÉDIA PONDERADA >= 8,0)
+// 4. DIÁRIO ELETRÔNICO CONSOLIDADO (UNIFICADO ADMIN & DOCENTE)
 // ==========================================
+function normalizarTextoDiario(txt) {
+    return String(txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase();
+}
+
 async function initDiarioEletronico() {
     const selectCurso = document.getElementById('diario-select-curso');
+    const selectPeriodo = document.getElementById('diario-select-periodo');
+    if (selectPeriodo && !selectPeriodo.dataset.listenerAdicionado) {
+        selectPeriodo.value = 'Módulo Único';
+        selectPeriodo.addEventListener('change', onTrocaModuloDiario);
+        selectPeriodo.dataset.listenerAdicionado = 'true';
+    }
+
     selectCurso.innerHTML = '<option value="">Carregando cursos...</option>';
 
     if (cursosGlobais.length === 0) await loadCursos();
@@ -1199,6 +1215,10 @@ function atualizarModulosDiario() {
 
     if (!cursoId) {
         selectModulo.innerHTML = '<option value="">Selecione um curso primeiro...</option>';
+        pautaAtualDiario = [];
+        document.getElementById('diario-info-bar')?.classList.add('hidden');
+        document.getElementById('tabela-diario').innerHTML =
+            '<tr><td colspan="7" class="py-12 text-center text-gray-400 text-xs">Selecione o curso, o módulo e clique em <strong>Carregar</strong> para auditar ou lançar notas e frequências.</td></tr>';
         return;
     }
 
@@ -1213,21 +1233,27 @@ function atualizarModulosDiario() {
 
     if (!grade || grade.length === 0) {
         selectModulo.innerHTML = '<option value="Geral">Módulo Geral / Único</option>';
-        return;
+    } else {
+        let opts = '';
+        grade.forEach((mod, idx) => {
+            const nomeMod = mod.nome || `Módulo ${idx + 1}`;
+            const sem = mod.semestre ? ` (${mod.semestre})` : '';
+            opts += `<option value="${nomeMod}">${nomeMod}${sem}</option>`;
+        });
+        selectModulo.innerHTML = opts;
     }
 
-    let opts = '';
-    grade.forEach((mod, idx) => {
-        const nomeMod = mod.nome || `Módulo ${idx + 1}`;
-        const sem = mod.semestre ? ` (${mod.semestre})` : '';
-        opts += `<option value="${nomeMod}">${nomeMod}${sem}</option>`;
-    });
-    selectModulo.innerHTML = opts;
+    onTrocaModuloDiario();
 }
 
 function obterConfigAvaliacoesModulo(cursoId, moduloNome) {
     const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
-    if (!curso) return [{ tipo: 'AV1', peso: 1 }, { tipo: 'AV2', peso: 1 }];
+    if (!curso) {
+        return [
+            { chave: 'av_0', tipo: 'Primeira avaliação', peso: 1 },
+            { chave: 'av_1', tipo: 'Segunda avaliação', peso: 1 }
+        ];
+    }
 
     let grade = [];
     try {
@@ -1235,23 +1261,49 @@ function obterConfigAvaliacoesModulo(cursoId, moduloNome) {
         grade = typeof raw === 'string' ? JSON.parse(raw) : raw;
     } catch (e) {}
 
-    const modObj = grade.find(m => (m.nome || '').trim().toUpperCase() === moduloNome.trim().toUpperCase());
+    const alvo = normalizarTextoDiario(moduloNome);
+    const modObj = grade.find(m => normalizarTextoDiario(m.nome) === alvo);
+
     if (modObj && Array.isArray(modObj.avaliacoes) && modObj.avaliacoes.length > 0) {
-        return modObj.avaliacoes.map(av => {
-            if (typeof av === 'object') {
-                return {
-                    tipo: av.tipo || av.nome || 'Avaliação',
-                    peso: parseFloat(av.peso) || 1
-                };
-            }
-            return { tipo: String(av), peso: 1 };
+        return modObj.avaliacoes.map((av, idx) => {
+            const tipo = typeof av === 'object' ? (av.tipo || av.nome || `Avaliação ${idx + 1}`) : String(av);
+            const peso = typeof av === 'object' ? (parseFloat(av.peso) || 1) : 1;
+            return {
+                chave: `av_${idx}_${tipo}`,
+                tipo: tipo,
+                peso: peso
+            };
         });
     }
 
-    return [{ tipo: 'AV1', peso: 1 }, { tipo: 'AV2', peso: 1 }];
+    return [
+        { chave: 'av_0_Primeira avaliação', tipo: 'Primeira avaliação', peso: 1 },
+        { chave: 'av_1_Segunda avaliação', tipo: 'Segunda avaliação', peso: 1 }
+    ];
+}
+
+function extrairNotaAvaliacao(notasObj, avConfig, idx) {
+    if (!notasObj || typeof notasObj !== 'object') return null;
+    // 1. Chave única indexada (evita colisão quando há 2 provas ou 2 trabalhos)
+    if (notasObj[avConfig.chave] !== undefined && notasObj[avConfig.chave] !== null && notasObj[avConfig.chave] !== '') {
+        return notasObj[avConfig.chave];
+    }
+    // 2. Retrocompatibilidade com registros antigos salvos apenas pelo nome do tipo
+    if (notasObj[avConfig.tipo] !== undefined && notasObj[avConfig.tipo] !== null && notasObj[avConfig.tipo] !== '') {
+        return notasObj[avConfig.tipo];
+    }
+    // 3. Retrocompatibilidade com chaves genéricas (AV1, AV2, nota1, nota2)
+    const aliases = idx === 0 ? ['AV1', 'nota1', 'n1'] : (idx === 1 ? ['AV2', 'nota2', 'n2'] : [`AV${idx + 1}`, `nota${idx + 1}`]);
+    for (const alias of aliases) {
+        if (notasObj[alias] !== undefined && notasObj[alias] !== null && notasObj[alias] !== '') {
+            return notasObj[alias];
+        }
+    }
+    return null;
 }
 
 function encontrarDocenteDoModulo(cursoId, moduloNome) {
+    const alvoMod = normalizarTextoDiario(moduloNome);
     for (const doc of docentesGlobais) {
         let vinculos = [];
         try {
@@ -1264,7 +1316,7 @@ function encontrarDocenteDoModulo(cursoId, moduloNome) {
 
         const match = vinculos.find(v =>
             String(v.curso_id) === String(cursoId) &&
-            (!v.modulo || v.modulo === 'Geral' || v.modulo === moduloNome)
+            (!v.modulo || normalizarTextoDiario(v.modulo) === 'GERAL' || normalizarTextoDiario(v.modulo) === alvoMod)
         );
         if (match) return doc.nome_prestador || doc.nome || 'Docente Vinculado';
     }
@@ -1300,14 +1352,13 @@ async function carregarPautaDiario() {
     const docenteNome = encontrarDocenteDoModulo(cursoId, modulo);
     colunasAvaliacaoDiarioAtual = obterConfigAvaliacoesModulo(cursoId, modulo);
 
-    // Atualiza o cabeçalho da tabela dinamicamente com os pesos da matriz
     let thHtml = `
         <th class="py-3 px-4 whitespace-nowrap">Matrícula</th>
         <th class="py-3 px-4 whitespace-nowrap">Nome do Aluno</th>
         <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Faltas</th>
     `;
-    colunasAvaliacaoDiarioAtual.forEach(av => {
-        thHtml += `<th class="py-3 px-4 text-center w-28 whitespace-nowrap text-teal-700">${av.tipo} <span class="text-[9px] text-gray-400 font-normal">(P.${av.peso})</span></th>`;
+    colunasAvaliacaoDiarioAtual.forEach((av, i) => {
+        thHtml += `<th class="py-3 px-4 text-center w-28 whitespace-nowrap text-teal-700">${i + 1}. ${av.tipo} <span class="text-[9px] text-gray-400 font-normal">(Peso ${av.peso})</span></th>`;
     });
     thHtml += `
         <th class="py-3 px-4 text-center w-24 whitespace-nowrap">Média</th>
@@ -1315,20 +1366,17 @@ async function carregarPautaDiario() {
     `;
     theadRow.innerHTML = thHtml;
 
-    // Exibe barra de resumo da pauta
     const infoBar = document.getElementById('diario-info-bar');
     infoBar.classList.remove('hidden');
     document.getElementById('diario-titulo-pauta').innerText = `${curso?.nome_curso || 'Curso'} • ${modulo} (${periodo})`;
     document.getElementById('diario-docente-responsavel').innerText = `Docente Responsável: ${docenteNome}`;
 
-    // Busca lançamentos já salvos no backend
     let registrosSalvos = [];
     const respDiario = await apiRequest(`/diario?curso_id=${encodeURIComponent(cursoId)}&modulo=${encodeURIComponent(modulo)}&periodo=${encodeURIComponent(periodo)}`);
     if (respDiario && !respDiario.detail) {
         registrosSalvos = Array.isArray(respDiario) ? respDiario : (respDiario.lancamentos || respDiario.dados || []);
     }
 
-    // Filtra alunos matriculados neste curso
     const alunosDaTurma = alunosGlobais.filter(a => alunoPertenceAoCurso(a, cursoId) && a.status !== 'Cancelado');
 
     if (alunosDaTurma.length === 0) {
@@ -1337,25 +1385,121 @@ async function carregarPautaDiario() {
         return;
     }
 
+    const moduloNorm = normalizarTextoDiario(modulo);
+    const periodoNorm = normalizarTextoDiario(periodo);
+
     pautaAtualDiario = alunosDaTurma.map(aluno => {
-        const reg = registrosSalvos.find(r =>
-            (String(r.aluno_id) === String(aluno.id) || r.matricula === aluno.matricula) &&
-            (!r.disciplina || r.disciplina.trim().toUpperCase() === modulo.trim().toUpperCase())
-        );
+        const reg = registrosSalvos.find(r => {
+            const mesmoAluno = String(r.aluno_id) === String(aluno.id) || (r.matricula && r.matricula === aluno.matricula);
+            const discReg = normalizarTextoDiario(r.disciplina || r.modulo);
+            const mesmaDisc = !discReg || discReg === moduloNorm;
+            const perReg = normalizarTextoDiario(r.periodo);
+            const mesmoPeriodo = !perReg || perReg === periodoNorm;
+            return mesmoAluno && mesmaDisc && mesmoPeriodo;
+        });
 
         const faltas = reg?.faltas ?? 0;
-        const notasObj = reg?.notas ? { ...reg.notas } : {};
+        const notasBrutas = reg?.notas || {};
+        const notasNormalizadas = {};
+
+        colunasAvaliacaoDiarioAtual.forEach((av, idx) => {
+            const valorEncontrado = extrairNotaAvaliacao(notasBrutas, av, idx);
+            if (valorEncontrado !== null && !isNaN(parseFloat(valorEncontrado))) {
+                notasNormalizadas[av.chave] = parseFloat(valorEncontrado);
+            }
+        });
 
         return {
             aluno_id: aluno.id,
             matricula: aluno.matricula || '-',
             nome: aluno.nome || 'Sem Nome',
             faltas: faltas,
-            notas: notasObj
+            notas: notasNormalizadas
         };
     });
 
     renderizarLinhasDiario();
+}
+
+function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
+    let somaNotas = 0;
+    let totalAvaliacoes = avaliacoesConfig.length;
+    let avaliacoesLancadas = 0;
+
+    avaliacoesConfig.forEach(av => {
+        const raw = notasObj ? notasObj[av.chave] : null;
+        if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
+            somaNotas += Math.max(0, parseFloat(raw));
+            avaliacoesLancadas++;
+        }
+    });
+
+    if (avaliacoesLancadas === 0) {
+        return {
+            mediaNum: null,
+            completo: false,
+            mediaTexto: '-',
+            situacaoHtml: '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-bold uppercase">Cursando</span>'
+        };
+    }
+
+    // Regra oficial UNIVEAS: Soma das notas dividida por 2
+    const media = somaNotas / 2;
+    const mediaTexto = media.toFixed(1).replace('.', ',');
+    const completo = avaliacoesLancadas === totalAvaliacoes;
+
+    if (!completo) {
+        return {
+            mediaNum: media,
+            completo: false,
+            mediaTexto: `${mediaTexto}*`,
+            situacaoHtml: '<span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase">Parcial</span>'
+        };
+    }
+
+    if (media >= 8.0) {
+        return {
+            mediaNum: media,
+            completo: true,
+            mediaTexto,
+            situacaoHtml: '<span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold uppercase">Aprovado</span>'
+        };
+    } else {
+        return {
+            mediaNum: media,
+            completo: true,
+            mediaTexto,
+            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Recuperação</span>'
+        };
+    }
+}
+
+function atualizarFaltaLinhaDiario(idx, valor) {
+    if (!pautaAtualDiario[idx]) return;
+    pautaAtualDiario[idx].faltas = parseInt(valor) || 0;
+}
+
+
+
+function atualizarResumoEstatisticoDiario(lista) {
+    const total = lista.length;
+    let aprovados = 0;
+    let somaMedias = 0;
+    let qtdComNota = 0;
+
+    lista.forEach(item => {
+        const { mediaNum, completo } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
+        if (mediaNum !== null) {
+            somaMedias += mediaNum;
+            qtdComNota++;
+            if (completo && mediaNum >= 8.0) aprovados++;
+        }
+    });
+
+    const mediaTurma = qtdComNota > 0 ? (somaMedias / qtdComNota).toFixed(1).replace('.', ',') : '0,0';
+    document.getElementById('diario-badge-alunos').innerText = `${total} Aluno${total === 1 ? '' : 's'}`;
+    document.getElementById('diario-badge-aprovados').innerText = `${aprovados} Aprovado${aprovados === 1 ? '' : 's'}`;
+    document.getElementById('diario-badge-media-turma').innerText = `Média Turma: ${mediaTurma}`;
 }
 
 function renderizarLinhasDiario() {
@@ -1366,13 +1510,12 @@ function renderizarLinhasDiario() {
         const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
 
         let tdsNotas = '';
-        colunasAvaliacaoDiarioAtual.forEach(av => {
-            const val = item.notas[av.tipo] !== undefined && item.notas[av.tipo] !== null ? item.notas[av.tipo] : '';
-            const safeTipo = av.tipo.replace(/'/g, "\\'");
+        colunasAvaliacaoDiarioAtual.forEach((av, avIdx) => {
+            const val = item.notas[av.chave] !== undefined && item.notas[av.chave] !== null ? item.notas[av.chave] : '';
             tdsNotas += `
                 <td class="py-2.5 px-3 text-center">
                     <input type="number" min="0" max="10" step="0.1" placeholder="-" value="${val}"
-                        oninput="atualizarNotaLinhaDiario(${idx}, '${safeTipo}', this.value)"
+                        oninput="atualizarNotaLinhaDiario(${idx}, ${avIdx}, this.value)"
                         class="w-20 text-center border border-gray-200 rounded-lg py-1.5 text-xs font-bold focus:outline-teal-500 bg-white">
                 </td>
             `;
@@ -1400,56 +1543,22 @@ function renderizarLinhasDiario() {
     atualizarResumoEstatisticoDiario(pautaAtualDiario);
 }
 
-function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
-    let somaPonderada = 0;
-    let somaPesos = 0;
+function atualizarNotaLinhaDiario(idx, avIdx, valor) {
+    const avConfig = colunasAvaliacaoDiarioAtual[avIdx];
+    if (!pautaAtualDiario[idx] || !avConfig) return;
 
-    avaliacoesConfig.forEach(av => {
-        const raw = notasObj ? notasObj[av.tipo] : null;
-        if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
-            const peso = parseFloat(av.peso) || 1;
-            somaPonderada += parseFloat(raw) * peso;
-            somaPesos += peso;
+    const chaveAvaliacao = avConfig.chave;
+    if (valor === '' || valor === null) {
+        delete pautaAtualDiario[idx].notas[chaveAvaliacao];
+    } else {
+        let num = parseFloat(String(valor).replace(',', '.'));
+        if (isNaN(num)) {
+            delete pautaAtualDiario[idx].notas[chaveAvaliacao];
+        } else {
+            if (num > 10) num = 10;
+            if (num < 0) num = 0;
+            pautaAtualDiario[idx].notas[chaveAvaliacao] = num;
         }
-    });
-
-    if (somaPesos === 0) {
-        return {
-            mediaNum: null,
-            mediaTexto: '-',
-            situacaoHtml: '<span class="px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-bold uppercase">Cursando</span>'
-        };
-    }
-
-    const media = somaPonderada / somaPesos;
-    const mediaTexto = media.toFixed(1).replace('.', ',');
-
-    if (media >= 8.0) {
-        return {
-            mediaNum: media,
-            mediaTexto,
-            situacaoHtml: '<span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold uppercase">Aprovado</span>'
-        };
-    } else {
-        return {
-            mediaNum: media,
-            mediaTexto,
-            situacaoHtml: '<span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Em Recuperação</span>'
-        };
-    }
-}
-
-function atualizarFaltaLinhaDiario(idx, valor) {
-    if (!pautaAtualDiario[idx]) return;
-    pautaAtualDiario[idx].faltas = parseInt(valor) || 0;
-}
-
-function atualizarNotaLinhaDiario(idx, tipoAvaliacao, valor) {
-    if (!pautaAtualDiario[idx]) return;
-    if (valor === '') {
-        delete pautaAtualDiario[idx].notas[tipoAvaliacao];
-    } else {
-        pautaAtualDiario[idx].notas[tipoAvaliacao] = parseFloat(valor);
     }
 
     const { mediaTexto, situacaoHtml } = calcularSituacaoAlunoPonderada(pautaAtualDiario[idx].notas, colunasAvaliacaoDiarioAtual);
@@ -1459,27 +1568,6 @@ function atualizarNotaLinhaDiario(idx, tipoAvaliacao, valor) {
     if (elSit) elSit.innerHTML = situacaoHtml;
 
     atualizarResumoEstatisticoDiario(pautaAtualDiario);
-}
-
-function atualizarResumoEstatisticoDiario(lista) {
-    const total = lista.length;
-    let aprovados = 0;
-    let somaMedias = 0;
-    let qtdComNota = 0;
-
-    lista.forEach(item => {
-        const { mediaNum } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
-        if (mediaNum !== null) {
-            somaMedias += mediaNum;
-            qtdComNota++;
-            if (mediaNum >= 8.0) aprovados++;
-        }
-    });
-
-    const mediaTurma = qtdComNota > 0 ? (somaMedias / qtdComNota).toFixed(1).replace('.', ',') : '0,0';
-    document.getElementById('diario-badge-alunos').innerText = `${total} Aluno${total === 1 ? '' : 's'}`;
-    document.getElementById('diario-badge-aprovados').innerText = `${aprovados} Aprovado${aprovados === 1 ? '' : 's'}`;
-    document.getElementById('diario-badge-media-turma').innerText = `Média Turma: ${mediaTurma}`;
 }
 
 async function salvarDiarioEletronico() {
@@ -1497,39 +1585,64 @@ async function salvarDiarioEletronico() {
     btn.innerHTML = "Salvando...";
     btn.disabled = true;
 
-    const payload = {
-        curso_id: cursoId,
-        modulo: modulo,
-        periodo: periodo,
-        lancamentos: pautaAtualDiario.map(item => {
-            const { mediaNum } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
-            return {
-                aluno_id: item.aluno_id,
-                curso_id: cursoId,
-                disciplina: modulo,
-                matricula: item.matricula,
-                nome: item.nome,
-                faltas: parseInt(item.faltas) || 0,
-                notas: item.notas,
-                media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null
-            };
-        })
-    };
+    try {
+        const payload = {
+            curso_id: String(cursoId),
+            modulo: String(modulo),
+            periodo: String(periodo),
+            lancamentos: pautaAtualDiario.map(item => {
+                const { mediaNum, completo } = calcularSituacaoAlunoPonderada(item.notas, colunasAvaliacaoDiarioAtual);
 
-    const result = await apiRequest('/diario/salvar', 'POST', payload);
+                // Monta objeto de notas compatível com chave única e com leitura legada
+                const notasParaSalvar = { ...item.notas };
+                colunasAvaliacaoDiarioAtual.forEach((av, idx) => {
+                    if (item.notas[av.chave] !== undefined) {
+                        notasParaSalvar[av.tipo] = item.notas[av.chave];
+                        if (idx === 0) notasParaSalvar['AV1'] = item.notas[av.chave];
+                        if (idx === 1) notasParaSalvar['AV2'] = item.notas[av.chave];
+                    }
+                });
 
-    if (result && result.sucesso) {
-        alert(result.mensagem || "Diário Eletrônico salvo e consolidado com sucesso!");
-    } else {
-        alert(result?.detail || "Erro ao salvar lançamentos no servidor.");
+                return {
+                    aluno_id: String(item.aluno_id),
+                    curso_id: String(cursoId),
+                    disciplina: String(modulo),
+                    modulo: String(modulo),
+                    periodo: String(periodo),
+                    matricula: item.matricula,
+                    nome: item.nome,
+                    faltas: parseInt(item.faltas) || 0,
+                    notas: notasParaSalvar,
+                    media: mediaNum !== null ? Number(mediaNum.toFixed(2)) : null,
+                    situacao: mediaNum === null ? 'Cursando' : (!completo ? 'Parcial' : (mediaNum >= 8.0 ? 'Aprovado' : 'Em Recuperação'))
+                };
+            })
+        };
+
+        const result = await apiRequest('/diario/salvar', 'POST', payload);
+
+        if (result && result.sucesso) {
+            alert(result.mensagem || "Diário Eletrônico salvo e consolidado com sucesso!");
+            await carregarPautaDiario();
+        } else {
+            alert(typeof result?.detail === 'string' ? result.detail : JSON.stringify(result?.detail || "Erro ao salvar lançamentos no servidor."));
+        }
+    } catch (err) {
+        console.error("Erro ao salvar diário:", err);
+        alert("Falha inesperada ao salvar o Diário Eletrônico.");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        if (typeof feather !== 'undefined') feather.replace();
     }
-
-    btn.innerHTML = originalHtml;
-    btn.disabled = false;
-    feather.replace();
 }
 
+
 function imprimirPautaDiario() {
+    if (!pautaAtualDiario || pautaAtualDiario.length === 0) {
+        alert("Carregue uma pauta com alunos antes de imprimir.");
+        return;
+    }
     window.print();
 }
 
@@ -1787,6 +1900,12 @@ async function loadDocentes() {
     if (!tbody || !docentes) return;
 
     docentesGlobais = Array.isArray(docentes) ? docentes : (docentes.dados || []);
+
+    const regAuto = document.getElementById('docente-registro-auto');
+    if (regAuto && !document.getElementById('docente_id_edit')?.value) {
+        regAuto.value = '#PR' + String(docentesGlobais.length + 1).padStart(3, '0');
+    }
+
     tbody.innerHTML = '';
 
     docentesGlobais.forEach(doc => {
@@ -1816,99 +1935,6 @@ async function loadDocentes() {
     feather.replace();
 }
 
-async function loadFinanceiro() {
-    const inputMes = document.getElementById('filtro-mes-financeiro');
-    if (inputMes && !inputMes.value) {
-        const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        inputMes.value = `${ano}-${mes}`;
-    }
-
-    await carregarIndicadoresFinanceiros();
-
-    const tbody = document.getElementById('tabela-financeiro');
-    if (!tbody) return;
-
-    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando dados financeiros...</td></tr>';
-
-    if (cursosGlobais.length === 0) await loadCursos();
-
-    const resposta = await apiRequest('/alunos');
-    const lista = Array.isArray(resposta) ? resposta : (resposta.dados || []);
-
-    tbody.innerHTML = '';
-
-    if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum registro encontrado.</td></tr>`;
-        return;
-    }
-
-    lista.forEach((item) => {
-        let idsCursos = new Set();
-        if (item.curso_id || item.curso) idsCursos.add(String(item.curso_id || item.curso));
-        if (item.cursos_json) {
-            try {
-                const arr = typeof item.cursos_json === 'string' ? JSON.parse(item.cursos_json) : item.cursos_json;
-                if (Array.isArray(arr)) arr.forEach(c => { if (c.curso_id) idsCursos.add(String(c.curso_id)); });
-            } catch (e) {}
-        }
-
-        let valorCobranca = 0;
-        idsCursos.forEach(cid => {
-            const cursoDoAluno = cursosGlobais.find(c => String(c.id) === cid);
-            if (cursoDoAluno) {
-                valorCobranca += (cursoDoAluno.promocao_ativa === 'Sim' && cursoDoAluno.valor_promocional)
-                    ? parseFloat(cursoDoAluno.valor_promocional)
-                    : parseFloat(cursoDoAluno.valor_mensalidade || 0);
-            }
-        });
-
-        const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        const isPendente = item.possui_pendencia_financeira === 'Sim';
-        const emAnalise = item.status_comprovante === 'Em Análise';
-        const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
-        const safeDetalhes = (item.detalhes_pendencia_financeira || '').replace(/'/g, "\\'");
-        let mesRef = item.detalhes_pendencia_financeira || inputMes.value;
-
-        let statusHtml = '';
-        if (!isPendente) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '', '${item.numero_nf || ''}')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
-        } else if (emAnalise) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${item.ultimo_comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
-        } else {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${safeDetalhes || mesRef}', '${item.numero_nf || ''}')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
-        }
-
-        let idComprovante = item.numero_nf || `#FIN-${item.matricula || '000'}`;
-
-        tbody.innerHTML += `
-            <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
-                <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">${item.nome || 'Cliente Desconhecido'}</td>
-                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
-                    <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">${mesRef}</span>
-                    ${valorFormatado}
-                </td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">
-                    <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Detalhes do Aluno">
-                        <i data-feather="eye" class="w-4 h-4"></i>
-                    </button>
-                </td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">
-                    <button onclick="informarNFFinanceiro('${item.id}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Anexar/Atualizar Nota Fiscal">
-                        <i data-feather="cloud-upload" class="w-4 h-4"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-
-    filtrarFinanceiro();
-    feather.replace();
-}
 
 async function carregarIndicadoresFinanceiros() {
     const dados = await apiRequest('/financeiro/indicadores');
@@ -1920,21 +1946,7 @@ async function carregarIndicadoresFinanceiros() {
     }
 }
 
-async function informarNFFinanceiro(alunoId) {
-    const nf = prompt("Informe o número da Nota Fiscal ou Recibo (deixe em branco se não quiser informar):");
-    if (nf === null) return;
 
-    const formData = new FormData();
-    formData.append('numero_nf', nf);
-
-    const result = await apiRequest(`/alunos/${alunoId}/nf`, 'POST', formData);
-    if (result && result.sucesso) {
-        alert("Nota fiscal anexada com sucesso!");
-        loadFinanceiro();
-    } else {
-        alert(result?.detail || "Erro ao salvar a Nota Fiscal.");
-    }
-}
 
 function filtrarFinanceiro() {
     const termo = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
@@ -1947,7 +1959,6 @@ function filtrarFinanceiro() {
 
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-
     const blocosCursoAluno = document.querySelectorAll('.item-curso-aluno');
     let arrayCursosAluno = [];
     blocosCursoAluno.forEach(bloco => {
@@ -1955,15 +1966,23 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
         if (curso_id) arrayCursosAluno.push({ curso_id: curso_id });
     });
     document.getElementById('cursos_aluno_json').value = JSON.stringify(arrayCursosAluno);
-
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
-
     formData.append('curso_id', arrayCursosAluno.length > 0 ? arrayCursosAluno[0].curso_id : '');
-
     const termosCheck = document.getElementById('termos_aluno');
+
     if (termosCheck) formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
 
+    const statusAluno = formData.get('status');
+
+    if (!idEdit && statusAluno === 'Pendente') {
+        const hoje = new Date();
+        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        formData.set('possui_pendencia', 'Sim');
+        formData.set('possui_pendencia_financeira', 'Sim');
+        formData.set('detalhes_pendencia', `Matrícula / Mensalidade (${mesAtual})`);
+        formData.set('detalhes_pendencia_financeira', `Matrícula / Mensalidade (${mesAtual})`);
+    }
     const btnSubmit = e.target.querySelector('button[type="submit"]');
     const textoOriginal = btnSubmit.innerText;
     btnSubmit.innerText = "Salvando...";
@@ -2041,7 +2060,7 @@ document.getElementById('form-docente')?.addEventListener('submit', async (e) =>
         contadorVinculosDocente = 0;
         adicionarVinculoDocente();
 
-        loadDocentes();
+        await loadDocentes();
     } else {
         alert(result?.detail || "Erro ao salvar os dados do docente.");
         btnSubmit.innerText = textoOriginal;
@@ -2063,17 +2082,12 @@ function editarDocente(id_firebase) {
     if (!doc) return alert("Erro ao carregar dados do docente.");
 
     const form = document.getElementById('form-docente');
-    let inputId = document.getElementById('docente_id_edit');
-    if (!inputId) {
-        inputId = document.createElement('input');
-        inputId.type = 'hidden';
-        inputId.id = 'docente_id_edit';
-        inputId.name = 'docente_id_edit';
-        form.appendChild(inputId);
-    }
-    inputId.value = doc.id;
+    const inputId = document.getElementById('docente_id_edit');
+    if (inputId) inputId.value = doc.id;
 
-    form.registro.value = doc.registro || '';
+    const regAuto = document.getElementById('docente-registro-auto');
+    if (regAuto) regAuto.value = doc.registro || '#PR001';
+
     form.cpf_prestador.value = doc.cpf_prestador || doc.cpf || '';
     form.nome_prestador.value = doc.nome_prestador || doc.nome || '';
     form.data_nascimento_prestador.value = doc.data_nascimento_prestador || doc.data_nascimento || '';
@@ -2823,11 +2837,8 @@ function imprimirCardCurso(id_firebase) {
 }
 
 async function loadDocumentos() {
-    if (!window.alunosCache || window.alunosCache.length === 0) {
-        const respAlunos = await apiRequest('/alunos');
-        if (respAlunos && !respAlunos.detail) {
-            window.alunosCache = Array.isArray(respAlunos) ? respAlunos : (respAlunos.dados || []);
-        }
+    if (!alunosGlobais || alunosGlobais.length === 0) {
+        await loadAlunos();
     }
 
     const documentos = await apiRequest('/documentos');
@@ -2872,7 +2883,6 @@ async function loadDocumentos() {
     });
     feather.replace();
 }
-
 
 // Abre o modal rápido para editar o tipo ou observação do documento emitido
 function abrirModalEditarDocumento(idDoc, tipoAtual, obsAtual) {
@@ -2950,20 +2960,29 @@ async function excluirDocumentoEmitido(idDoc) {
 }
 
 async function emitirNovoDocumento() {
-    const inputBusca = document.querySelector('#tela-documentos input[placeholder*="Matrícula"]').value;
-    const tipoDoc = document.querySelector('#tela-documentos select').value;
+    const inputBusca = document.getElementById('doc-busca-aluno').value.trim();
+    const alunoIdSelecionado = document.getElementById('doc-aluno-id-selecionado').value;
+    const tipoDoc = document.getElementById('doc-tipo-select').value;
 
-    if (!inputBusca) {
-        alert("Digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
+    if (!inputBusca && !alunoIdSelecionado) {
+        alert("Selecione ou digite a matrícula, CPF ou Nome do aluno para emitir o documento.");
         return;
     }
 
-    const alunos = await apiRequest('/alunos');
-    const listaAlunos = Array.isArray(alunos) ? alunos : (alunos?.dados || []);
-    const aluno = listaAlunos.find(a => a.matricula === inputBusca || a.cpf === inputBusca || a.nome.toLowerCase().includes(inputBusca.toLowerCase()));
+    if (!alunosGlobais || alunosGlobais.length === 0) {
+        await loadAlunos();
+    }
+
+    const aluno = alunoIdSelecionado
+        ? alunosGlobais.find(a => String(a.id) === String(alunoIdSelecionado))
+        : alunosGlobais.find(a =>
+            String(a.matricula || '').toLowerCase() === inputBusca.toLowerCase() ||
+            String(a.cpf || '') === inputBusca ||
+            String(a.nome || '').toLowerCase() === inputBusca.toLowerCase()
+        );
 
     if (!aluno) {
-        alert("Aluno não encontrado na base de dados.");
+        alert("Selecione um aluno válido na lista suspensa.");
         return;
     }
 
@@ -3010,10 +3029,6 @@ function baixarDocumentoPDF(id_documento, tipo_doc) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const btnGerarDoc = document.getElementById('btn-gerar-documento');
-    if (btnGerarDoc) btnGerarDoc.addEventListener('click', emitirNovoDocumento);
-});
 
 document.getElementById('busca-docente')?.addEventListener('input', function (e) {
     const termo = e.target.value.toLowerCase();
@@ -3057,6 +3072,281 @@ document.getElementById('busca-aluno')?.addEventListener('input', function (e) {
     });
 });
 
+// ==========================================
+// GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
+// ==========================================
+
+
+async function loadFinanceiro() {
+    const inputMes = document.getElementById('filtro-mes-financeiro');
+    if (inputMes && !inputMes.value) {
+        const hoje = new Date();
+        inputMes.value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    const mesSelecionado = inputMes ? inputMes.value : '';
+    const tbody = document.getElementById('tabela-financeiro');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando faturamento do mês...</td></tr>';
+
+    if (cursosGlobais.length === 0) await loadCursos();
+
+    const resposta = await apiRequest('/alunos');
+    const lista = Array.isArray(resposta) ? resposta : (resposta?.dados || []);
+    alunosGlobais = lista;
+
+    tbody.innerHTML = '';
+
+    let totalRecebidoMes = 0;
+    let totalReceberMes = 0;
+    let qtdInadimplentesMes = 0;
+    let qtdPagosMes = 0;
+
+    if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno matriculado.</td></tr>`;
+        atualizarCardsFinanceiros(0, 0, 0, 0);
+        return;
+    }
+
+    lista.forEach((item) => {
+        const parcela = obterParcelaDoMes(item, mesSelecionado);
+        const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
+        const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const statusParcela = parcela.status || 'Pendente'; // 'Pago' | 'Pendente' | 'Em Análise'
+        const isPago = statusParcela === 'Pago';
+        const emAnalise = statusParcela === 'Em Análise';
+
+        if (isPago) {
+            totalRecebidoMes += valorCobranca;
+            qtdPagosMes++;
+        } else {
+            totalReceberMes += valorCobranca;
+            qtdInadimplentesMes++;
+        }
+
+        const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
+        const safeDetalhes = (parcela.detalhes || '').replace(/'/g, "\\'");
+        const safeNF = (parcela.numero_nf || '').replace(/'/g, "\\'");
+
+        let statusHtml = '';
+        if (isPago) {
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pago')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
+        } else if (emAnalise) {
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Em Análise')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${parcela.comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
+        } else {
+            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pendente')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
+        }
+
+        const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${mesSelecionado.replace('-', '')}`;
+
+        const btnReciboTabela = isPago
+            ? `<button onclick="emitirReciboPdfAdmin('${item.id}', '${mesSelecionado}', this)" class="text-teal-700 hover:text-white hover:bg-teal-600 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition" title="Emitir Recibo PDF">
+                   <i data-feather="printer" class="w-3.5 h-3.5"></i> Recibo
+               </button>`
+            : '';
+
+        const btnAnexoTabela = (emAnalise || parcela.comprovante_id)
+            ? `<button onclick="verComprovanteMes('${item.id}', '${mesSelecionado}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 border border-blue-200 p-2 rounded transition" title="Ver Comprovante Anexado">
+                   <i data-feather="paperclip" class="w-4 h-4"></i>
+               </button>`
+            : '';
+
+        tbody.innerHTML += `
+            <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50">
+                <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
+                <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">${item.nome || 'Cliente Desconhecido'}</td>
+                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
+                    <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">Ref: ${mesSelecionado}</span>
+                    ${valorFormatado}
+                </td>
+                <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
+                <td class="py-4 px-4 text-center whitespace-nowrap">
+                    <div class="inline-flex items-center justify-center gap-1.5">
+                        ${btnAnexoTabela}
+                        ${btnReciboTabela}
+                        <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Detalhes do Aluno">
+                            <i data-feather="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </td>
+                <td class="py-4 px-4 text-center whitespace-nowrap">
+                    <button onclick="informarNFFinanceiro('${item.id}', '${mesSelecionado}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Anexar/Atualizar Nota Fiscal deste mês">
+                        <i data-feather="cloud-upload" class="w-4 h-4"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    atualizarCardsFinanceiros(totalRecebidoMes, totalReceberMes, qtdInadimplentesMes, qtdPagosMes);
+    filtrarFinanceiro();
+    feather.replace();
+}
+function atualizarCardsFinanceiros(recebido, receber, inadimplencia, pagosMes) {
+    document.getElementById('fin-total-recebido').innerText = `R$ ${recebido.toFixed(2).replace('.', ',')}`;
+    document.getElementById('fin-total-receber').innerText = `R$ ${receber.toFixed(2).replace('.', ',')}`;
+    document.getElementById('fin-inadimplencia').innerText = inadimplencia;
+    document.getElementById('fin-pagamentos-mes').innerText = pagosMes;
+}
+
+async function informarNFFinanceiro(alunoId, competencia) {
+    const mesRef = competencia || document.getElementById('filtro-mes-financeiro')?.value;
+    const nf = prompt(`Informe o número da Nota Fiscal ou Recibo para o mês ${mesRef}:`);
+    if (nf === null) return;
+
+    const alunoAtual = alunosGlobais.find(a => String(a.id) === String(alunoId));
+    if (!alunoAtual) return;
+
+    const parcelaAtual = obterParcelaDoMes(alunoAtual, mesRef);
+    await persistirParcelaIsoladaAluno(alunoId, mesRef, parcelaAtual.status, parcelaAtual.detalhes || '', nf);
+}
+
+function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nfAtual = '', statusAtual = 'Pendente') {
+    let modal = document.getElementById('modal-pendencia-financeira');
+    if (modal) modal.remove();
+
+    const btnVerAnexo = (statusAtual === 'Em Análise' || statusAtual === 'Pago')
+        ? `<button type="button" onclick="verComprovanteMes('${alunoId}', '${competencia}')" class="w-full bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition py-2 px-3 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-2">
+               <i data-feather="paperclip" class="w-4 h-4"></i> Visualizar Comprovante (${competencia})
+           </button>`
+        : '';
+
+    const htmlModal = `
+    <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-teal-500">
+            <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
+            <h3 class="text-lg font-black text-gray-900 mb-1 uppercase">Baixa / Situação Mensal</h3>
+            <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
+
+            <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
+                <input type="hidden" id="pendencia_aluno_id" value="${alunoId}">
+                <input type="hidden" id="pendencia_competencia" value="${competencia}">
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Competência (Mês Isolado)</label>
+                    <input type="text" value="${competencia}" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-100 font-bold text-teal-700">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status deste Mês</label>
+                    <select id="select-status-parcela" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
+                        <option value="Pago">Pago / Quitado</option>
+                        <option value="Pendente">Pendente (Em Aberto)</option>
+                        <option value="Em Análise">Comprovante em Análise</option>
+                    </select>
+                </div>
+
+                ${btnVerAnexo}
+
+                <div id="bloco-detalhes-pendencia" class="hidden">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Observação / Referência</label>
+                    <textarea id="input-detalhes-pendencia" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: Mensalidade vencida dia 10..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº da Nota Fiscal / Recibo (Opcional)</label>
+                    <input type="text" id="input-nf-aluno" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: NF-2026/004">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
+                    <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="bg-teal-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-teal-600 transition">Salvar Mês</button>
+                </div>
+            </form>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', htmlModal);
+    document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome}`;
+    document.getElementById('input-nf-aluno').value = nfAtual || '';
+    document.getElementById('select-status-parcela').value = statusAtual || 'Pendente';
+    document.getElementById('input-detalhes-pendencia').value = (detalhesAtuais && detalhesAtuais !== 'undefined') ? detalhesAtuais : '';
+
+    toggleCampoDetalhes(statusAtual);
+    feather.replace();
+}
+
+async function salvarPendenciaAluno(e) {
+    e.preventDefault();
+    const alunoId = document.getElementById('pendencia_aluno_id').value;
+    const competencia = document.getElementById('pendencia_competencia').value;
+    const novoStatus = document.getElementById('select-status-parcela').value;
+    const detalhes = document.getElementById('input-detalhes-pendencia').value;
+    const numeroNF = document.getElementById('input-nf-aluno').value;
+
+    const btnSubmit = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btnSubmit.innerText;
+    btnSubmit.innerText = "Salvando...";
+
+    await persistirParcelaIsoladaAluno(alunoId, competencia, novoStatus, detalhes, numeroNF);
+
+    btnSubmit.innerText = textoOriginal;
+    fecharModalPendencia();
+}
+
+async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela, detalhes, numeroNF) {
+    const alunoAtual = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
+    let mapaMensalidades = {};
+    try {
+        if (alunoAtual.mensalidades_json) {
+            mapaMensalidades = typeof alunoAtual.mensalidades_json === 'string'
+                ? JSON.parse(alunoAtual.mensalidades_json)
+                : { ...alunoAtual.mensalidades_json };
+        }
+    } catch (e) {}
+
+    // Atualiza APENAS a competência escolhida deste aluno específico
+    mapaMensalidades[competencia] = {
+        ...(mapaMensalidades[competencia] || {}),
+        competencia: competencia,
+        status: statusParcela,
+        valor: calcularValorMensalidadeAluno(alunoAtual),
+        detalhes: detalhes || '',
+        numero_nf: numeroNF || '',
+        atualizado_em: new Date().toISOString()
+    };
+
+    // Consolida o status geral APENAS deste aluno com base em TODAS as suas competências
+    const todasParcelas = Object.values(mapaMensalidades);
+    const mesesPendentes = todasParcelas.filter(p => p.status === 'Pendente').map(p => p.competencia);
+    const temAlgumaPendencia = mesesPendentes.length > 0 ? 'Sim' : 'Não';
+
+    const formData = new FormData();
+    for (const key in alunoAtual) {
+        if (alunoAtual[key] !== null && alunoAtual[key] !== undefined && typeof alunoAtual[key] !== 'object') {
+            formData.append(key, alunoAtual[key]);
+        }
+    }
+
+    formData.set('mensalidades_json', JSON.stringify(mapaMensalidades));
+    formData.set('possui_pendencia', temAlgumaPendencia);
+    formData.set('possui_pendencia_financeira', temAlgumaPendencia);
+    formData.set('detalhes_pendencia', mesesPendentes.join(', '));
+    formData.set('detalhes_pendencia_financeira', mesesPendentes.join(', '));
+    formData.set('numero_nf', numeroNF || alunoAtual.numero_nf || '');
+
+    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
+
+    if (result && result.sucesso) {
+        await loadAlunos();
+        await loadFinanceiro();
+    } else {
+        alert(result?.detail || "Erro ao atualizar a mensalidade.");
+    }
+}
+
+function toggleCampoDetalhes(valor) {
+    const bloco = document.getElementById('bloco-detalhes-pendencia');
+    if (!bloco) return;
+    if (valor !== 'Pago') {
+        bloco.classList.remove('hidden');
+    } else {
+        bloco.classList.add('hidden');
+    }
+}
+
 function imprimirListaAlunos() {
     const termoBusca = document.getElementById('busca-aluno')?.value || '';
     const token = localStorage.getItem('token_siga');
@@ -3085,114 +3375,6 @@ function imprimirListaAlunos() {
     });
 }
 
-function abrirModalPendencia(alunoId, alunoNome, detalhesAtuais, nfAtual = '') {
-    let modal = document.getElementById('modal-pendencia-financeira');
-    if (modal) modal.remove();
-
-    const htmlModal = `
-    <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-red-500">
-            <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
-            <h3 id="titulo-modal-pendencia" class="text-lg font-black text-gray-900 mb-1 uppercase">Pendência Financeira / NF</h3>
-            <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
-
-            <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
-                <input type="hidden" id="pendencia_aluno_id">
-
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status do Carnê / Mensalidade</label>
-                    <select id="select-possui-pendencia" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
-                        <option value="Não">Pago / Regular</option>
-                        <option value="Sim">Pendente (Possui carnês em aberto)</option>
-                    </select>
-                </div>
-
-                <div id="bloco-detalhes-pendencia" class="hidden">
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Detalhes / Referências em Aberto</label>
-                    <textarea id="input-detalhes-pendencia" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: Carnê nº 04..."></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº da Nota Fiscal / Recibo (Opcional)</label>
-                    <input type="text" id="input-nf-aluno" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: NF-2026/004 (Opcional)">
-                </div>
-
-                <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
-                    <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
-                    <button type="submit" class="bg-teal-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-teal-600 transition">Salvar Situação</button>
-                </div>
-            </form>
-        </div>
-    </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', htmlModal);
-    document.getElementById('pendencia_aluno_id').value = alunoId;
-    document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome}`;
-    document.getElementById('input-nf-aluno').value = nfAtual || "";
-
-    const select = document.getElementById('select-possui-pendencia');
-    const textarea = document.getElementById('input-detalhes-pendencia');
-
-    if (detalhesAtuais && detalhesAtuais !== 'undefined' && detalhesAtuais !== '') {
-        select.value = "Sim";
-        textarea.value = detalhesAtuais;
-        document.getElementById('bloco-detalhes-pendencia').classList.remove('hidden');
-    } else {
-        select.value = "Não";
-        textarea.value = "";
-        document.getElementById('bloco-detalhes-pendencia').classList.add('hidden');
-    }
-
-    feather.replace();
-}
-
-async function salvarPendenciaAluno(e) {
-    e.preventDefault();
-    const alunoId = document.getElementById('pendencia_aluno_id').value;
-    const possuiPendencia = document.getElementById('select-possui-pendencia').value;
-    const detalhes = document.getElementById('input-detalhes-pendencia').value;
-    const numeroNF = document.getElementById('input-nf-aluno').value;
-
-    const formData = new FormData();
-    const alunoAtual = alunosGlobais.find(a => a.id == alunoId) || {};
-    for (const key in alunoAtual) {
-        if (alunoAtual[key] !== null && alunoAtual[key] !== undefined && typeof alunoAtual[key] !== 'object') {
-            formData.append(key, alunoAtual[key]);
-        }
-    }
-
-    formData.set('possui_pendencia', possuiPendencia);
-    formData.set('possui_pendencia_financeira', possuiPendencia);
-    formData.set('detalhes_pendencia', detalhes);
-    formData.set('detalhes_pendencia_financeira', detalhes);
-    formData.set('numero_nf', numeroNF);
-
-    const btnSubmit = e.target.querySelector('button[type="submit"]');
-    const textoOriginal = btnSubmit.innerText;
-    btnSubmit.innerText = "Salvando...";
-
-    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
-
-    if (result && result.sucesso) {
-        fecharModalPendencia();
-        loadAlunos();
-        loadFinanceiro();
-    } else {
-        alert(result?.detail || "Erro ao atualizar o registro.");
-    }
-    btnSubmit.innerText = textoOriginal;
-}
-
-function toggleCampoDetalhes(valor) {
-    const bloco = document.getElementById('bloco-detalhes-pendencia');
-    if (valor === 'Sim') {
-        bloco.classList.remove('hidden');
-    } else {
-        bloco.classList.add('hidden');
-        document.getElementById('input-detalhes-pendencia').value = '';
-    }
-}
-
 function fecharModalPendencia() {
     const modal = document.getElementById('modal-pendencia-financeira');
     if (modal) {
@@ -3203,8 +3385,6 @@ function fecharModalPendencia() {
         }, 300);
     }
 }
-
-
 
 let contadorVinculosDocente = 0;
 
@@ -3278,6 +3458,11 @@ document.querySelector('#form-docente button[type="reset"]')?.addEventListener('
     const inputEdit = document.getElementById('docente_id_edit');
     if (inputEdit) inputEdit.value = '';
 
+    const regAuto = document.getElementById('docente-registro-auto');
+    if (regAuto) {
+        regAuto.value = '#PR' + String((docentesGlobais?.length || 0) + 1).padStart(3, '0');
+    }
+
     const btnSubmit = document.querySelector('#form-docente button[type="submit"]');
     btnSubmit.innerText = 'Salvar Prestador';
     btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
@@ -3338,9 +3523,10 @@ async function abrirModalSistema() {
 }
 
 function filtrarAlunosDocumento() {
+    document.getElementById('doc-aluno-id-selecionado').value = '';
     const termo = (document.getElementById('doc-busca-aluno').value || '').trim().toLowerCase();
     const dropdown = document.getElementById('doc-dropdown-alunos');
-    const listaBase = typeof listaAlunosGlobal !== 'undefined' ? listaAlunosGlobal : (window.alunosCache || []);
+    const listaBase = alunosGlobais || [];
 
     if (termo.length < 2) {
         dropdown.classList.add('hidden');
@@ -3379,7 +3565,7 @@ function filtrarAlunosDocumento() {
 }
 
 function selecionarAlunoDocumento(alunoId) {
-    const listaBase = typeof listaAlunosGlobal !== 'undefined' ? listaAlunosGlobal : (window.alunosCache || []);
+    const listaBase = alunosGlobais || [];
     const aluno = listaBase.find(a => String(a.id) === String(alunoId));
     if (!aluno) return;
 
@@ -3408,6 +3594,181 @@ document.addEventListener('click', (e) => {
         dropdown.classList.add('hidden');
     }
 });
+
+function filtrarTabelaDocumentosEmitidos() {
+    const termo = (document.getElementById('filtro-docs-emitidos')?.value || '').toLowerCase();
+    document.querySelectorAll('#tabela-documentos-emitidos tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+}
+
+function onTrocaModuloDiario() {
+    pautaAtualDiario = [];
+    const cursoId = document.getElementById('diario-select-curso').value;
+    if (cursoId) {
+        carregarPautaDiario();
+    } else {
+        document.getElementById('tabela-diario').innerHTML =
+            '<tr><td colspan="7" class="py-10 text-center text-slate-400">Selecione um curso e módulo para lançar notas.</td></tr>';
+    }
+}
+
+async function emitirReciboPdfAdmin(alunoId, competencia, btnElement) {
+    const textoOriginal = btnElement ? btnElement.innerHTML : '';
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = 'Gerando...';
+    }
+
+    try {
+        const token = localStorage.getItem('token_siga_admin') || localStorage.getItem('token_siga') || '';
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        const response = await fetch(`${API_BASE_URL}/financeiro/recibo/${encodeURIComponent(alunoId)}/${encodeURIComponent(competencia)}/pdf`, {
+            method: 'GET',
+            headers
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            alert(err.detail || 'Não foi possível gerar o recibo PDF deste mês.');
+            return;
+        }
+
+        const blob = await response.blob();
+        const urlBlob = window.URL.createObjectURL(blob);
+        window.open(urlBlob, '_blank');
+    } catch (e) {
+        alert('Erro de conexão ao gerar o recibo PDF.');
+    } finally {
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = textoOriginal;
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+    }
+}
+
+
+
+async function verComprovanteMes(alunoId, competencia) {
+    const query = competencia ? `?competencia=${encodeURIComponent(competencia)}` : '';
+    const comp = await apiRequest(`/financeiro/comprovante/${alunoId}${query}`);
+
+    if (!comp || !comp.arquivo_base64) {
+        alert(comp?.detail || `Nenhum comprovante encontrado para o mês ${competencia}.`);
+        return;
+    }
+
+    let modalComp = document.getElementById('modal-visualizar-comprovante');
+    if (modalComp) modalComp.remove();
+
+    const isPdf = (comp.content_type || '').includes('pdf') || (comp.nome_arquivo || '').toLowerCase().endsWith('.pdf');
+    const conteudoHtml = isPdf
+        ? `<iframe src="${comp.arquivo_base64}" class="w-full h-[65vh] rounded-xl border border-gray-200"></iframe>`
+        : `<img src="${comp.arquivo_base64}" alt="Comprovante" class="max-h-[65vh] mx-auto rounded-xl border border-gray-200 object-contain">`;
+
+    const html = `
+    <div id="modal-visualizar-comprovante" class="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 relative border-t-4 border-blue-500">
+            <button onclick="document.getElementById('modal-visualizar-comprovante').remove()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition">
+                <i data-feather="x" class="h-5 w-5"></i>
+            </button>
+            <h3 class="text-base font-black text-gray-900 uppercase">Comprovante de Pagamento • Ref: ${competencia}</h3>
+            <p class="text-xs text-gray-500 mb-4">${comp.nome_arquivo || 'Anexo'}</p>
+            <div class="bg-gray-50 p-3 rounded-2xl mb-4">${conteudoHtml}</div>
+            <div class="flex justify-end gap-2">
+                <a href="${comp.arquivo_base64}" download="${comp.nome_arquivo || 'comprovante'}" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-blue-100 transition">
+                    Baixar Arquivo
+                </a>
+                <button onclick="document.getElementById('modal-visualizar-comprovante').remove()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold uppercase">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+// ==========================================
+// GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
+// ==========================================
+function calcularValorMensalidadeAluno(aluno) {
+    if (!aluno) return 0;
+    if (aluno.valor_mensalidade !== undefined && aluno.valor_mensalidade !== null && aluno.valor_mensalidade !== '') {
+        return parseFloat(aluno.valor_mensalidade) || 0;
+    }
+
+    let cursosIds = [];
+    try {
+        if (aluno.cursos_json) {
+            const lista = typeof aluno.cursos_json === 'string' ? JSON.parse(aluno.cursos_json) : aluno.cursos_json;
+            if (Array.isArray(lista)) cursosIds = lista.map(c => String(c.curso_id));
+        }
+    } catch (e) {}
+
+    if (cursosIds.length === 0 && (aluno.curso_id || aluno.curso)) {
+        cursosIds = [String(aluno.curso_id || aluno.curso)];
+    }
+
+    let soma = 0;
+    cursosIds.forEach(cid => {
+        const curso = cursosGlobais.find(c => String(c.id) === cid);
+        if (curso) {
+            const val = (curso.promocao_ativa === 'Sim' && parseFloat(curso.valor_promocional) > 0)
+                ? parseFloat(curso.valor_promocional)
+                : parseFloat(curso.valor_mensalidade || 0);
+            soma += val || 0;
+        }
+    });
+
+    return soma;
+}
+
+function obterParcelaDoMes(aluno, mesRef) {
+    let mapa = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapa = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : aluno.mensalidades_json;
+        }
+    } catch (e) {}
+
+    const valorPadrao = calcularValorMensalidadeAluno(aluno);
+
+    // 1. Se já existe registro explícito para aquele mês no mapa, respeita ele
+    if (mapa && mapa[mesRef] && mapa[mesRef].status) {
+        return {
+            competencia: mesRef,
+            status: mapa[mesRef].status,
+            detalhes: mapa[mesRef].detalhes || '',
+            numero_nf: mapa[mesRef].numero_nf || '',
+            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
+            comprovante_id: mapa[mesRef].comprovante_id || null,
+            comprovante_nome: mapa[mesRef].comprovante_nome || '',
+            atualizado_em: mapa[mesRef].atualizado_em || null
+        };
+    }
+
+    // 2. Se não há baixa explícita no mês, verifica se o cadastro do aluno tem pendência ou status Pendente
+    const temPendenciaCadastro =
+        aluno.status === 'Pendente' ||
+        aluno.possui_pendencia === 'Sim' ||
+        aluno.possui_pendencia_financeira === 'Sim';
+
+    return {
+        competencia: mesRef,
+        status: temPendenciaCadastro ? 'Pendente' : 'Pendente',
+        detalhes: aluno.detalhes_pendencia_financeira || aluno.detalhes_pendencia || '',
+        numero_nf: '',
+        valor: valorPadrao,
+        comprovante_id: null,
+        comprovante_nome: ''
+    };
+}
 
 function fecharModalSistema() {
     const modal = document.getElementById('modal-sistema');
