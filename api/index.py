@@ -194,6 +194,21 @@ async def matricular_aluno(
     is_pendente = (status_final == "Pendente") or (possui_pendencia_financeira == "Sim")
     mes_ref = datetime.now().strftime("%Y-%m")
 
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    temp_aluno = {"curso_id": curso_principal, "cursos_json": lista_cursos}
+    valor_mensal = calcular_valor_mensal_aluno(temp_aluno, cursos_map)
+
+    status_parcela_inicial = "Pendente" if is_pendente else "Pago"
+    mapa_inicial = {
+        mes_ref: {
+            "competencia": mes_ref,
+            "status": status_parcela_inicial,
+            "valor": valor_mensal,
+            "numero_nf": "",
+            "atualizado_em": datetime.now().isoformat()
+        }
+    }
+
     novo_aluno = {
         "matricula": matricula_gerada,
         "cpf": cpf,
@@ -205,7 +220,7 @@ async def matricular_aluno(
         "curso_id": curso_principal,
         "cursos_json": lista_cursos,
         "data_nascimento": data_nascimento,
-        "dia_vencimento": dia_vencimento,
+        "dia_vencimento": dia_vencimento or "10",
         "forma_pagamento": forma_pagamento,
         "pcd": pcd,
         "aceite_termos": aceite_termos,
@@ -213,12 +228,25 @@ async def matricular_aluno(
         "possui_pendencia_financeira": "Sim" if is_pendente else "Não",
         "detalhes_pendencia_financeira": (detalhes_pendencia_financeira or f"Matrícula / Mensalidade ({mes_ref})") if is_pendente else "",
         "numero_nf": "",
-        "status_comprovante": "Nenhum",
+        "status_comprovante": "Pendente" if is_pendente else "Aprovado",
+        "mensalidades_json": json.dumps(mapa_inicial, ensure_ascii=False),
         "data_cadastro": datetime.now().isoformat()
     }
 
     _, doc_ref = db.collection("alunos").add(novo_aluno)
+
+    # Sincroniza também na coleção 'mensalidades' para consistência total
+    db.collection("mensalidades").document(f"{doc_ref.id}__{mes_ref}").set({
+        "aluno_id": doc_ref.id,
+        "competencia": mes_ref,
+        "valor": valor_mensal,
+        "status": status_parcela_inicial,
+        "numero_nf": "",
+        "atualizado_em": datetime.now().isoformat()
+    }, merge=True)
+
     return {"sucesso": True, "id": doc_ref.id, "matricula": matricula_gerada}
+
 
 @app.put("/api/v1/alunos/{aluno_id}")
 async def alterar_aluno(
@@ -2048,18 +2076,47 @@ async def atualizar_pendencia_aluno(
 
     if mensalidades_json:
         update_data["mensalidades_json"] = mensalidades_json
+        try:
+            mapa = json.loads(mensalidades_json) if isinstance(mensalidades_json, str) else mensalidades_json
+            if isinstance(mapa, dict):
+                for comp, info in mapa.items():
+                    if isinstance(info, dict):
+                        db.collection("mensalidades").document(f"{aluno_id}__{comp}").set({
+                            "aluno_id": str(aluno_id),
+                            "competencia": comp,
+                            "valor": float(info.get("valor", 0) or 0),
+                            "status": info.get("status", "Pendente"),
+                            "numero_nf": info.get("numero_nf", ""),
+                            "atualizado_em": info.get("atualizado_em", datetime.now().isoformat())
+                        }, merge=True)
+        except Exception:
+            pass
 
-    if possui_pendencia_financeira == "Não":
+    tem_pendencia_real = (possui_pendencia_financeira == "Sim")
+    if mensalidades_json:
+        try:
+            mapa_check = json.loads(mensalidades_json) if isinstance(mensalidades_json, str) else mensalidades_json
+            if isinstance(mapa_check, dict) and len(mapa_check) > 0:
+                tem_pendencia_real = any(
+                    isinstance(v, dict) and v.get("status") == "Pendente"
+                    for v in mapa_check.values()
+                )
+        except Exception:
+            pass
+
+    update_data["possui_pendencia_financeira"] = "Sim" if tem_pendencia_real else "Não"
+    if not tem_pendencia_real:
+        update_data["detalhes_pendencia_financeira"] = ""
         update_data["status_comprovante"] = "Aprovado"
         if status_atual not in ["Trancado", "Concluído"]:
             update_data["status"] = "Ativo"
     else:
+        update_data["status_comprovante"] = "Pendente"
         if status_atual == "Ativo":
             update_data["status"] = "Pendente"
 
     ref.update(update_data)
     return {"sucesso": True, "mensagem": "Situação financeira mensal atualizada com sucesso."}
-
 
 @app.post("/api/v1/alunos/{aluno_id}/nf")
 async def atualizar_nf_aluno(aluno_id: str, numero_nf: str = Form("")):
@@ -2459,39 +2516,56 @@ def listar_mensalidades_portal_aluno(authorization: str = Header(None)):
     checar_db()
     aluno_id = validar_token_aluno(authorization)
 
-    # Busca o aluno para pegar o valor base e dia de vencimento
     aluno_doc = db.collection("alunos").document(aluno_id).get()
     aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
 
-    # Mapeia cursos para calcular a mensalidade caso não tenha fatura
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
     valor_base = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
 
-    docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
-    lista = []
-    for d in docs:
-        item = d.to_dict()
-        item["id"] = d.id
-        lista.append(item)
+    mapa_final = {}
 
-    # Se o aluno não tiver nenhuma parcela gerada na coleção, gera a do mês atual automaticamente para nunca zerar a tela
-    if not lista:
+    # 1. Lê da coleção 'mensalidades'
+    for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream():
+        item = d.to_dict()
+        comp = item.get("competencia")
+        if comp:
+            item["id"] = d.id
+            mapa_final[comp] = item
+
+    # 2. Sobrepõe com 'mensalidades_json' do cadastro do aluno (Admin tem prioridade)
+    m_json_raw = aluno_dados.get("mensalidades_json", "{}")
+    try:
+        m_json = json.loads(m_json_raw) if isinstance(m_json_raw, str) else (m_json_raw or {})
+        if isinstance(m_json, dict):
+            for comp, val in m_json.items():
+                if isinstance(val, dict):
+                    mapa_final[comp] = {**mapa_final.get(comp, {}), **val, "competencia": comp}
+    except Exception:
+        pass
+
+    # 3. Só cria o mês atual padrão se não existir NADA nem na coleção nem no JSON
+    if not mapa_final:
         hoje = datetime.now()
         mes_atual_key = f"{hoje.year}-{str(hoje.month).zfill(2)}"
+        is_pend = aluno_dados.get("possui_pendencia_financeira") == "Sim" or (
+            aluno_dados.get("status") == "Pendente" and aluno_dados.get("possui_pendencia_financeira") != "Não"
+        )
         parcela_padrao = {
             "aluno_id": str(aluno_id),
             "competencia": mes_atual_key,
             "referencia_label": f"Mensalidade {hoje.strftime('%B/%Y')}",
             "vencimento": f"{hoje.year}-{str(hoje.month).zfill(2)}-{str(aluno_dados.get('dia_vencimento', '10')).zfill(2)}",
             "valor": valor_base if valor_base > 0 else 150.0,
-            "status": "Pendente" if aluno_dados.get("possui_pendencia_financeira") == "Sim" else "Pago",
+            "status": "Pendente" if is_pend else "Pago",
             "numero_nf": aluno_dados.get("numero_nf", "")
         }
         db.collection("mensalidades").document(f"{aluno_id}__{mes_atual_key}").set(parcela_padrao, merge=True)
-        lista.append(parcela_padrao)
+        mapa_final[mes_atual_key] = parcela_padrao
 
+    lista = list(mapa_final.values())
     lista.sort(key=lambda x: x.get("competencia", ""), reverse=True)
     return lista
+
 def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
     checar_db()
     aluno_doc = db.collection("alunos").document(aluno_id).get()
@@ -2689,60 +2763,3 @@ async def gerar_recibo_mensalidade_admin_pdf(aluno_id: str, competencia: str):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao gerar recibo PDF: {str(e)}")
-
-
-@app.get("/api/v1/aluno/mensalidades")
-def listar_mensalidades_aluno(authorization: str = Header(None)):
-    checar_db()
-    aluno_id = validar_token_aluno(authorization)
-
-    # 1. Tenta buscar da coleção dedicada 'mensalidades'
-    docs = db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()
-    lista = []
-    for d in docs:
-        item = d.to_dict()
-        item["id"] = d.id
-        lista.append(item)
-
-    # 2. Se não houver documentos na coleção, busca do campo 'mensalidades_json' dentro do próprio documento do aluno
-    if not lista:
-        aluno_doc = db.collection("alunos").document(str(aluno_id)).get()
-        if aluno_doc.exists:
-            aluno_dados = aluno_doc.to_dict()
-            mensalidades_json = aluno_dados.get("mensalidades_json")
-
-            if mensalidades_json:
-                if isinstance(mensalidades_json, str):
-                    try:
-                        mensalidades_json = json.loads(mensalidades_json)
-                    except:
-                        mensalidades_json = {}
-
-                # Transforma o dicionário do JSON em uma lista para o front-end
-                for comp, val in mensalidades_json.items():
-                    if isinstance(val, dict):
-                        val["competencia"] = comp
-                        lista.append(val)
-                    else:
-                        lista.append({
-                            "competencia": comp,
-                            "status": "Pago" if val == "Pago" else "Pendente",
-                            "valor": aluno_dados.get("valor_mensalidade", 0)
-                        })
-
-    # 3. Fallback de segurança: se ainda estiver vazio, gera o mês atual para a tabela nunca quebrar
-    if not lista:
-        hoje = datetime.now()
-        mes_atual_key = f"{hoje.year}-{str(hoje.month).zfill(2)}"
-        aluno_doc = db.collection("alunos").document(str(aluno_id)).get()
-        aluno_dados = aluno_doc.to_dict() if aluno_doc.exists else {}
-
-        fallback_item = {
-            "competencia": mes_atual_key,
-            "referencia_label": f"Mensalidade {hoje.strftime('%B/%Y')}",
-            "status": "Pendente" if aluno_dados.get("possui_pendencia_financeira") == "Sim" else "Pago",
-            "valor": float(aluno_dados.get("valor_mensalidade", 0))
-        }
-        lista.append(fallback_item)
-
-    return lista
