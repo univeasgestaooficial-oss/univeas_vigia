@@ -3051,26 +3051,57 @@ document.getElementById('busca-aluno')?.addEventListener('input', function (e) {
 // ==========================================
 // GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
 // ==========================================
-function calcularValorMensalidadeAluno(item) {
-    let idsCursos = new Set();
-    if (item.curso_id || item.curso) idsCursos.add(String(item.curso_id || item.curso));
-    if (item.cursos_json) {
-        try {
-            const arr = typeof item.cursos_json === 'string' ? JSON.parse(item.cursos_json) : item.cursos_json;
-            if (Array.isArray(arr)) arr.forEach(c => { if (c.curso_id) idsCursos.add(String(c.curso_id)); });
-        } catch (e) {}
+function obterParcelaDoMes(aluno, mesRef) {
+    let mapa = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapa = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : aluno.mensalidades_json;
+        }
+    } catch (e) {}
+
+    const valorPadrao = calcularValorMensalidadeAluno(aluno);
+
+    if (mapa && mapa[mesRef]) {
+        return {
+            competencia: mesRef,
+            status: mapa[mesRef].status || 'Pendente',
+            detalhes: mapa[mesRef].detalhes || '',
+            numero_nf: mapa[mesRef].numero_nf || '',
+            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
+            comprovante_id: mapa[mesRef].comprovante_id || null,
+            comprovante_nome: mapa[mesRef].comprovante_nome || '',
+            atualizado_em: mapa[mesRef].atualizado_em || null
+        };
     }
 
-    let valorCobranca = 0;
-    idsCursos.forEach(cid => {
-        const cursoDoAluno = cursosGlobais.find(c => String(c.id) === cid);
-        if (cursoDoAluno) {
-            valorCobranca += (cursoDoAluno.promocao_ativa === 'Sim' && cursoDoAluno.valor_promocional)
-                ? parseFloat(cursoDoAluno.valor_promocional)
-                : parseFloat(cursoDoAluno.valor_mensalidade || 0);
-        }
-    });
-    return valorCobranca;
+    const hoje = new Date();
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    if (mesRef === mesAtual && Object.keys(mapa || {}).length === 0) {
+        const isPendente = aluno.possui_pendencia_financeira === 'Sim' ||
+            (aluno.status === 'Pendente' && aluno.possui_pendencia_financeira !== 'Não');
+        return {
+            competencia: mesRef,
+            status: isPendente ? 'Pendente' : 'Pago',
+            detalhes: aluno.detalhes_pendencia_financeira || '',
+            numero_nf: aluno.numero_nf || '',
+            valor: valorPadrao,
+            comprovante_id: aluno.ultimo_comprovante_id || null,
+            comprovante_nome: ''
+        };
+    }
+
+    return {
+        competencia: mesRef,
+        status: 'Pendente',
+        detalhes: '',
+        numero_nf: '',
+        valor: valorPadrao,
+        comprovante_id: null,
+        comprovante_nome: ''
+    };
 }
 
 function obterParcelaDoMes(aluno, mesRef) {
