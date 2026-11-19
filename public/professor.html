@@ -570,7 +570,15 @@ function liberarAcessoDocente() {
 }
 
 function fazerLogout() {
-    localStorage.clear();
+    [
+        'token_siga_docente',
+        'nome_docente',
+        'registro_docente',
+        'cpf_docente',
+        'email_docente',
+        'telefone_docente',
+        'turma_ativa_id'
+    ].forEach(chave => localStorage.removeItem(chave));
     location.reload();
 }
 
@@ -954,6 +962,12 @@ function obterDataHojeIso() {
 function processarTurmaDiario() {
     const turmaId = String(document.getElementById('select-turma-diario').value || '');
     const selectData = document.getElementById('data-aula-diario');
+    const selectTopo = document.getElementById('select-turma-ativa-prof');
+
+    if (selectTopo && turmaId) {
+        selectTopo.value = turmaId;
+        localStorage.setItem('turma_ativa_id', turmaId);
+    }
 
     if (selectData && !selectData.dataset.listenerAdicionado) {
         selectData.addEventListener('change', carregarChamada);
@@ -969,9 +983,12 @@ function processarTurmaDiario() {
     const hojeObj = obterDataHojeIso();
     let datasValidas = [];
 
-    if (turma && turma.detalhes && turma.detalhes.data_inicio) {
-        const diasAula = turma.detalhes.dias_aula || [];
-        datasValidas = gerarDatasDoCronograma(turma.detalhes.data_inicio, diasAula);
+    const dataInicio = turma?.detalhes?.data_inicio || turma?.data_inicio || '';
+    const dataFim = turma?.detalhes?.data_fim || turma?.data_fim || '';
+    const diasAula = turma?.detalhes?.dias_aula || turma?.dias_aula || [];
+
+    if (dataInicio) {
+        datasValidas = gerarDatasDoCronograma(dataInicio, diasAula, dataFim);
     }
 
     selectData.innerHTML = '';
@@ -992,7 +1009,7 @@ function processarTurmaDiario() {
     carregarChamada();
 }
 
-function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
+function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray, dataFimStr = '') {
     if (!dataInicioStr || !diasAulaStrArray || diasAulaStrArray.length === 0) return [];
 
     const mapaDias = {'Dom': 0, 'Seg': 1, 'Ter': 2, 'Qua': 3, 'Qui': 4, 'Sex': 5, 'Sáb': 6, 'Sab': 6};
@@ -1002,10 +1019,18 @@ function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
 
+    let limiteFinal = hoje;
+    if (dataFimStr && /^\d{4}-\d{2}-\d{2}$/.test(dataFimStr)) {
+        const dtFim = new Date(dataFimStr + 'T23:59:59');
+        if (!isNaN(dtFim.getTime()) && dtFim < limiteFinal) {
+            limiteFinal = dtFim;
+        }
+    }
+
     const datas = [];
     let atual = new Date(inicio);
 
-    while (atual <= hoje) {
+    while (atual <= limiteFinal) {
         if (diasValidos.includes(atual.getDay())) {
             const ano = atual.getFullYear();
             const mes = String(atual.getMonth() + 1).padStart(2, '0');
@@ -1024,6 +1049,9 @@ function gerarDatasDoCronograma(dataInicioStr, diasAulaStrArray) {
 
     return datas;
 }
+
+
+
 
 async function carregarChamada() {
     const turmaId = String(document.getElementById('select-turma-diario').value || '');
