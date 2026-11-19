@@ -980,6 +980,7 @@ function isParcelaPaga(statusStr) {
     const s = String(statusStr || '').trim().toLowerCase();
     return s === 'pago' || s === 'paga' || s === 'quitado' || s === 'quitada';
 }
+
 function calcularDescontoPontualidadeLocal(valorIntegral, competencia) {
     const base = parseFloat(valorIntegral || 0);
     const hoje = new Date();
@@ -1009,33 +1010,14 @@ function calcularDescontoPontualidadeLocal(valorIntegral, competencia) {
     };
 }
 
-function calcularDescontoPontualidadeLocal(valorIntegral, competencia) {
-    const base = parseFloat(valorIntegral || 0);
-    const hoje = new Date();
-    let elegivel = hoje.getDate() <= 5;
-
-    if (competencia && /^\d{4}-\d{2}$/.test(competencia)) {
-        const [ano, mes] = competencia.split('-').map(Number);
-        const limite = new Date(ano, mes - 1, 5, 23, 59, 59);
-        elegivel = hoje <= limite;
+function parseDataLocalSegura(rawData, fallback = new Date()) {
+    if (!rawData) return fallback;
+    const str = String(rawData).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return new Date(`${str}T12:00:00`);
     }
-
-    if (elegivel && base > 0) {
-        const valorComDesconto = Math.round(base * 0.77 * 100) / 100;
-        return {
-            valorIntegral: base,
-            valorFinal: valorComDesconto,
-            descontoPct: 23,
-            elegivel: true
-        };
-    }
-
-    return {
-        valorIntegral: base,
-        valorFinal: base,
-        descontoPct: 0,
-        elegivel: false
-    };
+    const dt = new Date(str);
+    return isNaN(dt.getTime()) ? fallback : dt;
 }
 
 async function loadPerfilFinanceiro() {
@@ -1066,9 +1048,27 @@ async function loadPerfilFinanceiro() {
             if (elEnd) elEnd.value = dados.endereco || '';
         }
 
-        const valorRealContrato = parseFloat(dados?.valor_mensalidade || 0);
+        // 1. Resolve o valor real integral do curso (sem cair no antigo 199.99)
+        let valorRealContrato = parseFloat(dados?.valor_mensalidade || 0);
+        if (!valorRealContrato || valorRealContrato === 199.99) {
+            if (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0) {
+                const somaCursos = cursosDoAluno.reduce((acc, c) => acc + parseFloat(c.valor_mensalidade || 0), 0);
+                if (somaCursos > 0) valorRealContrato = Math.round(somaCursos * 100) / 100;
+            }
+            if ((!valorRealContrato || valorRealContrato === 199.99) && dados?.cursos_json) {
+                try {
+                    const listaJson = typeof dados.cursos_json === 'string' ? JSON.parse(dados.cursos_json) : dados.cursos_json;
+                    if (Array.isArray(listaJson)) {
+                        const somaJson = listaJson.reduce((acc, c) => acc + parseFloat(c.valor_mensalidade || c.valor || 0), 0);
+                        if (somaJson > 0) valorRealContrato = Math.round(somaJson * 100) / 100;
+                    }
+                } catch (e) {}
+            }
+        }
+
         const hoje = new Date();
         const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        const diaVencimentoAluno = parseInt(dados?.dia_vencimento || 10, 10);
 
         let mapaMeses = {};
 
@@ -1101,23 +1101,78 @@ async function loadPerfilFinanceiro() {
             });
         }
 
-        if (Object.keys(mapaMeses).length === 0) {
-            const isPend = String(dados?.possui_pendencia_financeira || '').toLowerCase() === 'sim';
-            const calcIni = calcularDescontoPontualidadeLocal(valorRealContrato, mesAtualKey);
-            mapaMeses[mesAtualKey] = {
-                competencia: mesAtualKey,
-                status: isPend ? 'Pendente' : 'Pago',
-                valor_integral: calcIni.valorIntegral,
-                valor: calcIni.valorFinal,
-                desconto_percentual: calcIni.descontoPct,
-                numero_nf: dados?.numero_nf || ''
-            };
+        // 2. Competência real de início do aluno (corte no dia 05 na data de matrícula, livre de fuso horário)
+        const rawDataMat = dados?.data_matricula || dados?.created_at || dados?.data_cadastro;
+        const dataMatObj = parseDataLocalSegura(rawDataMat, hoje);
+        const compInicioAluno = dataMatObj.getDate() <= 5
+            ? `${dataMatObj.getFullYear()}-${String(dataMatObj.getMonth() + 1).padStart(2, '0')}`
+            : `${dataMatObj.getMonth() === 11 ? dataMatObj.getFullYear() + 1 : dataMatObj.getFullYear()}-${String(dataMatObj.getMonth() === 11 ? 1 : dataMatObj.getMonth() + 2).padStart(2, '0')}`;
+
+        // 3. Competência final real baseada nos módulos do curso ou fim do semestre corrente
+        let compFimCurso = '';
+        if (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0) {
+            cursosDoAluno.forEach(c => {
+                let grade = [];
+                try {
+                    const raw = c.disciplinas_json || c.grade_curricular || c.modulos || '[]';
+                    grade = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                } catch (e) {}
+
+                if (Array.isArray(grade)) {
+                    grade.forEach(mod => {
+                        if (mod.data_fim && /^\d{4}-\d{2}/.test(mod.data_fim)) {
+                            const ym = mod.data_fim.slice(0, 7);
+                            if (ym > compFimCurso) compFimCurso = ym;
+                        }
+                    });
+                }
+            });
+        }
+
+        const anoAtual = hoje.getFullYear();
+        const mesAtualNum = hoje.getMonth() + 1;
+        const compFimSemestreAtual = `${anoAtual}-${String(mesAtualNum <= 6 ? 6 : 12).padStart(2, '0')}`;
+        const compLimiteFinal = compFimCurso && compFimCurso >= compInicioAluno ? compFimCurso : compFimSemestreAtual;
+
+        // 4. Remove meses anteriores ao início real da matrícula que não foram pagos
+        Object.keys(mapaMeses).forEach(comp => {
+            if (comp < compInicioAluno && !isParcelaPaga(mapaMeses[comp]?.status)) {
+                delete mapaMeses[comp];
+            }
+        });
+
+        // 5. Projeta do início real (ou mês atual) até o fechamento real do semestre/curso
+        const compStartLoop = compInicioAluno > mesAtualKey ? compInicioAluno : mesAtualKey;
+        let [anoLoop, mesLoop] = compStartLoop.split('-').map(Number);
+        const [anoFim, mesFim] = compLimiteFinal.split('-').map(Number);
+
+        while (anoLoop < anoFim || (anoLoop === anoFim && mesLoop <= mesFim)) {
+            const compRef = `${anoLoop}-${String(mesLoop).padStart(2, '0')}`;
+            if (!mapaMeses[compRef]) {
+                const calcProj = calcularDescontoPontualidadeLocal(valorRealContrato, compRef);
+                mapaMeses[compRef] = {
+                    competencia: compRef,
+                    status: 'Pendente',
+                    valor_integral: calcProj.valorIntegral,
+                    valor: calcProj.valorFinal,
+                    desconto_percentual: calcProj.descontoPct,
+                    numero_nf: ''
+                };
+            }
+            mesLoop++;
+            if (mesLoop > 12) {
+                mesLoop = 1;
+                anoLoop++;
+            }
         }
 
         const todasCompetencias = Object.keys(mapaMeses).sort();
         todasCompetencias.forEach((comp, idx) => {
             const p = mapaMeses[comp];
-            const vInt = parseFloat(p.valor_integral || valorRealContrato || p.valor || 0);
+            let vInt = parseFloat(p.valor_integral || valorRealContrato || p.valor || 0);
+            if (vInt === 199.99 && valorRealContrato > 0 && valorRealContrato !== 199.99) {
+                vInt = valorRealContrato;
+            }
             p.valor_integral = vInt;
 
             if (!isParcelaPaga(p.status)) {
@@ -1172,6 +1227,9 @@ async function loadPerfilFinanceiro() {
                     const nomeMes = (ano && mes)
                         ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
                         : p.competencia;
+
+                    const ultimoDiaDoMes = new Date(Number(ano), Number(mes), 0).getDate();
+                    const diaVencFmt = String(Math.min(diaVencimentoAluno, ultimoDiaDoMes)).padStart(2, '0');
 
                     const isMesAtual = p.competencia === mesAtualKey;
                     const isAtrasada = p.competencia < mesAtualKey;
@@ -1232,7 +1290,8 @@ async function loadPerfilFinanceiro() {
                                 ${linhaDescontoHtml}
                             </div>
                             <div class="mt-3 pt-2.5 border-t border-white/15">
-                                <p class="text-[10px] text-white/85 font-semibold">Apuração com desconto: <strong>Até dia 05/${mes}/${ano}</strong></p>
+                                <p class="text-[10px] text-white/90 font-semibold">Vencimento: <strong>${diaVencFmt}/${mes}/${ano}</strong></p>
+                                <p class="text-[9px] text-white/75">23% OFF pontualidade: até 05/${mes}/${ano}</p>
                                 ${statusBadgeCard}
                             </div>
                         </div>
@@ -1253,6 +1312,9 @@ async function loadPerfilFinanceiro() {
                 const nomeMes = (ano && mes)
                     ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
                     : p.competencia;
+
+                const ultimoDiaDoMes = new Date(Number(ano), Number(mes), 0).getDate();
+                const diaVencFmt = String(Math.min(diaVencimentoAluno, ultimoDiaDoMes)).padStart(2, '0');
 
                 const valorNum = parseFloat(p.valor || 0);
                 const valorIntegralNum = parseFloat(p.valor_integral || valorNum);
@@ -1283,7 +1345,7 @@ async function loadPerfilFinanceiro() {
                     <tr class="hover:bg-gray-50 transition border-b border-gray-50">
                         <td class="py-4 px-4 font-bold text-gray-900 capitalize">
                             ${p.referencia_label || nomeMes}
-                            <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Apuração c/ desconto: até 05/${mes}/${ano}</span>
+                            <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${diaVencFmt}/${mes}/${ano} • 23% OFF até 05/${mes}</span>
                         </td>
                         <td class="py-4 px-4 text-gray-800 font-black">
                             ${valorFormatado}
@@ -1444,270 +1506,6 @@ function abrirComprovanteImprimivel(competencia) {
     `);
     janela.document.close();
 }
-
-async function baixarReciboPdf(competencia, btnElement) {
-    const textoOriginal = btnElement ? btnElement.innerHTML : '';
-    if (btnElement) {
-        btnElement.disabled = true;
-        btnElement.innerHTML = 'Gerando PDF...';
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/aluno/financeiro/recibo/${encodeURIComponent(competencia)}/pdf`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}`
-            }
-        });
-
-        if (response.ok) {
-            const blob = await response.blob();
-            const urlBlob = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = urlBlob;
-            a.download = `Comprovante_UNIVEAS_${competencia}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => window.URL.revokeObjectURL(urlBlob), 4000);
-            return;
-        }
-
-        abrirComprovanteImprimivel(competencia);
-    } catch (e) {
-        abrirComprovanteImprimivel(competencia);
-    } finally {
-        if (btnElement) {
-            btnElement.disabled = false;
-            btnElement.innerHTML = textoOriginal;
-            if (typeof feather !== 'undefined') feather.replace();
-        }
-    }
-}
-
-function abrirComprovanteImprimivel(competencia) {
-    const parcela = mapaFinanceiroAtual[competencia] || { competencia };
-    const nomeAluno = localStorage.getItem('nome_aluno') || perfilFinanceiroAluno.nome || 'Aluno UNIVEAS';
-    const matricula = localStorage.getItem('matricula_aluno') || perfilFinanceiroAluno.matricula || 'S/N';
-    const cpf = perfilFinanceiroAluno.cpf || 'Informado no cadastro';
-    const cursoNome = (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0)
-        ? cursosDoAluno.map(c => c.nome_curso).join(' / ')
-        : 'Curso UNIVEAS';
-
-    const [ano, mes] = competencia.split('-');
-    const refMes = (ano && mes)
-        ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()
-        : competencia;
-
-    const valorNum = parseFloat(parcela.valor || perfilFinanceiroAluno.valor_mensalidade || 0);
-    const valorIntegralNum = parseFloat(parcela.valor_integral || valorNum);
-    const descontoPct = Number(parcela.desconto_percentual || 0);
-
-    const valorFormatado = valorNum > 0
-        ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-        : 'Conforme Contrato';
-
-    const infoDesconto = descontoPct > 0 && valorNum < valorIntegralNum
-        ? `Desconto de ${descontoPct}% (Pontualidade até dia 05) sobre ${valorIntegralNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
-        : 'Valor Integral do Curso';
-
-    const dataEmissao = new Date().toLocaleString('pt-BR');
-    const dataBaixa = parcela.data_pagamento || parcela.updated_at || new Date().toLocaleDateString('pt-BR');
-    const codigoAutenticacao = parcela.numero_nf || `UNV-${matricula.replace(/[^A-Z0-9]/gi, '')}-${competencia.replace('-', '')}`;
-
-    const janela = window.open('', '_blank', 'width=800,height=650');
-    if (!janela) {
-        alert('Habilite os pop-ups do navegador para visualizar e salvar o comprovante.');
-        return;
-    }
-
-    janela.document.write(`
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-            <meta charset="UTF-8">
-            <title>Comprovante de Pagamento - ${competencia}</title>
-            <style>
-                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 32px; background: #f8fafc; }
-                .recibo { max-width: 680px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-top: 6px solid #16a34a; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
-                .topo { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 18px; margin-bottom: 22px; }
-                .topo img { height: 52px; }
-                .titulo { text-align: right; }
-                .titulo h1 { margin: 0; font-size: 18px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
-                .titulo p { margin: 4px 0 0; font-size: 12px; color: #16a34a; font-weight: 700; }
-                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
-                .campo { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
-                .campo span { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 3px; }
-                .campo strong { font-size: 13px; color: #0f172a; }
-                .destaque { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
-                .destaque .valor { font-size: 22px; font-weight: 900; color: #15803d; }
-                .rodape { border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
-                .btn-print { display: block; margin: 20px auto 0; background: #2563eb; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
-                @media print { body { background: #fff; padding: 0; } .recibo { box-shadow: none; border: 1px solid #ccc; } .btn-print { display: none; } }
-            </style>
-        </head>
-        <body>
-            <div class="recibo">
-                <div class="topo">
-                    <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS">
-                    <div class="titulo">
-                        <h1>Comprovante de Pagamento</h1>
-                        <p>● QUITAÇÃO CONFIRMADA PELA SECRETARIA</p>
-                    </div>
-                </div>
-                <div class="grid">
-                    <div class="campo"><span>Aluno(a)</span><strong>${nomeAluno}</strong></div>
-                    <div class="campo"><span>Matrícula / CPF</span><strong>${matricula} • ${cpf}</strong></div>
-                    <div class="campo"><span>Curso</span><strong>${cursoNome}</strong></div>
-                    <div class="campo"><span>Competência</span><strong>${refMes}</strong></div>
-                </div>
-                <div class="destaque">
-                    <div>
-                        <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Valor Quitado</div>
-                        <div style="font-size: 11px; color: #475569; margin-top: 2px;">${infoDesconto} • Baixa: ${dataBaixa}</div>
-                    </div>
-                    <div class="valor">${valorFormatado}</div>
-                </div>
-                <div class="rodape">
-                    <div>Autenticação: <strong>${codigoAutenticacao}</strong><br>Emitido em: ${dataEmissao}</div>
-                    <div style="text-align: right;">SIGA - UNIVEAS<br>Secretaria Acadêmica e Financeira</div>
-                </div>
-            </div>
-            <button class="btn-print" onclick="window.print()">Imprimir / Salvar em PDF</button>
-        </body>
-        </html>
-    `);
-    janela.document.close();
-}
-
-async function baixarReciboPdf(competencia, btnElement) {
-    const textoOriginal = btnElement ? btnElement.innerHTML : '';
-    if (btnElement) {
-        btnElement.disabled = true;
-        btnElement.innerHTML = 'Gerando PDF...';
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/aluno/financeiro/recibo/${encodeURIComponent(competencia)}/pdf`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token_siga_aluno')}`
-            }
-        });
-
-        if (response.ok) {
-            const blob = await response.blob();
-            const urlBlob = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = urlBlob;
-            a.download = `Comprovante_UNIVEAS_${competencia}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => window.URL.revokeObjectURL(urlBlob), 4000);
-            return;
-        }
-
-        abrirComprovanteImprimivel(competencia);
-    } catch (e) {
-        abrirComprovanteImprimivel(competencia);
-    } finally {
-        if (btnElement) {
-            btnElement.disabled = false;
-            btnElement.innerHTML = textoOriginal;
-            if (typeof feather !== 'undefined') feather.replace();
-        }
-    }
-}
-
-function abrirComprovanteImprimivel(competencia) {
-    const parcela = mapaFinanceiroAtual[competencia] || { competencia };
-    const nomeAluno = localStorage.getItem('nome_aluno') || perfilFinanceiroAluno.nome || 'Aluno UNIVEAS';
-    const matricula = localStorage.getItem('matricula_aluno') || perfilFinanceiroAluno.matricula || 'S/N';
-    const cpf = perfilFinanceiroAluno.cpf || 'Informado no cadastro';
-    const cursoNome = (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0)
-        ? cursosDoAluno.map(c => c.nome_curso).join(' / ')
-        : 'Curso UNIVEAS';
-
-    const [ano, mes] = competencia.split('-');
-    const refMes = (ano && mes)
-        ? new Date(Number(ano), Number(mes) - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()
-        : competencia;
-
-    const valorNum = parseFloat(parcela.valor || perfilFinanceiroAluno.valor_mensalidade || 0);
-    const valorFormatado = valorNum > 0
-        ? valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-        : 'Conforme Contrato';
-
-    const dataEmissao = new Date().toLocaleString('pt-BR');
-    const dataBaixa = parcela.data_pagamento || parcela.updated_at || new Date().toLocaleDateString('pt-BR');
-    const codigoAutenticacao = parcela.numero_nf || `UNV-${matricula.replace(/[^A-Z0-9]/gi, '')}-${competencia.replace('-', '')}`;
-
-    const janela = window.open('', '_blank', 'width=800,height=650');
-    if (!janela) {
-        alert('Habilite os pop-ups do navegador para visualizar e salvar o comprovante.');
-        return;
-    }
-
-    janela.document.write(`
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-            <meta charset="UTF-8">
-            <title>Comprovante de Pagamento - ${competencia}</title>
-            <style>
-                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 32px; background: #f8fafc; }
-                .recibo { max-width: 680px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-top: 6px solid #16a34a; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
-                .topo { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 18px; margin-bottom: 22px; }
-                .topo img { height: 52px; }
-                .titulo { text-align: right; }
-                .titulo h1 { margin: 0; font-size: 18px; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
-                .titulo p { margin: 4px 0 0; font-size: 12px; color: #16a34a; font-weight: 700; }
-                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
-                .campo { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
-                .campo span { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 3px; }
-                .campo strong { font-size: 13px; color: #0f172a; }
-                .destaque { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
-                .destaque .valor { font-size: 22px; font-weight: 900; color: #15803d; }
-                .rodape { border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
-                .btn-print { display: block; margin: 20px auto 0; background: #2563eb; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
-                @media print { body { background: #fff; padding: 0; } .recibo { box-shadow: none; border: 1px solid #ccc; } .btn-print { display: none; } }
-            </style>
-        </head>
-        <body>
-            <div class="recibo">
-                <div class="topo">
-                    <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS">
-                    <div class="titulo">
-                        <h1>Comprovante de Pagamento</h1>
-                        <p>● QUITAÇÃO CONFIRMADA PELA SECRETARIA</p>
-                    </div>
-                </div>
-                <div class="grid">
-                    <div class="campo"><span>Aluno(a)</span><strong>${nomeAluno}</strong></div>
-                    <div class="campo"><span>Matrícula / CPF</span><strong>${matricula} • ${cpf}</strong></div>
-                    <div class="campo"><span>Curso</span><strong>${cursoNome}</strong></div>
-                    <div class="campo"><span>Referência / Parcela</span><strong>${refMes} (${parcela.parcela_num || 1}/${parcela.parcela_total || 12})</strong></div>
-                </div>
-                <div class="destaque">
-                    <div>
-                        <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Valor Quitado</div>
-                        <div style="font-size: 11px; color: #475569; margin-top: 2px;">Data de confirmação: ${dataBaixa}</div>
-                    </div>
-                    <div class="valor">${valorFormatado}</div>
-                </div>
-                <div class="rodape">
-                    <div>Autenticação: <strong>${codigoAutenticacao}</strong><br>Emitido em: ${dataEmissao}</div>
-                    <div style="text-align: right;">SIGA - UNIVEAS<br>Secretaria Acadêmica e Financeira</div>
-                </div>
-            </div>
-            <button class="btn-print" onclick="window.print()">Imprimir / Salvar em PDF</button>
-        </body>
-        </html>
-    `);
-    janela.document.close();
-}
-
 
 async function salvarPerfilAluno(event) {
     event.preventDefault();
