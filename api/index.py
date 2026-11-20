@@ -354,6 +354,8 @@ def obter_mapa_mensalidades_unificado(
             parcela["elegivel_desconto"] = int(parcela.get("desconto_percentual") or 0) > 0
 
     return mapa
+
+
 def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
     """Mantém  documento do aluno e a coleção 'mensalidades' 100% espelhados, sem marcar parcelas futuras como atraso."""
     aluno_ref = db.collection("alunos").document(str(aluno_id))
@@ -388,6 +390,76 @@ def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
         "mensalidades_json": json.dumps(mapa_mensalidades, ensure_ascii=False),
         "data_atualizacao_financeira": datetime.now().isoformat()
     })
+
+def _obter_competencia_inicio_aluno(aluno_dict: dict, mapa_mensalidades: Optional[dict] = None) -> str:
+    """Calcula a competência inicial do ciclo respeitando o corte do dia 05 e histórico já gravado."""
+    raw_dt = (
+        aluno_dict.get("data_matricula")
+        or aluno_dict.get("data_cadastro")
+        or aluno_dict.get("created_at")
+    )
+    dt_mat = None
+    if raw_dt:
+        try:
+            dt_mat = datetime.fromisoformat(str(raw_dt).replace("Z", ""))
+        except Exception:
+            dt_mat = None
+
+    if not dt_mat:
+        dt_mat = datetime.now()
+
+    if dt_mat.day <= 5:
+        comp_por_mat = f"{dt_mat.year}-{dt_mat.month:02d}"
+    else:
+        ano_prox = dt_mat.year + 1 if dt_mat.month == 12 else dt_mat.year
+        mes_prox = 1 if dt_mat.month == 12 else dt_mat.month + 1
+        comp_por_mat = f"{ano_prox}-{mes_prox:02d}"
+
+    if isinstance(mapa_mensalidades, dict) and mapa_mensalidades:
+        comps_validas = sorted([k for k in mapa_mensalidades.keys() if len(str(k)) == 7 and "-" in str(k)])
+        if comps_validas and comps_validas[0] < comp_por_mat:
+            return comps_validas[0]
+
+    return comp_por_mat
+
+
+def _aluno_elegivel_no_mes_financeiro(aluno_dict: dict, mes_alvo: str, mapa_mensalidades: dict) -> bool:
+    """Verifica se o aluno deve ser cobrado/exibido na competência alvo, preservando parcelas pagas ou negociadas."""
+    parcela = mapa_mensalidades.get(mes_alvo)
+    if parcela and (
+        parcela.get("status") in ["Pago", "Em Análise"]
+        or bool(parcela.get("valor_manual"))
+    ):
+        return True
+
+    comp_inicio = _obter_competencia_inicio_aluno(aluno_dict, mapa_mensalidades)
+    if mes_alvo < comp_inicio:
+        return False
+
+    status_norm = str(aluno_dict.get("status") or "Ativo").strip().upper()
+    comps_gravadas = sorted([k for k in mapa_mensalidades.keys() if len(str(k)) == 7 and "-" in str(k)])
+
+    if status_norm == "TRANCADO":
+        raw_tranc = aluno_dict.get("data_trancamento") or aluno_dict.get("data_atualizacao")
+        comp_tranc = None
+        if raw_tranc:
+            try:
+                dt_tranc = datetime.fromisoformat(str(raw_tranc).replace("Z", ""))
+                comp_tranc = f"{dt_tranc.year}-{dt_tranc.month:02d}"
+            except Exception:
+                pass
+        if not comp_tranc and comps_gravadas:
+            comp_tranc = comps_gravadas[-1]
+        if comp_tranc and mes_alvo > comp_tranc:
+            return False
+
+    if status_norm in ["CONCLUÍDO", "CONCLUIDO", "CANCELADO"]:
+        mes_atual = datetime.now().strftime("%Y-%m")
+        comp_conc = comps_gravadas[-1] if comps_gravadas else mes_atual
+        if mes_alvo > comp_conc:
+            return False
+
+    return True
 
 # ==========================================
 # 2.5 AUTENTICAÇÃO DO ADMINISTRADOR
@@ -467,7 +539,6 @@ async def listar_alunos():
     alunos = [{"id": doc.id, **doc.to_dict()} for doc in docs]
     return alunos
 
-
 @app.post("/api/v1/alunos/matricular")
 async def matricular_aluno(
         nome: str = Form(...),
@@ -499,24 +570,30 @@ async def matricular_aluno(
     if not lista_cursos and curso_principal:
         lista_cursos = [{"curso_id": curso_principal}]
 
+    agora = datetime.now()
     status_final = status or "Ativo"
     is_pendente = (status_final == "Pendente") or (possui_pendencia_financeira == "Sim")
-    mes_ref = datetime.now().strftime("%Y-%m")
+    mes_ref = _obter_competencia_inicio_aluno({"data_cadastro": agora.isoformat()})
 
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
     temp_aluno = {"curso_id": curso_principal, "cursos_json": lista_cursos}
-    valor_mensal = calcular_valor_mensal_aluno(temp_aluno, cursos_map)
+    valor_integral = calcular_valor_mensal_aluno(temp_aluno, cursos_map)
+    calc_inicial = calcular_valor_com_pontualidade(valor_integral, mes_ref, agora)
 
     status_parcela_inicial = "Pendente" if is_pendente else "Pago"
     mapa_inicial = {
         mes_ref: {
             "competencia": mes_ref,
             "status": status_parcela_inicial,
-            "valor": valor_mensal,
+            "valor_integral": calc_inicial["valor_integral"],
+            "valor": calc_inicial["valor_final"],
+            "desconto_percentual": calc_inicial["desconto_percentual"],
             "numero_nf": "",
-            "atualizado_em": datetime.now().isoformat()
+            "atualizado_em": agora.isoformat()
         }
     }
+
+    tem_pendencia_imediata = is_pendente and (mes_ref <= agora.strftime("%Y-%m"))
 
     novo_aluno = {
         "matricula": matricula_gerada,
@@ -529,17 +606,20 @@ async def matricular_aluno(
         "curso_id": curso_principal,
         "cursos_json": lista_cursos,
         "data_nascimento": data_nascimento,
-        "dia_vencimento": dia_vencimento or "10",
+        "dia_vencimento": dia_vencimento or "05",
         "forma_pagamento": forma_pagamento,
         "pcd": pcd,
         "aceite_termos": aceite_termos,
         "status": status_final,
-        "possui_pendencia_financeira": "Sim" if is_pendente else "Não",
-        "detalhes_pendencia_financeira": (detalhes_pendencia_financeira or f"Matrícula / Mensalidade ({mes_ref})") if is_pendente else "",
+        "possui_pendencia_financeira": "Sim" if tem_pendencia_imediata else "Não",
+        "detalhes_pendencia_financeira": (
+            detalhes_pendencia_financeira or f"Matrícula / Mensalidade ({mes_ref})"
+        ) if tem_pendencia_imediata else "",
         "numero_nf": "",
-        "status_comprovante": "Pendente" if is_pendente else "Aprovado",
+        "status_comprovante": "Pendente" if tem_pendencia_imediata else "Aprovado",
         "mensalidades_json": json.dumps(mapa_inicial, ensure_ascii=False),
-        "data_cadastro": datetime.now().isoformat()
+        "data_matricula": agora.strftime("%Y-%m-%d"),
+        "data_cadastro": agora.isoformat()
     }
 
     _, doc_ref = db.collection("alunos").add(novo_aluno)
@@ -547,14 +627,20 @@ async def matricular_aluno(
     db.collection("mensalidades").document(f"{doc_ref.id}__{mes_ref}").set({
         "aluno_id": doc_ref.id,
         "competencia": mes_ref,
-        "valor": valor_mensal,
+        "valor_integral": calc_inicial["valor_integral"],
+        "valor": calc_inicial["valor_final"],
+        "desconto_percentual": calc_inicial["desconto_percentual"],
         "status": status_parcela_inicial,
         "numero_nf": "",
-        "atualizado_em": datetime.now().isoformat()
+        "atualizado_em": agora.isoformat()
     }, merge=True)
 
-    return {"sucesso": True, "id": doc_ref.id, "matricula": matricula_gerada}
-
+    return {
+        "sucesso": True,
+        "id": doc_ref.id,
+        "matricula": matricula_gerada,
+        "mensagem": "Aluno matriculado com sucesso!"
+    }
 
 @app.put("/api/v1/alunos/{aluno_id}")
 async def alterar_aluno(
@@ -605,6 +691,14 @@ async def alterar_aluno(
         "status": status,
         "data_atualizacao": datetime.now().isoformat()
     }
+
+    aluno_anterior = ref.get().to_dict() or {}
+    if status == "Trancado":
+        dados_atualizados["data_trancamento"] = (
+                aluno_anterior.get("data_trancamento") or datetime.now().strftime("%Y-%m-%d")
+        )
+    elif status in ["Ativo", "Pendente"]:
+        dados_atualizados["data_trancamento"] = ""
 
     dados_limpos = {k: v for k, v in dados_atualizados.items() if v is not None}
 
@@ -1003,9 +1097,9 @@ async def listar_mensalidades(competencia: Optional[str] = None):
     lista_unificada = []
 
     for a in alunos_docs:
-        if a.get("status") in ["Trancado", "Concluído"]:
-            continue
         mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
+        if not _aluno_elegivel_no_mes_financeiro(a, mes_alvo, mapa):
+            continue
         if mes_alvo in mapa:
             parcela = mapa[mes_alvo]
         else:
@@ -1032,7 +1126,6 @@ async def listar_mensalidades(competencia: Optional[str] = None):
 
     return {"lista": lista_unificada}
 
-
 @app.get("/api/v1/financeiro/indicadores")
 async def obter_indicadores_financeiros(competencia: Optional[str] = None):
     checar_db()
@@ -1047,9 +1140,9 @@ async def obter_indicadores_financeiros(competencia: Optional[str] = None):
     pagamentos_mes_qtd = 0
 
     for a in alunos_docs:
-        if a.get("status") in ["Trancado", "Concluído"]:
-            continue
         mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
+        if not _aluno_elegivel_no_mes_financeiro(a, mes_alvo, mapa):
+            continue
         if mes_alvo in mapa:
             parcela = mapa[mes_alvo]
         else:
@@ -1071,7 +1164,6 @@ async def obter_indicadores_financeiros(competencia: Optional[str] = None):
         "inadimplencia": inadimplencia_qtd,
         "pagamentos_mes": pagamentos_mes_qtd
     }
-
 
 @app.get("/api/v1/financeiro/parcelas/{aluno_id}")
 def listar_parcelas_aluno(aluno_id: str):
@@ -1864,9 +1956,9 @@ async def obter_indicadores_dashboard():
     total_inadimplencia = 0.0
 
     for a in alunos_docs:
-        if a.get("status") in ["Trancado", "Concluído"]:
-            continue
         mapa = obter_mapa_mensalidades_unificado(a["id"], a, cursos_map, mens_docs)
+        if not _aluno_elegivel_no_mes_financeiro(a, mes_atual, mapa):
+            continue
         parcela = mapa.get(mes_atual)
         if parcela and parcela.get("status") != "Pago":
             total_inadimplencia += float(parcela.get("valor") or 0)
@@ -2582,15 +2674,23 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
             medias_disciplinas.append(media_calc)
 
     media_geral = round(sum(medias_disciplinas) / len(medias_disciplinas), 1) if medias_disciplinas else 0.0
-    is_pendente = aluno_esta_pendente_financeiro(aluno_dados)
+
+    # --- BLOCO FINANCEIRO SINCRONIZADO ---
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
+    mapa_fin = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_dados, cursos_map, mens_docs)
+    mes_atual = datetime.now().strftime("%Y-%m")
+    tem_pendente_atual = any(
+        p.get("status") == "Pendente" and str(p.get("competencia", "")) <= mes_atual
+        for p in mapa_fin.values()
+    )
 
     return {
         "media_geral": media_geral,
         "faltas_totais": total_faltas,
-        "status_financeiro": "Pendente" if is_pendente else "Regular",
+        "status_financeiro": "Pendente" if tem_pendente_atual else "Regular",
         "disciplinas_atuais": disciplinas_atuais[:3]
     }
-
 
 @app.get("/api/v1/aluno/cursos")
 async def listar_cursos_aluno(authorization: str = Header(None)):
@@ -2876,16 +2976,17 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
         "email": dados.get("email"),
         "telefone": dados.get("telefone"),
         "endereco": dados.get("endereco"),
+        "status": dados.get("status", "Ativo"),
+        "data_trancamento": dados.get("data_trancamento", ""),
         "dia_vencimento": 5,
         "desconto_pontualidade_pct": 23,
         "valor_mensalidade": valor_mensalidade,
-        "data_matricula": dados.get("data_cadastro") or dados.get("created_at") or "",
+        "data_matricula": dados.get("data_matricula") or dados.get("data_cadastro") or dados.get("created_at") or "",
         "possui_pendencia_financeira": dados.get("possui_pendencia_financeira", "Não"),
         "detalhes_pendencia_financeira": dados.get("detalhes_pendencia_financeira", ""),
         "numero_nf": dados.get("numero_nf", ""),
         "mensalidades_json": mapa_unificado
     }
-
 
 @app.put("/api/v1/aluno/perfil")
 @app.post("/api/v1/aluno/perfil")
@@ -3170,3 +3271,4 @@ async def gerar_recibo_mensalidade_admin_pdf(aluno_id: str, competencia: str):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao gerar recibo PDF: {str(e)}")
+
