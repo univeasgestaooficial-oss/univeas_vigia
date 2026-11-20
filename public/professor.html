@@ -1099,7 +1099,14 @@ async function carregarChamada() {
     const mapaPauta = pautaSalvaResp && !Array.isArray(pautaSalvaResp) ? pautaSalvaResp : {};
 
     const alunosDaTurma = alunos.filter(a => {
-        if (a.status === 'Cancelado' || a.status === 'Trancado') return false;
+        const statusNorm = String(a.status || 'Ativo')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .trim().toUpperCase();
+
+        if (statusNorm === 'CANCELADO' || statusNorm === 'TRANCADO' || statusNorm === 'CONCLUIDO') {
+            return false;
+        }
+
         if (String(a.curso) === String(cursoId) || String(a.curso_id) === String(cursoId)) return true;
         if (a.cursos_json) {
             try {
