@@ -1112,14 +1112,19 @@ async function loadPerfilFinanceiro() {
             });
         }
 
-        // 2. Competência real de início do aluno (corte no dia 10, sincronizado com admin.html)
+        // 2. Competência real de início do aluno (corte no dia 05, idêntico ao admin.html)
         const rawDataMat = dados?.data_matricula || dados?.created_at || dados?.data_cadastro;
         const dataMatObj = parseDataLocalSegura(rawDataMat, hoje);
-        const compInicioAluno = dataMatObj.getDate() <= 10
+        const compPorMat = dataMatObj.getDate() <= 5
             ? `${dataMatObj.getFullYear()}-${String(dataMatObj.getMonth() + 1).padStart(2, '0')}`
             : `${dataMatObj.getMonth() === 11 ? dataMatObj.getFullYear() + 1 : dataMatObj.getFullYear()}-${String(dataMatObj.getMonth() === 11 ? 1 : dataMatObj.getMonth() + 2).padStart(2, '0')}`;
 
-        // 3. Competência final real baseada nos módulos do curso ou fim do semestre corrente
+        const compsGravadas = Object.keys(mapaMeses).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+        const compInicioAluno = (compsGravadas.length > 0 && compsGravadas[0] < compPorMat)
+            ? compsGravadas[0]
+            : compPorMat;
+
+        // 3. Competência final real baseada nos módulos do curso, semestre ou status (Trancado / Concluído)
         let compFimCurso = '';
         if (Array.isArray(cursosDoAluno) && cursosDoAluno.length > 0) {
             cursosDoAluno.forEach(c => {
@@ -1143,37 +1148,55 @@ async function loadPerfilFinanceiro() {
         const anoAtual = hoje.getFullYear();
         const mesAtualNum = hoje.getMonth() + 1;
         const compFimSemestreAtual = `${anoAtual}-${String(mesAtualNum <= 6 ? 6 : 12).padStart(2, '0')}`;
-        const compLimiteFinal = compFimCurso && compFimCurso >= compInicioAluno ? compFimCurso : compFimSemestreAtual;
+        let compLimiteFinal = compFimCurso && compFimCurso >= compInicioAluno ? compFimCurso : compFimSemestreAtual;
 
-        // 4. Remove meses anteriores ao início real da matrícula que não foram pagos
+        const statusCadastroNorm = String(dados?.status || 'Ativo')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .trim().toUpperCase();
+
+        if (statusCadastroNorm === 'TRANCADO') {
+            const dtTranc = parseDataLocalSegura(dados?.data_trancamento || dados?.updated_at, hoje);
+            compLimiteFinal = `${dtTranc.getFullYear()}-${String(dtTranc.getMonth() + 1).padStart(2, '0')}`;
+        } else if (statusCadastroNorm === 'CONCLUIDO' || statusCadastroNorm === 'CANCELADO') {
+            compLimiteFinal = compsGravadas.length > 0 ? compsGravadas[compsGravadas.length - 1] : mesAtualKey;
+        }
+
+        // 4. Remove meses fora do ciclo ativo que não estejam pagos, em análise ou negociados manualmente
         Object.keys(mapaMeses).forEach(comp => {
-            if (comp < compInicioAluno && !isParcelaPaga(mapaMeses[comp]?.status)) {
+            const itemMes = mapaMeses[comp];
+            const protegido = isParcelaPaga(itemMes?.status)
+                || String(itemMes?.status || '').toLowerCase().includes('análise')
+                || itemMes?.valor_manual === true;
+
+            if (!protegido && (comp < compInicioAluno || comp > compLimiteFinal)) {
                 delete mapaMeses[comp];
             }
         });
 
-        // 5. Projeta do início real (ou mês atual) até o fechamento real do semestre/curso
-        const compStartLoop = compInicioAluno > mesAtualKey ? compInicioAluno : mesAtualKey;
-        let [anoLoop, mesLoop] = compStartLoop.split('-').map(Number);
-        const [anoFim, mesFim] = compLimiteFinal.split('-').map(Number);
+        // 5. Projeta parcelas apenas se a matrícula estiver Ativa/Pendente
+        if (statusCadastroNorm !== 'TRANCADO' && statusCadastroNorm !== 'CONCLUIDO' && statusCadastroNorm !== 'CANCELADO') {
+            const compStartLoop = compInicioAluno > mesAtualKey ? compInicioAluno : mesAtualKey;
+            let [anoLoop, mesLoop] = compStartLoop.split('-').map(Number);
+            const [anoFim, mesFim] = compLimiteFinal.split('-').map(Number);
 
-        while (anoLoop < anoFim || (anoLoop === anoFim && mesLoop <= mesFim)) {
-            const compRef = `${anoLoop}-${String(mesLoop).padStart(2, '0')}`;
-            if (!mapaMeses[compRef]) {
-                const calcProj = calcularDescontoPontualidadeLocal(valorRealContrato, compRef);
-                mapaMeses[compRef] = {
-                    competencia: compRef,
-                    status: 'Pendente',
-                    valor_integral: calcProj.valorIntegral,
-                    valor: calcProj.valorFinal,
-                    desconto_percentual: calcProj.descontoPct,
-                    numero_nf: ''
-                };
-            }
-            mesLoop++;
-            if (mesLoop > 12) {
-                mesLoop = 1;
-                anoLoop++;
+            while (anoLoop < anoFim || (anoLoop === anoFim && mesLoop <= mesFim)) {
+                const compRef = `${anoLoop}-${String(mesLoop).padStart(2, '0')}`;
+                if (!mapaMeses[compRef]) {
+                    const calcProj = calcularDescontoPontualidadeLocal(valorRealContrato, compRef);
+                    mapaMeses[compRef] = {
+                        competencia: compRef,
+                        status: 'Pendente',
+                        valor_integral: calcProj.valorIntegral,
+                        valor: calcProj.valorFinal,
+                        desconto_percentual: calcProj.descontoPct,
+                        numero_nf: ''
+                    };
+                }
+                mesLoop++;
+                if (mesLoop > 12) {
+                    mesLoop = 1;
+                    anoLoop++;
+                }
             }
         }
 
