@@ -296,8 +296,8 @@
                                 </div>
 
                                 <div class="md:col-span-6">
-                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Vencimento (Dia)</label>
-                                    <input type="number" name="dia_vencimento" min="1" max="31" placeholder="Ex: 10" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500">
+                                    <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Vencimento Padrão (Dia 05 • Regra 23% OFF)</label>
+                                    <input type="number" name="dia_vencimento" min="1" max="31" value="5" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-teal-50/60 font-bold text-teal-800 focus:outline-teal-500">
                                 </div>
                                 <div class="md:col-span-6">
                                     <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Forma de Pagamento</label>
@@ -1934,20 +1934,6 @@ async function loadDocentes() {
     });
     feather.replace();
 }
-
-
-async function carregarIndicadoresFinanceiros() {
-    const dados = await apiRequest('/financeiro/indicadores');
-    if (dados && !dados.detail) {
-        document.getElementById('fin-total-recebido').innerText = `R$ ${parseFloat(dados.total_recebido || 0).toFixed(2).replace('.', ',')}`;
-        document.getElementById('fin-total-receber').innerText = `R$ ${parseFloat(dados.total_receber || 0).toFixed(2).replace('.', ',')}`;
-        document.getElementById('fin-inadimplencia').innerText = dados.inadimplencia || 0;
-        document.getElementById('fin-pagamentos-mes').innerText = dados.pagamentos_mes || 0;
-    }
-}
-
-
-
 function filtrarFinanceiro() {
     const termo = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
     const linhas = document.querySelectorAll('.linha-financeiro');
@@ -1961,28 +1947,58 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     e.preventDefault();
     const blocosCursoAluno = document.querySelectorAll('.item-curso-aluno');
     let arrayCursosAluno = [];
+    let somaValorMensalidade = 0;
+
     blocosCursoAluno.forEach(bloco => {
         const curso_id = bloco.querySelector('.select-curso-aluno-dinamico').value;
-        if (curso_id) arrayCursosAluno.push({ curso_id: curso_id });
+        if (curso_id) {
+            arrayCursosAluno.push({ curso_id: curso_id });
+            const cursoObj = cursosGlobais.find(c => String(c.id) === String(curso_id));
+            if (cursoObj) {
+                somaValorMensalidade += parseFloat(cursoObj.valor_mensalidade || 0);
+            }
+        }
     });
+
     document.getElementById('cursos_aluno_json').value = JSON.stringify(arrayCursosAluno);
     const formData = new FormData(e.target);
     const idEdit = document.getElementById('aluno_id_edit')?.value;
-    formData.append('curso_id', arrayCursosAluno.length > 0 ? arrayCursosAluno[0].curso_id : '');
-    const termosCheck = document.getElementById('termos_aluno');
 
+    formData.set('curso_id', arrayCursosAluno.length > 0 ? arrayCursosAluno[0].curso_id : '');
+    if (!formData.get('dia_vencimento')) formData.set('dia_vencimento', '5');
+    if (somaValorMensalidade > 0) {
+        formData.set('valor_mensalidade', (Math.round(somaValorMensalidade * 100) / 100).toFixed(2));
+    }
+
+    if (!idEdit) {
+        const hojeIso = new Date().toISOString().slice(0, 10);
+        formData.set('data_matricula', hojeIso);
+    }
+    if (!idEdit) {
+        const hojeIso = new Date().toISOString().slice(0, 10);
+        formData.set('data_matricula', hojeIso);
+    } else {
+        const alunoAnterior = alunosGlobais.find(a => String(a.id) === String(idEdit)) || {};
+        const novoStatus = formData.get('status');
+        if (novoStatus === 'Trancado') {
+            formData.set('data_trancamento', alunoAnterior.data_trancamento || new Date().toISOString().slice(0, 10));
+        } else if (novoStatus === 'Ativo' || novoStatus === 'Pendente') {
+            formData.set('data_trancamento', '');
+        }
+    }
+
+    const termosCheck = document.getElementById('termos_aluno');
     if (termosCheck) formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
 
     const statusAluno = formData.get('status');
-
     if (!idEdit && statusAluno === 'Pendente') {
-        const hoje = new Date();
-        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        const compInicial = obterCompetenciaInicialCiclo(new Date());
         formData.set('possui_pendencia', 'Sim');
         formData.set('possui_pendencia_financeira', 'Sim');
-        formData.set('detalhes_pendencia', `Matrícula / Mensalidade (${mesAtual})`);
-        formData.set('detalhes_pendencia_financeira', `Matrícula / Mensalidade (${mesAtual})`);
+        formData.set('detalhes_pendencia', `Matrícula / Mensalidade (${compInicial})`);
+        formData.set('detalhes_pendencia_financeira', `Matrícula / Mensalidade (${compInicial})`);
     }
+
     const btnSubmit = e.target.querySelector('button[type="submit"]');
     const textoOriginal = btnSubmit.innerText;
     btnSubmit.innerText = "Salvando...";
@@ -1997,6 +2013,7 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
     if (result && result.sucesso) {
         alert(idEdit ? "Dados do aluno atualizados com sucesso!" : "Aluno matriculado com sucesso!");
         e.target.reset();
+        e.target.dia_vencimento.value = '5';
 
         document.getElementById('container-cursos-aluno').innerHTML = '';
         contadorCursosAluno = 0;
@@ -3076,6 +3093,59 @@ document.getElementById('busca-aluno')?.addEventListener('input', function (e) {
 // GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
 // ==========================================
 
+function alunoElegivelNoMesFinanceiro(aluno, mesRef) {
+    if (!aluno || !mesRef || !/^\d{4}-\d{2}$/.test(mesRef)) return true;
+
+    let mapa = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapa = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : aluno.mensalidades_json;
+        }
+    } catch (e) {}
+
+    // 1. Se já existe registro real pago, em análise ou negociado nesta competência, sempre exibe
+    const regMes = mapa && mapa[mesRef];
+    if (regMes && (regMes.status === 'Pago' || regMes.status === 'Em Análise' || regMes.valor_manual)) {
+        return true;
+    }
+
+    // 2. Competência inicial pela data_matricula (regra do dia 05) ou menor competência gravada no histórico
+    const dtMat = parseDataIsoLocal(aluno.data_matricula || aluno.data_cadastro || aluno.created_at) || new Date();
+    const compPorMat = obterCompetenciaInicialCiclo(dtMat);
+    const compsGravadas = Object.keys(mapa || {}).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+    const compInicio = (compsGravadas.length > 0 && compsGravadas[0] < compPorMat)
+        ? compsGravadas[0]
+        : compPorMat;
+
+    // Não cobra mês anterior ao início real (ex: cadastro dia 19/11 -> compInicio 2026-12 -> oculta 2026-11)
+    if (mesRef < compInicio) return false;
+
+    // 3. Verifica status oficial do cadastro (Ativo, Pendente, Trancado, Concluído)
+    const statusNorm = String(aluno.status || 'Ativo')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim().toUpperCase();
+
+    if (statusNorm === 'TRANCADO') {
+        const dtTranc = parseDataIsoLocal(aluno.data_trancamento || aluno.updated_at);
+        const compLimiteTranc = dtTranc
+            ? `${dtTranc.getFullYear()}-${String(dtTranc.getMonth() + 1).padStart(2, '0')}`
+            : (compsGravadas.length > 0 ? compsGravadas[compsGravadas.length - 1] : null);
+        // Mantém pendências até o mês do trancamento; congela meses seguintes
+        if (compLimiteTranc && mesRef > compLimiteTranc) return false;
+    }
+
+    if (statusNorm === 'CONCLUIDO' || statusNorm === 'CANCELADO') {
+        const hoje = new Date();
+        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        const compLimiteConc = compsGravadas.length > 0 ? compsGravadas[compsGravadas.length - 1] : mesAtualKey;
+        if (mesRef > compLimiteConc) return false;
+    }
+
+    return true;
+}
+
 
 async function loadFinanceiro() {
     const inputMes = document.getElementById('filtro-mes-financeiro');
@@ -3110,6 +3180,7 @@ async function loadFinanceiro() {
     }
 
     lista.forEach((item) => {
+        if (!alunoElegivelNoMesFinanceiro(item, mesSelecionado)) return;
         const parcela = obterParcelaDoMes(item, mesSelecionado);
         const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
         const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -3203,139 +3274,10 @@ async function informarNFFinanceiro(alunoId, competencia) {
     await persistirParcelaIsoladaAluno(alunoId, mesRef, parcelaAtual.status, parcelaAtual.detalhes || '', nf);
 }
 
-function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nfAtual = '', statusAtual = 'Pendente') {
-    let modal = document.getElementById('modal-pendencia-financeira');
-    if (modal) modal.remove();
 
-    const btnVerAnexo = (statusAtual === 'Em Análise' || statusAtual === 'Pago')
-        ? `<button type="button" onclick="verComprovanteMes('${alunoId}', '${competencia}')" class="w-full bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition py-2 px-3 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-2">
-               <i data-feather="paperclip" class="w-4 h-4"></i> Visualizar Comprovante (${competencia})
-           </button>`
-        : '';
 
-    const htmlModal = `
-    <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-teal-500">
-            <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
-            <h3 class="text-lg font-black text-gray-900 mb-1 uppercase">Baixa / Situação Mensal</h3>
-            <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
 
-            <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
-                <input type="hidden" id="pendencia_aluno_id" value="${alunoId}">
-                <input type="hidden" id="pendencia_competencia" value="${competencia}">
 
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Competência (Mês Isolado)</label>
-                    <input type="text" value="${competencia}" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-100 font-bold text-teal-700">
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status deste Mês</label>
-                    <select id="select-status-parcela" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-teal-500" onchange="toggleCampoDetalhes(this.value)">
-                        <option value="Pago">Pago / Quitado</option>
-                        <option value="Pendente">Pendente (Em Aberto)</option>
-                        <option value="Em Análise">Comprovante em Análise</option>
-                    </select>
-                </div>
-
-                ${btnVerAnexo}
-
-                <div id="bloco-detalhes-pendencia" class="hidden">
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Observação / Referência</label>
-                    <textarea id="input-detalhes-pendencia" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: Mensalidade vencida dia 10..."></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº da Nota Fiscal / Recibo (Opcional)</label>
-                    <input type="text" id="input-nf-aluno" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500" placeholder="Ex: NF-2026/004">
-                </div>
-
-                <div class="flex justify-end space-x-2 pt-2 border-t border-gray-100 mt-4">
-                    <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Cancelar</button>
-                    <button type="submit" class="bg-teal-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-teal-600 transition">Salvar Mês</button>
-                </div>
-            </form>
-        </div>
-    </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', htmlModal);
-    document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome}`;
-    document.getElementById('input-nf-aluno').value = nfAtual || '';
-    document.getElementById('select-status-parcela').value = statusAtual || 'Pendente';
-    document.getElementById('input-detalhes-pendencia').value = (detalhesAtuais && detalhesAtuais !== 'undefined') ? detalhesAtuais : '';
-
-    toggleCampoDetalhes(statusAtual);
-    feather.replace();
-}
-
-async function salvarPendenciaAluno(e) {
-    e.preventDefault();
-    const alunoId = document.getElementById('pendencia_aluno_id').value;
-    const competencia = document.getElementById('pendencia_competencia').value;
-    const novoStatus = document.getElementById('select-status-parcela').value;
-    const detalhes = document.getElementById('input-detalhes-pendencia').value;
-    const numeroNF = document.getElementById('input-nf-aluno').value;
-
-    const btnSubmit = e.target.querySelector('button[type="submit"]');
-    const textoOriginal = btnSubmit.innerText;
-    btnSubmit.innerText = "Salvando...";
-
-    await persistirParcelaIsoladaAluno(alunoId, competencia, novoStatus, detalhes, numeroNF);
-
-    btnSubmit.innerText = textoOriginal;
-    fecharModalPendencia();
-}
-
-async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela, detalhes, numeroNF) {
-    const alunoAtual = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
-    let mapaMensalidades = {};
-    try {
-        if (alunoAtual.mensalidades_json) {
-            mapaMensalidades = typeof alunoAtual.mensalidades_json === 'string'
-                ? JSON.parse(alunoAtual.mensalidades_json)
-                : { ...alunoAtual.mensalidades_json };
-        }
-    } catch (e) {}
-
-    // Atualiza APENAS a competência escolhida deste aluno específico
-    mapaMensalidades[competencia] = {
-        ...(mapaMensalidades[competencia] || {}),
-        competencia: competencia,
-        status: statusParcela,
-        valor: calcularValorMensalidadeAluno(alunoAtual),
-        detalhes: detalhes || '',
-        numero_nf: numeroNF || '',
-        atualizado_em: new Date().toISOString()
-    };
-
-    // Consolida o status geral APENAS deste aluno com base em TODAS as suas competências
-    const todasParcelas = Object.values(mapaMensalidades);
-    const mesesPendentes = todasParcelas.filter(p => p.status === 'Pendente').map(p => p.competencia);
-    const temAlgumaPendencia = mesesPendentes.length > 0 ? 'Sim' : 'Não';
-
-    const formData = new FormData();
-    for (const key in alunoAtual) {
-        if (alunoAtual[key] !== null && alunoAtual[key] !== undefined && typeof alunoAtual[key] !== 'object') {
-            formData.append(key, alunoAtual[key]);
-        }
-    }
-
-    formData.set('mensalidades_json', JSON.stringify(mapaMensalidades));
-    formData.set('possui_pendencia', temAlgumaPendencia);
-    formData.set('possui_pendencia_financeira', temAlgumaPendencia);
-    formData.set('detalhes_pendencia', mesesPendentes.join(', '));
-    formData.set('detalhes_pendencia_financeira', mesesPendentes.join(', '));
-    formData.set('numero_nf', numeroNF || alunoAtual.numero_nf || '');
-
-    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
-
-    if (result && result.sucesso) {
-        await loadAlunos();
-        await loadFinanceiro();
-    } else {
-        alert(result?.detail || "Erro ao atualizar a mensalidade.");
-    }
-}
 
 function toggleCampoDetalhes(valor) {
     const bloco = document.getElementById('bloco-detalhes-pendencia');
@@ -3692,39 +3634,50 @@ async function verComprovanteMes(alunoId, competencia) {
     if (typeof feather !== 'undefined') feather.replace();
 }
 
-// ==========================================
-// GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
-// ==========================================
-function calcularValorMensalidadeAluno(aluno) {
-    if (!aluno) return 0;
-    if (aluno.valor_mensalidade !== undefined && aluno.valor_mensalidade !== null && aluno.valor_mensalidade !== '') {
-        return parseFloat(aluno.valor_mensalidade) || 0;
+function obterCompetenciaInicialCiclo(dataRef = new Date()) {
+    if (dataRef.getDate() <= 5) {
+        return `${dataRef.getFullYear()}-${String(dataRef.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const ano = dataRef.getMonth() === 11 ? dataRef.getFullYear() + 1 : dataRef.getFullYear();
+    const mes = dataRef.getMonth() === 11 ? 1 : dataRef.getMonth() + 2;
+    return `${ano}-${String(mes).padStart(2, '0')}`;
+}
+
+function parseDataIsoLocal(dataStr) {
+    if (!dataStr) return null;
+    if (dataStr instanceof Date) return dataStr;
+    const str = String(dataStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const [a, m, d] = str.slice(0, 10).split('-').map(Number);
+        return new Date(a, m - 1, d, 12, 0, 0);
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+        const [d, m, a] = str.split('/').map(Number);
+        return new Date(a, m - 1, d, 12, 0, 0);
+    }
+    const dt = new Date(str);
+    return isNaN(dt.getTime()) ? null : dt;
+}
+
+// Lógica normal: pagamento/referência até dia 05 = 23% OFF; após dia 05 = valor integral
+function calcularValorComPontualidadeAdmin(valorIntegral, competencia, dataReferencia = new Date()) {
+    const integral = Math.round((parseFloat(valorIntegral) || 0) * 100) / 100;
+    if (integral <= 0 || !competencia || !competencia.includes('-')) {
+        return { valorIntegral: integral, valorFinal: integral, descontoPct: 0, eleganteDesconto: false };
     }
 
-    let cursosIds = [];
-    try {
-        if (aluno.cursos_json) {
-            const lista = typeof aluno.cursos_json === 'string' ? JSON.parse(aluno.cursos_json) : aluno.cursos_json;
-            if (Array.isArray(lista)) cursosIds = lista.map(c => String(c.curso_id));
-        }
-    } catch (e) {}
+    const [anoStr, mesStr] = competencia.split('-');
+    const anoComp = parseInt(anoStr, 10);
+    const mesComp = parseInt(mesStr, 10);
+    const dataLimite = new Date(anoComp, mesComp - 1, 5, 23, 59, 59, 999);
+    const dtRef = parseDataIsoLocal(dataReferencia) || new Date();
 
-    if (cursosIds.length === 0 && (aluno.curso_id || aluno.curso)) {
-        cursosIds = [String(aluno.curso_id || aluno.curso)];
+    if (dtRef <= dataLimite) {
+        const valorFinal = Math.round(integral * (1 - 0.23) * 100) / 100;
+        return { valorIntegral: integral, valorFinal, descontoPct: 23, eleganteDesconto: true };
     }
 
-    let soma = 0;
-    cursosIds.forEach(cid => {
-        const curso = cursosGlobais.find(c => String(c.id) === cid);
-        if (curso) {
-            const val = (curso.promocao_ativa === 'Sim' && parseFloat(curso.valor_promocional) > 0)
-                ? parseFloat(curso.valor_promocional)
-                : parseFloat(curso.valor_mensalidade || 0);
-            soma += val || 0;
-        }
-    });
-
-    return soma;
+    return { valorIntegral: integral, valorFinal: integral, descontoPct: 0, eleganteDesconto: false };
 }
 
 function obterParcelaDoMes(aluno, mesRef) {
@@ -3737,39 +3690,362 @@ function obterParcelaDoMes(aluno, mesRef) {
         }
     } catch (e) {}
 
-    const valorPadrao = calcularValorMensalidadeAluno(aluno);
+    const valorIntegral = calcularValorMensalidadeAluno(aluno);
 
-    // 1. Se já existe registro explícito para aquele mês no mapa, respeita ele
     if (mapa && mapa[mesRef] && mapa[mesRef].status) {
+        const reg = mapa[mesRef];
+
+        // Se já foi pago ou teve valor definido manualmente, preserva o valor gravado
+        if (reg.status === 'Pago' || reg.valor_manual) {
+            const vIntegralReg = reg.valor_integral !== undefined ? Number(reg.valor_integral) : valorIntegral;
+            const vFinalReg = reg.valor !== undefined ? Number(reg.valor) : vIntegralReg;
+            const descReg = reg.desconto_percentual !== undefined
+                ? Number(reg.desconto_percentual)
+                : (vIntegralReg > vFinalReg ? Math.round(((vIntegralReg - vFinalReg) / vIntegralReg) * 100) : 0);
+
+            const dataPgtoIso = reg.data_pagamento_iso || (reg.data_pagamento ? parseDataIsoLocal(reg.data_pagamento)?.toISOString().slice(0, 10) : '');
+
+            return {
+                competencia: mesRef,
+                status: reg.status,
+                detalhes: reg.detalhes || '',
+                numero_nf: reg.numero_nf || '',
+                valor_integral: vIntegralReg,
+                valor: vFinalReg,
+                valor_manual: Boolean(reg.valor_manual),
+                desconto_percentual: descReg,
+                comprovante_id: reg.comprovante_id || null,
+                comprovante_nome: reg.comprovante_nome || '',
+                data_pagamento: reg.data_pagamento || '',
+                data_pagamento_iso: dataPgtoIso || '',
+                atualizado_em: reg.atualizado_em || null
+            };
+        }
+
+        const calcHoje = calcularValorComPontualidadeAdmin(valorIntegral, mesRef, new Date());
         return {
             competencia: mesRef,
-            status: mapa[mesRef].status,
-            detalhes: mapa[mesRef].detalhes || '',
-            numero_nf: mapa[mesRef].numero_nf || '',
-            valor: mapa[mesRef].valor !== undefined ? Number(mapa[mesRef].valor) : valorPadrao,
-            comprovante_id: mapa[mesRef].comprovante_id || null,
-            comprovante_nome: mapa[mesRef].comprovante_nome || '',
-            atualizado_em: mapa[mesRef].atualizado_em || null
+            status: reg.status,
+            detalhes: reg.detalhes || '',
+            numero_nf: reg.numero_nf || '',
+            valor_integral: calcHoje.valorIntegral,
+            valor: calcHoje.valorFinal,
+            valor_manual: false,
+            desconto_percentual: calcHoje.descontoPct,
+            comprovante_id: reg.comprovante_id || null,
+            comprovante_nome: reg.comprovante_nome || '',
+            atualizado_em: reg.atualizado_em || null
         };
     }
 
-    // 2. Se não há baixa explícita no mês, verifica se o cadastro do aluno tem pendência ou status Pendente
-    const temPendenciaCadastro =
-        aluno.status === 'Pendente' ||
-        aluno.possui_pendencia === 'Sim' ||
-        aluno.possui_pendencia_financeira === 'Sim';
-
+    const calcHoje = calcularValorComPontualidadeAdmin(valorIntegral, mesRef, new Date());
     return {
         competencia: mesRef,
-        status: temPendenciaCadastro ? 'Pendente' : 'Pendente',
+        status: 'Pendente',
         detalhes: aluno.detalhes_pendencia_financeira || aluno.detalhes_pendencia || '',
         numero_nf: '',
-        valor: valorPadrao,
+        valor_integral: calcHoje.valorIntegral,
+        valor: calcHoje.valorFinal,
+        valor_manual: false,
+        desconto_percentual: calcHoje.descontoPct,
         comprovante_id: null,
         comprovante_nome: ''
     };
 }
 
+// Recalcula o sugestivo quando o financeiro muda a data no modal (mantendo editável)
+function recalcularSugestaoPorDataModal() {
+    const alunoId = document.getElementById('pendencia_aluno_id')?.value;
+    const competencia = document.getElementById('pendencia_competencia')?.value;
+    const dataPgtoIso = document.getElementById('input-data-pagamento')?.value;
+    const inputValor = document.getElementById('input-valor-pago');
+    const elBadge = document.getElementById('badge-regra-modal');
+
+    const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
+    const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
+    const dtRef = dataPgtoIso ? parseDataIsoLocal(dataPgtoIso) : new Date();
+    const calc = calcularValorComPontualidadeAdmin(valorIntegral, competencia, dtRef);
+
+    if (inputValor) {
+        inputValor.value = calc.valorFinal.toFixed(2);
+    }
+    if (elBadge) {
+        elBadge.innerHTML = calc.descontoPct > 0
+            ? `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">23% OFF (Pgto até dia 05)</span>`
+            : `<span class="inline-block bg-amber-100 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Integral (Após dia 05)</span>`;
+    }
+}
+
+function atualizarBadgeValorManual() {
+    const alunoId = document.getElementById('pendencia_aluno_id')?.value;
+    const inputValor = document.getElementById('input-valor-pago');
+    const elBadge = document.getElementById('badge-regra-modal');
+    if (!inputValor || !elBadge) return;
+
+    const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
+    const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
+    const valorDigitado = parseFloat(inputValor.value) || 0;
+
+    if (valorIntegral > 0 && valorDigitado < valorIntegral) {
+        const pct = Math.round(((valorIntegral - valorDigitado) / valorIntegral) * 100);
+        elBadge.innerHTML = `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Desconto (${pct}% OFF)</span>`;
+    } else if (valorDigitado > valorIntegral && valorIntegral > 0) {
+        elBadge.innerHTML = `<span class="inline-block bg-rose-100 text-rose-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Com Acréscimo / Juros</span>`;
+    } else {
+        elBadge.innerHTML = `<span class="inline-block bg-gray-200 text-gray-700 text-[9px] font-black px-2 py-0.5 rounded uppercase">Valor Integral</span>`;
+    }
+}
+
+function aplicarAtalhoValorModal(fator) {
+    const alunoId = document.getElementById('pendencia_aluno_id')?.value;
+    const inputValor = document.getElementById('input-valor-pago');
+    if (!inputValor) return;
+
+    const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
+    const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
+    inputValor.value = (Math.round(valorIntegral * fator * 100) / 100).toFixed(2);
+    atualizarBadgeValorManual();
+}
+
+function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nfAtual = '', statusAtual = 'Pendente') {
+    let modal = document.getElementById('modal-pendencia-financeira');
+    if (modal) modal.remove();
+
+    const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
+    const parcela = obterParcelaDoMes(alunoObj, competencia);
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    const dataInicialModal = parcela.data_pagamento_iso || hojeIso;
+    const valorInicialModal = (parcela.valor !== undefined ? Number(parcela.valor) : calcularValorMensalidadeAluno(alunoObj)).toFixed(2);
+    const vIntegralFmt = (parcela.valor_integral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const htmlModal = `
+    <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative border-t-4 border-teal-500">
+            <button onclick="fecharModalPendencia()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-5 w-5"></i></button>
+            <h3 class="text-lg font-black text-gray-900 mb-1 uppercase">Baixa / Situação Mensal</h3>
+            <p id="sub-modal-pendencia" class="text-xs text-gray-500 mb-4 font-medium"></p>
+
+            <form id="form-pendencia-aluno" onsubmit="salvarPendenciaAluno(event)" class="space-y-4">
+                <input type="hidden" id="pendencia_aluno_id" value="${alunoId}">
+                <input type="hidden" id="pendencia_competencia" value="${competencia}">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Competência</label>
+                        <input type="text" value="${competencia}" readonly class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-100 font-bold text-teal-700">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-teal-700 uppercase mb-1">Data do Pagamento</label>
+                        <input type="date" id="input-data-pagamento" value="${dataInicialModal}" onchange="recalcularSugestaoPorDataModal()" class="w-full border border-teal-200 rounded-lg px-3 py-2 text-sm bg-white font-bold text-gray-800 focus:outline-teal-500">
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="input-valor-pago" class="text-[10px] font-bold text-teal-700 uppercase">Valor Cobrado / Pago (R$)</label>
+                        <span class="text-[9px] font-bold text-gray-400 uppercase">Base curso: ${vIntegralFmt}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <input type="number" step="0.01" min="0" id="input-valor-pago" value="${valorInicialModal}" oninput="atualizarBadgeValorManual()" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-base font-black text-gray-900 bg-white focus:outline-teal-500">
+                        <div id="badge-regra-modal" class="shrink-0 text-right"></div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button type="button" onclick="aplicarAtalhoValorModal(0.77)" class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-[10px] font-black uppercase hover:bg-teal-100 transition">
+                            Aplicar 23% OFF
+                        </button>
+                        <button type="button" onclick="aplicarAtalhoValorModal(1.0)" class="px-2.5 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-black uppercase hover:bg-gray-200 transition">
+                            Valor Integral
+                        </button>
+                    </div>
+                    <p class="text-[9px] text-gray-400 mt-1.5">Alterar a data recalcula a regra do dia 05, use os atalhos ou digite livremente o valor negociado.</p>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status deste Mês</label>
+                    <select id="select-status-parcela" onchange="toggleCampoDetalhes(this.value)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white font-bold focus:outline-teal-500">
+                        <option value="Pago">Pago (Quitar Mensalidade)</option>
+                        <option value="Pendente">Pendente (Em Aberto)</option>
+                        <option value="Em Análise">Comprovante em Análise</option>
+                    </select>
+                </div>
+
+                <div id="bloco-detalhes-pendencia" class="${statusAtual === 'Pago' ? 'hidden' : ''}">
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Observação / Motivo (Opcional)</label>
+                    <input type="text" id="input-detalhes-pendencia" placeholder="Ex: Parcela negociada, aguardando compensação..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nº Nota Fiscal / Recibo (Opcional)</label>
+                    <input type="text" id="input-nf-aluno" placeholder="Ex: NF-2026001" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-teal-500">
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                    <button type="button" onclick="fecharModalPendencia()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-xs font-bold uppercase hover:bg-gray-200 transition">Cancelar</button>
+                    <button type="submit" class="bg-teal-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase shadow-sm hover:bg-teal-600 transition">Salvar Lançamento</button>
+                </div>
+            </form>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', htmlModal);
+    document.getElementById('sub-modal-pendencia').innerText = `Aluno(a): ${alunoNome} • Competência: ${competencia}`;
+    document.getElementById('select-status-parcela').value = statusAtual || 'Pendente';
+    document.getElementById('input-detalhes-pendencia').value = detalhesAtuais || '';
+    document.getElementById('input-nf-aluno').value = nfAtual || '';
+
+    atualizarBadgeValorManual();
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+async function salvarPendenciaAluno(e) {
+    e.preventDefault();
+    const alunoId = document.getElementById('pendencia_aluno_id').value;
+    const competencia = document.getElementById('pendencia_competencia').value;
+    const novoStatus = document.getElementById('select-status-parcela').value;
+    const detalhes = document.getElementById('input-detalhes-pendencia').value;
+    const numeroNF = document.getElementById('input-nf-aluno').value;
+    const dataPgtoIso = document.getElementById('input-data-pagamento').value;
+    const valorInformado = parseFloat(document.getElementById('input-valor-pago').value);
+
+    const btnSubmit = e.target.querySelector('button[type="submit"]');
+    const textoOriginal = btnSubmit.innerText;
+    btnSubmit.innerText = "Salvando...";
+
+    await persistirParcelaIsoladaAluno(alunoId, competencia, novoStatus, detalhes, numeroNF, dataPgtoIso, valorInformado);
+
+    btnSubmit.innerText = textoOriginal;
+    fecharModalPendencia();
+}
+
+async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela, detalhes, numeroNF, dataPgtoIso = '', valorCustom = null) {
+    const alunoAtual = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
+    let mapaMensalidades = {};
+    try {
+        if (alunoAtual.mensalidades_json) {
+            mapaMensalidades = typeof alunoAtual.mensalidades_json === 'string'
+                ? JSON.parse(alunoAtual.mensalidades_json)
+                : { ...alunoAtual.mensalidades_json };
+        }
+    } catch (e) {}
+
+    let duracaoCursoMeses = parseInt(alunoAtual.duracao_meses || 0, 10);
+    if (!duracaoCursoMeses && Array.isArray(cursosGlobais)) {
+        const cursoVinc = cursosGlobais.find(c => String(c.id) === String(alunoAtual.curso_id));
+        if (cursoVinc && cursoVinc.duracao) {
+            const matchNum = String(cursoVinc.duracao).match(/\d+/);
+            if (matchNum) duracaoCursoMeses = parseInt(matchNum[0], 10);
+        }
+    }
+
+    const valorIntegral = calcularValorMensalidadeAluno(alunoAtual);
+    const dtPgto = dataPgtoIso ? parseDataIsoLocal(dataPgtoIso) : new Date();
+    const dataPgtoBr = dtPgto.toLocaleDateString('pt-BR');
+    const dataPgtoIsoFinal = `${dtPgto.getFullYear()}-${String(dtPgto.getMonth() + 1).padStart(2, '0')}-${String(dtPgto.getDate()).padStart(2, '0')}`;
+
+    const calcPadrao = calcularValorComPontualidadeAdmin(valorIntegral, competencia, dtPgto);
+    const valorFinalGravado = (valorCustom !== null && !isNaN(valorCustom) && valorCustom >= 0)
+        ? Math.round(valorCustom * 100) / 100
+        : calcPadrao.valorFinal;
+
+    const descontoGravado = (valorIntegral > 0 && valorFinalGravado < valorIntegral)
+        ? Math.round(((valorIntegral - valorFinalGravado) / valorIntegral) * 100)
+        : 0;
+
+    mapaMensalidades[competencia] = {
+        ...(mapaMensalidades[competencia] || {}),
+        competencia: competencia,
+        status: statusParcela,
+        valor_integral: valorIntegral,
+        valor: valorFinalGravado,
+        valor_manual: valorFinalGravado !== calcPadrao.valorFinal,
+        desconto_percentual: descontoGravado,
+        detalhes: detalhes || '',
+        numero_nf: numeroNF || '',
+        data_pagamento: statusParcela === 'Pago' ? dataPgtoBr : '',
+        data_pagamento_iso: statusParcela === 'Pago' ? dataPgtoIsoFinal : '',
+        atualizado_em: new Date().toISOString()
+    };
+
+    const hoje = new Date();
+    const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    const todasParcelas = Object.values(mapaMensalidades);
+    const mesesPendentes = todasParcelas
+        .filter(p => p.status === 'Pendente' && p.competencia <= mesAtualKey)
+        .map(p => p.competencia);
+    const temAlgumaPendencia = mesesPendentes.length > 0 ? 'Sim' : 'Não';
+
+    const formData = new FormData();
+    for (const key in alunoAtual) {
+        if (alunoAtual[key] !== null && alunoAtual[key] !== undefined && typeof alunoAtual[key] !== 'object') {
+            formData.append(key, alunoAtual[key]);
+        }
+    }
+
+    if (statusParcela === 'Pago' && alunoAtual.status === 'Pendente') {
+        formData.set('status', 'Ativo');
+    }
+    if (valorIntegral > 0) formData.set('valor_mensalidade', valorIntegral);
+    if (duracaoCursoMeses > 0) formData.set('duracao_meses', duracaoCursoMeses);
+
+    formData.set('mensalidades_json', JSON.stringify(mapaMensalidades));
+    formData.set('possui_pendencia', temAlgumaPendencia);
+    formData.set('possui_pendencia_financeira', temAlgumaPendencia);
+    formData.set('detalhes_pendencia', mesesPendentes.join(', '));
+    formData.set('detalhes_pendencia_financeira', mesesPendentes.join(', '));
+    formData.set('numero_nf', numeroNF || alunoAtual.numero_nf || '');
+
+    const result = await apiRequest(`/alunos/${alunoId}/pendencia`, 'POST', formData);
+
+    if (result && result.sucesso) {
+        await loadAlunos();
+        await loadFinanceiro();
+    } else {
+        alert(result?.detail || "Erro ao atualizar a mensalidade.");
+    }
+}
+
+
+function calcularValorMensalidadeAluno(aluno, listaCursos = cursosGlobais) {
+    if (!aluno) return 0;
+
+    // 1. Tenta somar pelos cursos vinculados em cursos_json
+    let cursosIds = [];
+    try {
+        if (aluno.cursos_json) {
+            const lista = typeof aluno.cursos_json === 'string' ? JSON.parse(aluno.cursos_json) : aluno.cursos_json;
+            if (Array.isArray(lista)) cursosIds = lista.map(c => String(c.curso_id || c.id || '').trim());
+        }
+    } catch (e) {}
+
+    if (cursosIds.length === 0 && (aluno.curso_id || aluno.curso)) {
+        cursosIds = [String(aluno.curso_id || aluno.curso).trim()];
+    }
+
+    let somaIntegral = 0;
+    cursosIds.forEach(ref => {
+        if (!ref) return;
+        const curso = listaCursos.find(c =>
+            String(c.id) === ref ||
+            String(c.codigo || '').trim().toUpperCase() === ref.toUpperCase() ||
+            String(c.nome || '').trim().toUpperCase() === ref.toUpperCase()
+        );
+        if (curso) {
+            somaIntegral += parseFloat(curso.valor_mensalidade || 0);
+        }
+    });
+
+    if (somaIntegral > 0) return Math.round(somaIntegral * 100) / 100;
+
+    // 2. Se não achou na lista de cursos, usa o valor salvo no cadastro do aluno (ignorando o antigo 199.99 se houver curso)
+    const valSalvo = parseFloat(aluno.valor_mensalidade || 0);
+    if (valSalvo > 0 && valSalvo !== 199.99) return valSalvo;
+
+    return valSalvo || 0;
+}
+
+// ==========================================
+// GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
+// ==========================================
 function fecharModalSistema() {
     const modal = document.getElementById('modal-sistema');
     modal.classList.add('opacity-0');
