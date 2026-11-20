@@ -1974,6 +1974,18 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
         const hojeIso = new Date().toISOString().slice(0, 10);
         formData.set('data_matricula', hojeIso);
     }
+    if (!idEdit) {
+        const hojeIso = new Date().toISOString().slice(0, 10);
+        formData.set('data_matricula', hojeIso);
+    } else {
+        const alunoAnterior = alunosGlobais.find(a => String(a.id) === String(idEdit)) || {};
+        const novoStatus = formData.get('status');
+        if (novoStatus === 'Trancado') {
+            formData.set('data_trancamento', alunoAnterior.data_trancamento || new Date().toISOString().slice(0, 10));
+        } else if (novoStatus === 'Ativo' || novoStatus === 'Pendente') {
+            formData.set('data_trancamento', '');
+        }
+    }
 
     const termosCheck = document.getElementById('termos_aluno');
     if (termosCheck) formData.set('aceite_termos', termosCheck.checked ? 'Sim' : 'Não');
@@ -3081,6 +3093,59 @@ document.getElementById('busca-aluno')?.addEventListener('input', function (e) {
 // GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
 // ==========================================
 
+function alunoElegivelNoMesFinanceiro(aluno, mesRef) {
+    if (!aluno || !mesRef || !/^\d{4}-\d{2}$/.test(mesRef)) return true;
+
+    let mapa = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapa = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : aluno.mensalidades_json;
+        }
+    } catch (e) {}
+
+    // 1. Se já existe registro real pago, em análise ou negociado nesta competência, sempre exibe
+    const regMes = mapa && mapa[mesRef];
+    if (regMes && (regMes.status === 'Pago' || regMes.status === 'Em Análise' || regMes.valor_manual)) {
+        return true;
+    }
+
+    // 2. Competência inicial pela data_matricula (regra do dia 05) ou menor competência gravada no histórico
+    const dtMat = parseDataIsoLocal(aluno.data_matricula || aluno.data_cadastro || aluno.created_at) || new Date();
+    const compPorMat = obterCompetenciaInicialCiclo(dtMat);
+    const compsGravadas = Object.keys(mapa || {}).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+    const compInicio = (compsGravadas.length > 0 && compsGravadas[0] < compPorMat)
+        ? compsGravadas[0]
+        : compPorMat;
+
+    // Não cobra mês anterior ao início real (ex: cadastro dia 19/11 -> compInicio 2026-12 -> oculta 2026-11)
+    if (mesRef < compInicio) return false;
+
+    // 3. Verifica status oficial do cadastro (Ativo, Pendente, Trancado, Concluído)
+    const statusNorm = String(aluno.status || 'Ativo')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim().toUpperCase();
+
+    if (statusNorm === 'TRANCADO') {
+        const dtTranc = parseDataIsoLocal(aluno.data_trancamento || aluno.updated_at);
+        const compLimiteTranc = dtTranc
+            ? `${dtTranc.getFullYear()}-${String(dtTranc.getMonth() + 1).padStart(2, '0')}`
+            : (compsGravadas.length > 0 ? compsGravadas[compsGravadas.length - 1] : null);
+        // Mantém pendências até o mês do trancamento; congela meses seguintes
+        if (compLimiteTranc && mesRef > compLimiteTranc) return false;
+    }
+
+    if (statusNorm === 'CONCLUIDO' || statusNorm === 'CANCELADO') {
+        const hoje = new Date();
+        const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        const compLimiteConc = compsGravadas.length > 0 ? compsGravadas[compsGravadas.length - 1] : mesAtualKey;
+        if (mesRef > compLimiteConc) return false;
+    }
+
+    return true;
+}
+
 
 async function loadFinanceiro() {
     const inputMes = document.getElementById('filtro-mes-financeiro');
@@ -3115,6 +3180,7 @@ async function loadFinanceiro() {
     }
 
     lista.forEach((item) => {
+        if (!alunoElegivelNoMesFinanceiro(item, mesSelecionado)) return;
         const parcela = obterParcelaDoMes(item, mesSelecionado);
         const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
         const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
