@@ -1972,14 +1972,14 @@ function fecharModalAluno() {
 }
 
 function verPerfilAluno(id_firebase) {
-    const aluno = alunosGlobais.find(a => a.id === id_firebase);
+    const aluno = alunosGlobais.find(a => String(a.id) === String(id_firebase));
     if (!aluno) return alert("Erro ao carregar o perfil.");
 
     let modal = document.getElementById('modal-perfil-aluno');
     if (!modal) {
         const htmlModal = `
         <div id="modal-perfil-aluno" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-5 sm:p-8 transform scale-95 transition-all max-h-[90vh] overflow-y-auto no-scrollbar relative border-t-4 border-teal-500">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-5 sm:p-8 transform scale-95 transition-all max-h-[92vh] overflow-y-auto no-scrollbar relative border-t-4 border-teal-500">
                 <button onclick="fecharModalAluno()" class="absolute top-5 right-5 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-6 w-6"></i></button>
                 <div id="conteudo-perfil-aluno"></div>
             </div>
@@ -1997,7 +1997,7 @@ function verPerfilAluno(id_firebase) {
     let listaCursosHTML = '';
     if (cursosSalvos.length > 0) {
         listaCursosHTML = cursosSalvos.map(c => {
-            const cur = cursosGlobais.find(cg => cg.id == c.curso_id);
+            const cur = cursosGlobais.find(cg => String(cg.id) === String(c.curso_id));
             return cur ? cur.nome_curso : 'Curso Desconhecido';
         }).join('<br>• ');
         listaCursosHTML = '• ' + listaCursosHTML;
@@ -2005,6 +2005,115 @@ function verPerfilAluno(id_firebase) {
         listaCursosHTML = 'Nenhum curso vinculado';
     }
 
+    // Monta o histórico financeiro completo (parcelas gravadas + competências elegíveis até hoje)
+    let mapaMensalidades = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapaMensalidades = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : { ...aluno.mensalidades_json };
+        }
+    } catch (e) {}
+
+    const dtMat = parseDataIsoLocal(aluno.data_matricula || aluno.data_cadastro || aluno.created_at) || new Date();
+    const compPorMat = obterCompetenciaInicialCiclo(dtMat);
+    const compsGravadas = Object.keys(mapaMensalidades || {}).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+    const compInicio = (compsGravadas.length > 0 && compsGravadas[0] < compPorMat) ? compsGravadas[0] : compPorMat;
+
+    const hoje = new Date();
+    const compAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    const todasCompetenciasSet = new Set(compsGravadas);
+
+    let [anoIter, mesIter] = compInicio.split('-').map(Number);
+    const [anoFim, mesFim] = compAtual.split('-').map(Number);
+    let guardaLoop = 0;
+    while ((anoIter < anoFim || (anoIter === anoFim && mesIter <= mesFim)) && guardaLoop < 72) {
+        const compIter = `${anoIter}-${String(mesIter).padStart(2, '0')}`;
+        if (alunoElegivelNoMesFinanceiro(aluno, compIter)) {
+            todasCompetenciasSet.add(compIter);
+        }
+        mesIter++;
+        if (mesIter > 12) {
+            mesIter = 1;
+            anoIter++;
+        }
+        guardaLoop++;
+    }
+
+    const competenciasOrdenadas = Array.from(todasCompetenciasSet).sort().reverse();
+    let totalPagoHist = 0;
+    let totalAbertoHist = 0;
+    let qtdPagasHist = 0;
+    let qtdAbertasHist = 0;
+    let linhasHistoricoHTML = '';
+
+    const safeNome = (aluno.nome || 'Aluno').replace(/'/g, "\\'");
+
+    competenciasOrdenadas.forEach(comp => {
+        const parc = obterParcelaDoMes(aluno, comp);
+        const valorNum = parseFloat(parc.valor || 0);
+        const valorFmt = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const statusParc = parc.status || 'Pendente';
+        const isPago = statusParc === 'Pago';
+        const isAnalise = statusParc === 'Em Análise';
+
+        if (isPago) {
+            totalPagoHist += valorNum;
+            qtdPagasHist++;
+        } else {
+            totalAbertoHist += valorNum;
+            qtdAbertasHist++;
+        }
+
+        let badgeStatus = '';
+        if (isPago) {
+            badgeStatus = '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-black uppercase">Pago</span>';
+        } else if (isAnalise) {
+            badgeStatus = '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-black uppercase">Em Análise</span>';
+        } else {
+            badgeStatus = '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase">Pendente</span>';
+        }
+
+        const safeDetalhes = (parc.detalhes || '').replace(/'/g, "\\'");
+        const safeNF = (parc.numero_nf || '').replace(/'/g, "\\'");
+
+        const btnRecibo = isPago
+            ? `<button type="button" onclick="emitirReciboPdfAdmin('${aluno.id}', '${comp}', this)" class="text-teal-700 hover:bg-teal-600 hover:text-white bg-teal-50 border border-teal-200 px-2 py-1 rounded text-[10px] font-bold uppercase transition" title="Recibo PDF">Recibo</button>`
+            : '';
+
+        const btnComprovante = (isAnalise || parc.comprovante_id)
+            ? `<button type="button" onclick="verComprovanteMes('${aluno.id}', '${comp}')" class="text-blue-600 hover:bg-blue-600 hover:text-white bg-blue-50 border border-blue-200 p-1.5 rounded transition" title="Ver Comprovante"><i data-feather="paperclip" class="w-3.5 h-3.5"></i></button>`
+            : '';
+
+        linhasHistoricoHTML += `
+            <tr class="hover:bg-gray-50 transition border-b border-gray-100">
+                <td class="py-2.5 px-3 font-mono font-bold text-gray-800 text-xs whitespace-nowrap">${comp}</td>
+                <td class="py-2.5 px-3 text-center whitespace-nowrap">${badgeStatus}</td>
+                <td class="py-2.5 px-3 font-black text-gray-800 text-xs whitespace-nowrap">
+                    ${valorFmt}
+                    ${parc.desconto_percentual > 0 ? `<span class="block text-[9px] text-teal-600 font-bold">${parc.desconto_percentual}% OFF</span>` : ''}
+                </td>
+                <td class="py-2.5 px-3 text-gray-500 text-xs whitespace-nowrap">${parc.data_pagamento || '-'}</td>
+                <td class="py-2.5 px-3 text-gray-500 font-mono text-xs whitespace-nowrap">${parc.numero_nf || '-'}</td>
+                <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center justify-end gap-1">
+                        ${btnComprovante}
+                        ${btnRecibo}
+                        <button type="button" onclick="fecharModalAluno(); abrirModalPendencia('${aluno.id}', '${safeNome}', '${comp}', '${safeDetalhes}', '${safeNF}', '${statusParc}')" class="text-gray-600 hover:bg-gray-800 hover:text-white bg-gray-100 px-2 py-1 rounded text-[10px] font-bold uppercase transition" title="Editar / Dar Baixa nesta Parcela">
+                            Editar
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    if (!linhasHistoricoHTML) {
+        linhasHistoricoHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-400">Nenhuma parcela registrada até o momento.</td></tr>`;
+    }
+
+    const totalPagoFmt = totalPagoHist.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const totalAbertoFmt = totalAbertoHist.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const alunoNome = aluno.nome || 'Sem Nome';
 
     const htmlConteudo = `
@@ -2021,30 +2130,58 @@ function verPerfilAluno(id_firebase) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div>
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados Pessoais</p>
-                <ul class="text-sm font-medium text-gray-700 space-y-2.5 bg-gray-50 p-4 rounded-xl border border-gray-100 h-full">
+                <ul class="text-sm font-medium text-gray-700 space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100 h-full">
                     <li class="flex items-center"><i data-feather="phone" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> ${aluno.telefone || 'Não informado'}</li>
                     <li class="flex items-center break-all"><i data-feather="mail" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> ${aluno.email || 'Não informado'}</li>
                     <li class="flex items-center"><i data-feather="credit-card" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> CPF: ${aluno.cpf || 'Não informado'}</li>
-                    <li class="flex items-center"><i data-feather="calendar" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Nasc: ${aluno.data_nascimento || '--/--/----'}</li>
+                    <li class="flex items-center"><i data-feather="calendar" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Matrícula em: ${aluno.data_matricula || '--/--/----'}</li>
                 </ul>
             </div>
             <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados Acadêmicos e Endereço</p>
-                <ul class="text-sm font-medium text-gray-700 space-y-2.5 bg-teal-50/30 p-4 rounded-xl border border-teal-100 h-full">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados Acadêmicos e Contrato</p>
+                <ul class="text-sm font-medium text-gray-700 space-y-2 bg-teal-50/30 p-4 rounded-xl border border-teal-100 h-full">
                     <li class="flex items-start"><i data-feather="book" class="w-4 h-4 mr-2 mt-0.5 text-teal-500 shrink-0"></i> <span class="break-words"><strong>Cursos:</strong><br>${listaCursosHTML}</span></li>
-                    <li class="flex items-start"><i data-feather="map-pin" class="w-4 h-4 mr-2 mt-0.5 text-teal-500 shrink-0"></i> <span class="break-words">Endereço: ${aluno.endereco || 'Não informado'}</span></li>
-                    <li class="flex items-center"><i data-feather="user-check" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> PCD: <span class="uppercase ml-1">${aluno.pcd || 'Não'}</span></li>
+                    <li class="flex items-start"><i data-feather="map-pin" class="w-4 h-4 mr-2 mt-0.5 text-teal-500 shrink-0"></i> <span class="break-words">${aluno.endereco || 'Não informado'}</span></li>
+                    <li class="flex items-center"><i data-feather="dollar-sign" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Venc. Dia ${aluno.dia_vencimento || '05'} • <span class="uppercase ml-1">${aluno.forma_pagamento || 'PIX'}</span></li>
                 </ul>
             </div>
         </div>
 
-        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center mb-3">
-                <i data-feather="dollar-sign" class="h-4 w-4 mr-1.5 text-teal-500"></i> Informações Financeiras
-            </p>
-            <div class="grid grid-cols-2 gap-4 text-xs">
-                <div class="bg-white p-2.5 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Dia de Vencimento</span><span class="font-bold text-gray-800">Dia ${aluno.dia_vencimento || '-'}</span></div>
-                <div class="bg-white p-2.5 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Forma de Pagamento</span><span class="font-bold text-gray-800 capitalize">${aluno.forma_pagamento || '-'}</span></div>
+        <!-- HISTÓRICO FINANCEIRO COMPLETO DO CLIENTE -->
+        <div class="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                    <p class="text-xs font-black text-gray-800 uppercase flex items-center">
+                        <i data-feather="layers" class="h-4 w-4 mr-2 text-teal-500"></i> Histórico Financeiro Completo
+                    </p>
+                    <p class="text-[11px] text-gray-500">Todas as mensalidades quitadas, em análise e em aberto deste cliente.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-[11px] font-black">
+                        Pago (${qtdPagasHist}): ${totalPagoFmt}
+                    </span>
+                    <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-lg text-[11px] font-black">
+                        Em Aberto (${qtdAbertasHist}): ${totalAbertoFmt}
+                    </span>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto bg-white rounded-xl border border-gray-200 max-h-72 overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-100 text-left">
+                    <thead class="bg-gray-100 sticky top-0 z-10 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th class="py-2.5 px-3">Competência</th>
+                            <th class="py-2.5 px-3 text-center">Status</th>
+                            <th class="py-2.5 px-3">Valor</th>
+                            <th class="py-2.5 px-3">Data Pgto</th>
+                            <th class="py-2.5 px-3">NF / Recibo</th>
+                            <th class="py-2.5 px-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 font-medium">
+                        ${linhasHistoricoHTML}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
