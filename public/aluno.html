@@ -72,7 +72,7 @@
 <!-- ==========================================
      CONTAINER DO SISTEMA
      ========================================== -->
-<div id="app-container" class="hidden h-full w-full flex-1 flex">
+<div id="app-container" class="hidden h-full w-full flex-1 flex min-w-0">
 
 <div id="mobile-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden md:hidden" onclick="toggleMenuMobile()"></div>
 
@@ -120,16 +120,16 @@
         </div>
     </aside>
 
-    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50/50">
+    <div class="flex-1 min-w-0 flex flex-col h-screen overflow-hidden bg-gray-50/50">
         <header class="h-20 bg-white shadow-sm border-b border-gray-100 flex items-center justify-between px-6 z-10 shrink-0">
-            <div class="flex items-center">
-                <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-blue-600 mr-4">
+            <div class="flex items-center min-w-0">
+                <button onclick="toggleMenuMobile()" class="md:hidden text-gray-400 hover:text-blue-600 mr-4 shrink-0">
                     <i data-feather="menu" class="h-6 w-6"></i>
                 </button>
-                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase">Painel Principal</h1>
+                <h1 id="titulo-pagina" class="text-xl font-black text-gray-800 tracking-tight uppercase truncate">Painel Principal</h1>
             </div>
 
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-4 shrink-0">
                 <div class="text-right hidden sm:block">
                     <p id="nome-aluno-header" class="text-sm font-bold text-gray-900">Carregando...</p>
                     <p class="text-xs text-blue-600 font-medium" id="matricula-aluno-header">Portal do Aluno</p>
@@ -140,17 +140,17 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar relative">
+        <main class="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 md:p-8 no-scrollbar relative">
 
             <!-- SELETOR DE MÚLTIPLOS CURSOS -->
             <div id="wrapper-seletor-curso" class="hidden mb-6 bg-teal-50 border border-teal-200 p-4 rounded-2xl shadow-sm flex items-center justify-between">
-                <div class="flex-1 mr-3">
+                <div class="flex-1 mr-3 min-w-0">
                     <label class="block text-[10px] font-black text-teal-700 uppercase tracking-wider mb-1">Curso Ativo no Momento</label>
                     <select id="select-curso-ativo-aluno" onchange="mudarCursoAtivoAluno(this.value)" class="w-full bg-white border border-teal-300 rounded-xl px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:border-teal-500 cursor-pointer shadow-inner">
                         <!-- Preenchido via JavaScript -->
                     </select>
                 </div>
-                <div class="bg-teal-500 text-white p-2.5 rounded-xl shadow-sm">
+                <div class="bg-teal-500 text-white p-2.5 rounded-xl shadow-sm shrink-0">
                     <i data-feather="repeat" class="w-5 h-5"></i>
                 </div>
             </div>
@@ -358,10 +358,10 @@
            <!-- ==========================================
                  TELA: FINANCEIRO
                  ========================================== -->
-            <div id="tela-financeiro" class="tela hidden">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <div class="flex items-center justify-between mb-5 border-b border-gray-100 pb-4">
-                        <h4 class="text-lg font-bold text-gray-800 flex items-center">
+            <div id="tela-financeiro" class="tela hidden w-full min-w-0">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 w-full min-w-0">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-5 border-b border-gray-100 pb-4">
+                        <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
                             <span class="w-1 h-5 bg-blue-500 rounded mr-2 inline-block"></span>
                             Minhas Mensalidades
                         </h4>
@@ -370,13 +370,13 @@
                         </span>
                     </div>
 
-                    <!-- CARROSSEL DE PARCELAS EM ABERTO (ATUAL + FUTURAS PARA ADIANTAMENTO) -->
-                    <div id="wrapper-carrossel-financeiro" class="relative group mb-8">
+                    <!-- CARROSSEL DE PARCELAS EM ABERTO (COMPATÍVEL DESKTOP + ANDROID WEBVIEW) -->
+                    <div id="wrapper-carrossel-financeiro" class="relative group mb-8 w-full min-w-0">
                         <button type="button" onclick="rolarCarrosselFinanceiro(-1)" aria-label="Anterior" class="hidden sm:flex items-center justify-center w-9 h-9 rounded-full bg-white border border-gray-200 text-blue-600 shadow-md hover:bg-blue-50 transition absolute -left-3 top-1/2 -translate-y-1/2 z-10">
                             <i data-feather="chevron-left" class="w-5 h-5"></i>
                         </button>
 
-                        <div id="carrossel-parcelas-abertas" class="flex gap-4 overflow-x-auto pb-2 px-1 no-scrollbar scroll-smooth">
+                        <div id="carrossel-parcelas-abertas" class="flex flex-nowrap gap-4 overflow-x-auto overscroll-x-contain pb-3 px-1 no-scrollbar scroll-smooth snap-x snap-mandatory w-full" style="-webkit-overflow-scrolling: touch;">
                             <div class="text-xs text-gray-400 py-6 px-4">Carregando carnê de mensalidades...</div>
                         </div>
 
@@ -385,14 +385,14 @@
                         </button>
                     </div>
 
-                    <!-- LISTA DE REGISTROS DE PAGAMENTOS QUITADOS -->
+                    <!-- TABELA CONSOLIDADA DE MENSALIDADES E COMPROVANTES -->
                     <div class="mb-2 flex items-center justify-between">
                         <h5 class="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center">
-                            <i data-feather="check-circle" class="w-4 h-4 text-green-500 mr-1.5"></i> Histórico de Pagamentos Realizados
+                            <i data-feather="list" class="w-4 h-4 text-blue-500 mr-1.5"></i> Demonstrativo Completo e Comprovantes
                         </h5>
                     </div>
 
-                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6">
+                    <div class="overflow-x-auto border rounded-xl border-gray-100 mb-6 w-full">
                         <table class="min-w-full divide-y divide-gray-100 text-sm text-left">
                             <thead class="bg-gray-50">
                                 <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -412,7 +412,7 @@
 
                     <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
                         <i data-feather="info" class="text-blue-500 shrink-0 mt-0.5"></i>
-                        <p class="text-xs text-blue-800">Os pagamentos das mensalidades (mês atual ou adiantamento de parcelas futuras) são realizados diretamente na secretaria. Assim que o gestor confirmar a baixa como <strong>Paga</strong>, a parcela sairá do carrossel acima e ficará disponível na lista abaixo para você gerar seu comprovante de quitação.</p>
+                        <p class="text-xs text-blue-800">Os pagamentos das mensalidades (mês atual ou adiantamento de parcelas futuras) são realizados diretamente na secretaria. Assim que o gestor confirmar a baixa como <strong>Paga</strong>, o botão para gerar seu comprovante oficial de quitação fica disponível na tabela acima.</p>
                     </div>
                 </div>
             </div>
@@ -1044,7 +1044,7 @@ function filtrarMateriaisPorDisciplina() {
 function rolarCarrosselFinanceiro(direcao) {
     const carrossel = document.getElementById('carrossel-parcelas-abertas');
     if (!carrossel) return;
-    carrossel.scrollBy({ left: direcao * 260, behavior: 'smooth' });
+    carrossel.scrollBy({ left: direcao * 250, behavior: 'smooth' });
 }
 
 function isParcelaPaga(statusStr) {
@@ -1309,7 +1309,6 @@ async function loadPerfilFinanceiro() {
 
         const todasParcelas = todasCompetencias.map(k => mapaMeses[k]);
         const parcelasAbertas = todasParcelas.filter(p => !isParcelaPaga(p.status));
-        const parcelasHistorico = todasParcelas.filter(p => isParcelaPaga(p.status) || String(p.status || '').toLowerCase().includes('análise'));
 
         const temAlgumaPendente = parcelasAbertas.some(p => p.competencia <= mesAtualKey);
         const statusFin = document.getElementById('dash-financeiro');
@@ -1335,7 +1334,7 @@ async function loadPerfilFinanceiro() {
                 carrossel.innerHTML = `
                     <div class="w-full bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
                         <p class="text-sm font-black text-green-700 uppercase">Nenhuma mensalidade em aberto!</p>
-                        <p class="text-xs text-green-600 mt-1">Seus pagamentos quitados estão disponíveis abaixo para emissão do comprovante.</p>
+                        <p class="text-xs text-green-600 mt-1">Todas as suas parcelas do ciclo estão quitadas.</p>
                     </div>
                 `;
             } else {
@@ -1396,7 +1395,7 @@ async function loadPerfilFinanceiro() {
                     }
 
                     return `
-                        <div class="${cardBg} border rounded-2xl p-4 min-w-[255px] w-[255px] shrink-0 flex flex-col justify-between shadow-sm">
+                        <div class="${cardBg} border rounded-2xl p-4 min-w-[235px] max-w-[235px] shrink-0 snap-start flex flex-col justify-between shadow-sm">
                             <div>
                                 <div class="flex items-center justify-between gap-1">
                                     <span class="text-[11px] font-black uppercase tracking-wider truncate">${tagTopo}</span>
@@ -1419,9 +1418,9 @@ async function loadPerfilFinanceiro() {
 
         if (!tbody) return;
 
-        const registrosOrdenados = [...parcelasHistorico].reverse();
+        const registrosOrdenados = [...todasParcelas].reverse();
         if (registrosOrdenados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400 text-xs">Nenhum pagamento quitado registrado até o momento.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-400 text-xs">Nenhum registro financeiro encontrado no cadastro.</td></tr>';
         } else {
             tbody.innerHTML = registrosOrdenados.map(p => {
                 const [ano, mes] = p.competencia.split('-');
@@ -1445,24 +1444,28 @@ async function loadPerfilFinanceiro() {
                     : '';
 
                 const pago = isParcelaPaga(p.status);
+                const emAnalise = String(p.status || '').toLowerCase().includes('análise');
                 const dataBaixaFmt = p.data_pagamento ? `<span class="block text-[10px] text-green-700 font-semibold mt-0.5">Pago em: ${p.data_pagamento}</span>` : '';
                 const nfTexto = p.numero_nf ? `<p class="text-[10px] text-gray-400 mt-1 font-mono">Recibo/NF: ${p.numero_nf}</p>` : '';
 
-                const statusBadge = pago
-                    ? `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>${dataBaixaFmt}`
-                    : `<span class="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Análise</span>`;
+                let statusBadge = `<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold tracking-wider">Pendente</span>`;
+                if (pago) {
+                    statusBadge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Paga</span>${dataBaixaFmt}`;
+                } else if (emAnalise) {
+                    statusBadge = `<span class="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[10px] uppercase font-bold tracking-wider">Em Análise</span>`;
+                }
 
                 const acaoHtml = pago
                     ? `<button type="button" onclick="baixarReciboPdf('${p.competencia}', this)" class="bg-blue-600 text-white hover:bg-blue-700 transition px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto shadow-sm">
                            <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Gerar Comprovante
                        </button>`
-                    : `<span class="text-[11px] font-semibold text-gray-400">Comprovante em validação</span>`;
+                    : `<span class="text-[11px] font-semibold text-gray-400">${emAnalise ? 'Comprovante em validação' : 'Aguardando baixa na secretaria'}</span>`;
 
                 return `
                     <tr class="hover:bg-gray-50 transition border-b border-gray-50">
                         <td class="py-4 px-4 font-bold text-gray-900 capitalize">
                             ${p.referencia_label || nomeMes}
-                            <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${diaVencFmt}/${mes}/${ano}</span>
+                            <br><span class="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Vencimento: ${diaVencFmt}/${mes}/${ano} • 23% OFF até 05/${mes}</span>
                         </td>
                         <td class="py-4 px-4 text-gray-800 font-black">
                             ${valorFormatado}
@@ -1751,7 +1754,7 @@ async function renderizarDashboardAluno() {
             const cronogramaTexto = formatarCronogramaDisciplina(d);
 
             return `
-                <div onclick="abrirTelaDisciplina(${d.indexOriginal})" class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer min-w-[260px] w-[260px] flex-shrink-0 relative group flex flex-col">
+                <div onclick="abrirTelaDisciplina(${d.indexOriginal})" class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer min-w-[235px] max-w-[235px] shrink-0 snap-start relative group flex flex-col">
                     ${badge}
                     <div class="h-32 bg-gray-100 overflow-hidden shrink-0">
                         <img src="${foto}" alt="${nomeDisciplina}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none">
@@ -1771,8 +1774,8 @@ async function renderizarDashboardAluno() {
         }).join('');
 
         const destaqueClasses = isDestaque
-            ? 'p-5 rounded-2xl shadow-sm relative'
-            : 'pl-2 opacity-80 hover:opacity-100 transition-opacity duration-300';
+            ? 'p-4 sm:p-5 rounded-2xl shadow-sm relative w-full min-w-0'
+            : 'pl-2 opacity-80 hover:opacity-100 transition-opacity duration-300 w-full min-w-0';
 
         const tituloBadge = isDestaque
             ? '<span class="ml-3 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-wider">Mês Atual</span>'
@@ -1785,7 +1788,7 @@ async function renderizarDashboardAluno() {
                     ${semObj.nome}
                     ${tituloBadge}
                 </h3>
-                <div class="carrossel-semestre flex gap-4 overflow-x-auto pb-4 no-scrollbar cursor-ew-resize relative" style="scroll-behavior: auto;">
+                <div class="carrossel-semestre flex flex-nowrap gap-4 overflow-x-auto overscroll-x-contain pb-4 no-scrollbar snap-x snap-mandatory cursor-ew-resize relative w-full" style="-webkit-overflow-scrolling: touch; scroll-behavior: auto;">
                     ${cardsHTML}
                 </div>
             </div>
