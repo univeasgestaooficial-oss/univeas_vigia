@@ -234,11 +234,14 @@
 
                     <!-- PARTE SUPERIOR: MATRICULAR / EDITAR ALUNO -->
                     <div class="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
-                            <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
-                                <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula / Edição de Aluno
-                            </h4>
-                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-gray-100 pb-4">
+                        <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula / Edição de Aluno
+                        </h4>
+                        <button type="button" onclick="abrirModalAcervoLegado()" class="w-full sm:w-auto justify-center bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm transition flex items-center">
+                            <i data-feather="archive" class="w-4 h-4 mr-2"></i> Implantar Aluno Antigo (Acervo)
+                        </button>
+                    </div>
 
                         <form id="form-matricula" class="space-y-6">
                             <input type="hidden" id="aluno_id_edit" name="aluno_id_edit" value="">
@@ -981,6 +984,188 @@
 
     </div>
 </div>
+
+
+<!-- ============================================== -->
+<!-- 10. MODAL IMPLANTAÇÃO DE ALUNO ANTIGO (ACERVO) -->
+<!-- ============================================== -->
+<div id="modal-acervo-legado" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-5xl w-full p-5 sm:p-8 transform scale-95 transition-all max-h-[92vh] overflow-y-auto no-scrollbar border-t-4 border-amber-500">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
+            <div>
+                <h3 class="text-lg sm:text-xl font-black text-gray-900 flex items-center uppercase tracking-tight">
+                    <i data-feather="archive" class="text-amber-500 mr-2.5"></i> Implantação de Aluno Antigo (Acervo)
+                </h3>
+                <p class="text-xs text-gray-500 mt-0.5">Cadastre alunos já ingressantes com data retroativa, mensalidades quitadas/pendentes e histórico de notas.</p>
+            </div>
+            <button type="button" onclick="fecharModalAcervoLegado()" class="text-gray-400 hover:text-red-500 transition p-1">
+                <i data-feather="x" class="h-6 w-6"></i>
+            </button>
+        </div>
+
+        <form id="form-acervo-legado" onsubmit="salvarAlunoAcervoLegado(event)" class="space-y-6">
+            <!-- ETAPA 1: DADOS CADASTRAIS E VÍNCULO -->
+            <div class="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-4">
+                <p class="text-[11px] font-black text-gray-700 uppercase tracking-wider flex items-center">
+                    <span class="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center mr-2">1</span>
+                    Dados Cadastrais & Situação Atual
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome Completo *</label>
+                        <input type="text" id="legado-nome" required placeholder="Nome do aluno" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF *</label>
+                        <input type="text" id="legado-cpf" required placeholder="000.000.000-00" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Nascimento</label>
+                        <input type="date" id="legado-nascimento" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp *</label>
+                        <input type="text" id="legado-telefone" required placeholder="(91) 90000-0000" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail *</label>
+                        <input type="email" id="legado-email" required placeholder="aluno@email.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Endereço Completo *</label>
+                        <input type="text" id="legado-endereco" required placeholder="Rua, Nº, Bairro, Cidade/UF" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-gray-200">
+                    <div class="md:col-span-5">
+                        <label class="block text-[10px] font-bold text-amber-700 uppercase mb-1">Curso Matriculado *</label>
+                        <select id="legado-curso" required onchange="aoMudarCursoOuDataLegado()" class="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-bold text-gray-800 focus:outline-amber-500">
+                            <option value="">Selecione o curso...</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-bold text-amber-700 uppercase mb-1">Data de Ingresso Real *</label>
+                        <input type="date" id="legado-data-matricula" required onchange="aoMudarCursoOuDataLegado()" class="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-bold text-gray-800 focus:outline-amber-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status Atual *</label>
+                        <select id="legado-status" onchange="toggleDataTrancamentoLegado()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white font-bold focus:outline-amber-500">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Concluído">Concluído</option>
+                            <option value="Trancado">Trancado</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Pgto Padrão</label>
+                        <select id="legado-forma-pgto" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                            <option value="pix">PIX</option>
+                            <option value="boleto">Boleto</option>
+                            <option value="cartao">Cartão</option>
+                        </select>
+                    </div>
+                    <div id="box-legado-trancamento" class="md:col-span-4 hidden">
+                        <label class="block text-[10px] font-bold text-red-600 uppercase mb-1">Data do Trancamento</label>
+                        <input type="date" id="legado-data-trancamento" class="w-full border border-red-200 rounded-lg px-3 py-2 text-sm bg-red-50/40 focus:outline-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ETAPA 2: HISTÓRICO FINANCEIRO -->
+            <div class="bg-teal-50/40 p-4 sm:p-5 rounded-2xl border border-teal-100 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <p class="text-[11px] font-black text-teal-900 uppercase tracking-wider flex items-center">
+                            <span class="w-5 h-5 rounded-full bg-teal-600 text-white text-[10px] flex items-center justify-center mr-2">2</span>
+                            Histórico Financeiro (Mensalidades Anteriores)
+                        </p>
+                        <p class="text-[11px] text-teal-700 mt-0.5">Gerado automaticamente da data de ingresso até o mês atual. Edite status ou valores livremente.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="marcarTodasParcelasLegado('Pago')" class="bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition">
+                            Marcar Todas Pagas
+                        </button>
+                        <button type="button" onclick="adicionarParcelaLegadoManual()" class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition flex items-center">
+                            <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Mês
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto bg-white rounded-xl border border-teal-100">
+                    <table class="min-w-full divide-y divide-gray-100 text-xs text-left">
+                        <thead class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+                            <tr>
+                                <th class="py-2.5 px-3">Competência</th>
+                                <th class="py-2.5 px-3">Situação</th>
+                                <th class="py-2.5 px-3">Valor (R$)</th>
+                                <th class="py-2.5 px-3">Data Pgto</th>
+                                <th class="py-2.5 px-3">Nº Recibo / NF</th>
+                                <th class="py-2.5 px-3 text-right">Remover</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-parcelas-legado" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="py-6 text-center text-gray-400">Selecione o Curso e a Data de Ingresso para gerar as parcelas.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ETAPA 3: HISTÓRICO ACADÊMICO (NOTAS E FALTAS) -->
+            <div class="bg-orange-50/40 p-4 sm:p-5 rounded-2xl border border-orange-100 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <p class="text-[11px] font-black text-orange-900 uppercase tracking-wider flex items-center">
+                            <span class="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center mr-2">3</span>
+                            Histórico Escolar / Notas Já Cursadas
+                        </p>
+                        <p class="text-[11px] text-orange-700 mt-0.5">Deixe em branco as disciplinas que o aluno ainda vai cursar.</p>
+                    </div>
+                    <button type="button" onclick="adicionarLinhaNotaLegado()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition flex items-center w-fit">
+                        <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Disciplina Avulsa
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto bg-white rounded-xl border border-orange-100">
+                    <table class="min-w-full divide-y divide-gray-100 text-xs text-left">
+                        <thead class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+                            <tr>
+                                <th class="py-2.5 px-3">Módulo / Disciplina</th>
+                                <th class="py-2.5 px-3 w-20 text-center">Faltas</th>
+                                <th class="py-2.5 px-3 w-24 text-center">AV1</th>
+                                <th class="py-2.5 px-3 w-24 text-center">AV2</th>
+                                <th class="py-2.5 px-3 w-24 text-center">Média Final</th>
+                                <th class="py-2.5 px-3 w-32 text-center">Situação</th>
+                                <th class="py-2.5 px-3 w-12 text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-notas-legado" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="7" class="py-6 text-center text-gray-400">Selecione um curso acima para carregar a grade curricular.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onclick="fecharModalAcervoLegado()" class="w-full sm:w-auto bg-gray-100 text-gray-600 font-bold py-2.5 px-6 rounded-xl text-xs uppercase hover:bg-gray-200 transition">
+                    Cancelar
+                </button>
+                <button type="submit" id="btn-salvar-acervo-legado" class="w-full sm:w-auto bg-amber-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase shadow-md hover:bg-amber-600 transition flex items-center justify-center">
+                    <i data-feather="check-circle" class="w-4 h-4 mr-2"></i> Concluir Implantação no Sistema
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
 
 <script>
 let docentesGlobais = [];
@@ -4042,6 +4227,359 @@ function calcularValorMensalidadeAluno(aluno, listaCursos = cursosGlobais) {
 
     return valSalvo || 0;
 }
+
+
+// ==========================================
+// IMPLANTAÇÃO DE ALUNO ANTIGO (ACERVO LEGADO)
+// ==========================================
+async function abrirModalAcervoLegado() {
+    if (!cursosGlobais || cursosGlobais.length === 0) {
+        await loadCursos();
+    }
+
+    const selectCurso = document.getElementById('legado-curso');
+    let opts = '<option value="">Selecione o curso...</option>';
+    cursosGlobais.forEach(c => {
+        opts += `<option value="${c.id}">${c.nome_curso || c.codigo}</option>`;
+    });
+    selectCurso.innerHTML = opts;
+
+    document.getElementById('form-acervo-legado').reset();
+    document.getElementById('box-legado-trancamento').classList.add('hidden');
+    document.getElementById('tbody-parcelas-legado').innerHTML =
+        '<tr><td colspan="6" class="py-6 text-center text-gray-400">Selecione o Curso e a Data de Ingresso para gerar as parcelas.</td></tr>';
+    document.getElementById('tbody-notas-legado').innerHTML =
+        '<tr><td colspan="7" class="py-6 text-center text-gray-400">Selecione um curso acima para carregar a grade curricular.</td></tr>';
+
+    const modal = document.getElementById('modal-acervo-legado');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function fecharModalAcervoLegado() {
+    const modal = document.getElementById('modal-acervo-legado');
+    if (!modal) return;
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function toggleDataTrancamentoLegado() {
+    const status = document.getElementById('legado-status').value;
+    const box = document.getElementById('box-legado-trancamento');
+    if (status === 'Trancado') box.classList.remove('hidden');
+    else box.classList.add('hidden');
+}
+
+function aoMudarCursoOuDataLegado() {
+    const cursoId = document.getElementById('legado-curso').value;
+    const dataMatStr = document.getElementById('legado-data-matricula').value;
+
+    if (cursoId) {
+        carregarDisciplinasLegado(cursoId);
+    }
+    if (cursoId && dataMatStr) {
+        gerarParcelasHistoricasLegado(cursoId, dataMatStr);
+    }
+}
+
+function gerarParcelasHistoricasLegado(cursoId, dataMatStr) {
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    const valorIntegral = parseFloat(curso?.valor_mensalidade || 0);
+    const dtInicio = parseDataIsoLocal(dataMatStr);
+    if (!dtInicio) return;
+
+    const compInicio = obterCompetenciaInicialCiclo(dtInicio);
+    const hoje = new Date();
+    const compFim = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    const tbody = document.getElementById('tbody-parcelas-legado');
+    tbody.innerHTML = '';
+
+    let [ano, mes] = compInicio.split('-').map(Number);
+    const [anoFim, mesFim] = compFim.split('-').map(Number);
+
+    let geradas = 0;
+    while ((ano < anoFim || (ano === anoFim && mes <= mesFim)) && geradas < 60) {
+        const comp = `${ano}-${String(mes).padStart(2, '0')}`;
+        const isMesAtual = comp === compFim;
+        const statusPadrao = isMesAtual ? 'Pendente' : 'Pago';
+        const dataPgtoSugerida = `${comp}-05`;
+        const calc = calcularValorComPontualidadeAdmin(valorIntegral, comp, parseDataIsoLocal(dataPgtoSugerida));
+
+        adicionarLinhaParcelaHtml({
+            competencia: comp,
+            status: statusPadrao,
+            valor: calc.valorFinal.toFixed(2),
+            data_pagamento: statusPadrao === 'Pago' ? dataPgtoSugerida : '',
+            numero_nf: ''
+        });
+
+        mes++;
+        if (mes > 12) {
+            mes = 1;
+            ano++;
+        }
+        geradas++;
+    }
+
+    if (geradas === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">Nenhuma parcela retroativa necessária (início no próximo mês).</td></tr>';
+    }
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function adicionarParcelaLegadoManual() {
+    const cursoId = document.getElementById('legado-curso').value;
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    const valorIntegral = parseFloat(curso?.valor_mensalidade || 0);
+    const hoje = new Date();
+    const compHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    const tbody = document.getElementById('tbody-parcelas-legado');
+    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+    adicionarLinhaParcelaHtml({
+        competencia: compHoje,
+        status: 'Pago',
+        valor: (valorIntegral * 0.77).toFixed(2),
+        data_pagamento: `${compHoje}-05`,
+        numero_nf: ''
+    });
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function adicionarLinhaParcelaHtml(p) {
+    const tbody = document.getElementById('tbody-parcelas-legado');
+    const tr = document.createElement('tr');
+    tr.className = 'linha-parcela-legado hover:bg-gray-50';
+    tr.innerHTML = `
+        <td class="py-2 px-3">
+            <input type="month" value="${p.competencia}" class="leg-parc-comp border border-gray-200 rounded px-2 py-1 text-xs font-bold text-teal-800">
+        </td>
+        <td class="py-2 px-3">
+            <select class="leg-parc-status border border-gray-200 rounded px-2 py-1 text-xs font-bold bg-white">
+                <option value="Pago" ${p.status === 'Pago' ? 'selected' : ''}>Pago</option>
+                <option value="Pendente" ${p.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+            </select>
+        </td>
+        <td class="py-2 px-3">
+            <input type="number" step="0.01" min="0" value="${p.valor}" class="leg-parc-valor w-24 border border-gray-200 rounded px-2 py-1 text-xs font-bold">
+        </td>
+        <td class="py-2 px-3">
+            <input type="date" value="${p.data_pagamento || ''}" class="leg-parc-data border border-gray-200 rounded px-2 py-1 text-xs">
+        </td>
+        <td class="py-2 px-3">
+            <input type="text" value="${p.numero_nf || ''}" placeholder="Opcional" class="leg-parc-nf w-28 border border-gray-200 rounded px-2 py-1 text-xs">
+        </td>
+        <td class="py-2 px-3 text-right">
+            <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
+                <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function marcarTodasParcelasLegado(novoStatus) {
+    document.querySelectorAll('.linha-parcela-legado').forEach(tr => {
+        const sel = tr.querySelector('.leg-parc-status');
+        const comp = tr.querySelector('.leg-parc-comp').value;
+        const dtInput = tr.querySelector('.leg-parc-data');
+        sel.value = novoStatus;
+        if (novoStatus === 'Pago' && !dtInput.value && comp) {
+            dtInput.value = `${comp}-05`;
+        }
+    });
+}
+
+function carregarDisciplinasLegado(cursoId) {
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    const tbody = document.getElementById('tbody-notas-legado');
+    tbody.innerHTML = '';
+
+    let grade = [];
+    try {
+        const raw = curso?.disciplinas_json || curso?.grade_curricular || curso?.disciplinas || curso?.modulos || '[]';
+        grade = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {}
+
+    if (!grade || grade.length === 0) {
+        adicionarLinhaNotaLegado('');
+        return;
+    }
+
+    grade.forEach(mod => {
+        const nomeMod = mod.nome || mod.disciplina || '';
+        if (nomeMod) adicionarLinhaNotaLegado(nomeMod);
+    });
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function adicionarLinhaNotaLegado(nomeDisciplina = '') {
+    const tbody = document.getElementById('tbody-notas-legado');
+    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+    const tr = document.createElement('tr');
+    tr.className = 'linha-nota-legado hover:bg-gray-50';
+    tr.innerHTML = `
+        <td class="py-2 px-3">
+            <input type="text" value="${nomeDisciplina}" placeholder="Nome da Disciplina" class="leg-nota-disc w-full border border-gray-200 rounded px-2.5 py-1.5 text-xs font-bold text-gray-800">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" value="0" class="leg-nota-faltas w-16 text-center border border-gray-200 rounded py-1.5 text-xs">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="recalcularLinhaNotaLegado(this)" class="leg-nota-av1 w-20 text-center border border-gray-200 rounded py-1.5 text-xs font-bold">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="recalcularLinhaNotaLegado(this)" class="leg-nota-av2 w-20 text-center border border-gray-200 rounded py-1.5 text-xs font-bold">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="atualizarSituacaoPorMediaLegado(this)" class="leg-nota-media w-20 text-center border border-orange-200 bg-orange-50/50 rounded py-1.5 text-xs font-black text-gray-900">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <select class="leg-nota-sit border border-gray-200 rounded px-2 py-1.5 text-xs font-bold bg-white">
+                <option value="">Não cursada</option>
+                <option value="Aprovado">Aprovado</option>
+                <option value="Recuperação">Recuperação</option>
+                <option value="Reprovado">Reprovado</option>
+            </select>
+        </td>
+        <td class="py-2 px-3 text-right">
+            <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
+                <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function recalcularLinhaNotaLegado(inputEl) {
+    const tr = inputEl.closest('tr');
+    const v1 = parseFloat(tr.querySelector('.leg-nota-av1').value);
+    const v2 = parseFloat(tr.querySelector('.leg-nota-av2').value);
+    const inputMedia = tr.querySelector('.leg-nota-media');
+
+    if (!isNaN(v1) && !isNaN(v2)) {
+        inputMedia.value = ((v1 + v2) / 2).toFixed(1);
+        atualizarSituacaoPorMediaLegado(inputMedia);
+    } else if (!isNaN(v1)) {
+        inputMedia.value = v1.toFixed(1);
+        atualizarSituacaoPorMediaLegado(inputMedia);
+    }
+}
+
+function atualizarSituacaoPorMediaLegado(inputMedia) {
+    const tr = inputMedia.closest('tr');
+    const selSit = tr.querySelector('.leg-nota-sit');
+    const m = parseFloat(inputMedia.value);
+    if (isNaN(m)) {
+        selSit.value = '';
+    } else {
+        selSit.value = m >= 8.0 ? 'Aprovado' : 'Recuperação';
+    }
+}
+
+async function salvarAlunoAcervoLegado(e) {
+    e.preventDefault();
+
+    const parcelas = [];
+    document.querySelectorAll('.linha-parcela-legado').forEach(tr => {
+        const comp = tr.querySelector('.leg-parc-comp').value;
+        const status = tr.querySelector('.leg-parc-status').value;
+        const valor = parseFloat(tr.querySelector('.leg-parc-valor').value) || 0;
+        const dataPgto = tr.querySelector('.leg-parc-data').value || null;
+        const nf = tr.querySelector('.leg-parc-nf').value.trim();
+        if (comp) {
+            parcelas.push({
+                competencia: comp,
+                status: status,
+                valor: valor,
+                data_pagamento: dataPgto,
+                numero_nf: nf
+            });
+        }
+    });
+
+    const notas = [];
+    document.querySelectorAll('.linha-nota-legado').forEach(tr => {
+        const disc = tr.querySelector('.leg-nota-disc').value.trim();
+        const faltas = parseInt(tr.querySelector('.leg-nota-faltas').value) || 0;
+        const av1Raw = tr.querySelector('.leg-nota-av1').value;
+        const av2Raw = tr.querySelector('.leg-nota-av2').value;
+        const mediaRaw = tr.querySelector('.leg-nota-media').value;
+        const sit = tr.querySelector('.leg-nota-sit').value;
+
+        const temAlgumLancamento = av1Raw !== '' || av2Raw !== '' || mediaRaw !== '' || sit !== '';
+        if (disc && temAlgumLancamento) {
+            const mapaNotas = {};
+            if (av1Raw !== '') {
+                mapaNotas['Primeira avaliação'] = parseFloat(av1Raw);
+                mapaNotas['AV1'] = parseFloat(av1Raw);
+            }
+            if (av2Raw !== '') {
+                mapaNotas['Segunda avaliação'] = parseFloat(av2Raw);
+                mapaNotas['AV2'] = parseFloat(av2Raw);
+            }
+            if (av1Raw === '' && av2Raw === '' && mediaRaw !== '') {
+                mapaNotas['Média Histórica'] = parseFloat(mediaRaw);
+            }
+
+            notas.push({
+                disciplina: disc,
+                faltas: faltas,
+                notas: mapaNotas,
+                media: mediaRaw !== '' ? parseFloat(mediaRaw) : null,
+                situacao: sit || null
+            });
+        }
+    });
+
+    const payload = {
+        nome: document.getElementById('legado-nome').value.trim(),
+        cpf: document.getElementById('legado-cpf').value.trim(),
+        email: document.getElementById('legado-email').value.trim(),
+        telefone: document.getElementById('legado-telefone').value.trim(),
+        endereco: document.getElementById('legado-endereco').value.trim(),
+        curso_id: document.getElementById('legado-curso').value,
+        data_nascimento: document.getElementById('legado-nascimento').value || null,
+        data_matricula: document.getElementById('legado-data-matricula').value,
+        status: document.getElementById('legado-status').value,
+        data_trancamento: document.getElementById('legado-data-trancamento').value || null,
+        forma_pagamento: document.getElementById('legado-forma-pgto').value,
+        parcelas_historicas: parcelas,
+        notas_historicas: notas
+    };
+
+    const btn = document.getElementById('btn-salvar-acervo-legado');
+    const htmlOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Implantando no Acervo...';
+
+    try {
+        const res = await apiRequest('/alunos/legado', 'POST', payload);
+        if (res && res.sucesso) {
+            alert(`${res.mensagem}\nMatrícula gerada: ${res.matricula}`);
+            fecharModalAcervoLegado();
+            await loadAlunos();
+        } else {
+            alert(typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || 'Erro ao implantar aluno legado.'));
+        }
+    } catch (err) {
+        alert('Erro de comunicação ao implantar aluno.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = htmlOriginal;
+        if (typeof feather !== 'undefined') feather.replace();
+    }
+}
+
 
 // ==========================================
 // GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
