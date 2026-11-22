@@ -849,11 +849,12 @@
 
                             <div class="flex items-center space-x-2 sm:space-x-3 w-full md:w-auto">
                                 <div class="relative flex-1 md:w-64">
-                                    <input type="text" id="busca-financeiro" oninput="filtrarFinanceiro()" placeholder="Buscar cliente..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
+                                    <input type="text" id="busca-financeiro" oninput="filtrarFinanceiro()" placeholder="Buscar nome, pago, pendente, aniversário (ex: 15/11 ou aniv)..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
                                     <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                                 </div>
-                                <button onclick="window.print()" class="bg-gray-800 text-white px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
-                                    <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir</span>
+                                <button type="button" onclick="imprimirRelatorioFinanceiro()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                                    <i data-feather="printer" class="w-4 h-4"></i>
+                                    Imprimir Relatório
                                 </button>
                             </div>
                         </div>
@@ -2256,13 +2257,67 @@ async function loadDocentes() {
     });
     feather.replace();
 }
+
+
+let registrosFinanceiroMesAtual = [];
+
+function formatarDataNascimentoCurta(dataIso) {
+    if (!dataIso) return '-';
+    const str = String(dataIso).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const [a, m, d] = str.slice(0, 10).split('-');
+        return `${d}/${m}/${a}`;
+    }
+    return str;
+}
+
+function normalizarTextoBusca(str) {
+    return String(str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+
+
+
 function filtrarFinanceiro() {
-    const termo = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
-    const linhas = document.querySelectorAll('.linha-financeiro');
-    linhas.forEach(linha => {
-        const nome = linha.querySelector('.busca-nome').innerText.toLowerCase();
-        linha.style.display = nome.includes(termo) ? '' : 'none';
+    const termoBruto = document.getElementById('busca-financeiro')?.value || '';
+    const termo = normalizarTextoBusca(termoBruto);
+
+    let totalRecebidoFiltrado = 0;
+    let totalReceberFiltrado = 0;
+    let qtdInadimplentesFiltrado = 0;
+    let qtdPagosFiltrado = 0;
+
+    document.querySelectorAll('.linha-financeiro').forEach(linha => {
+        const textoIndexado = normalizarTextoBusca(linha.dataset.busca || '');
+        const statusLinha = linha.dataset.status || 'Pendente';
+        const valorLinha = parseFloat(linha.dataset.valor || '0') || 0;
+
+        const tokens = termo.split(/\s+/).filter(Boolean);
+        const visivel = tokens.every(tok => textoIndexado.includes(tok));
+
+        linha.style.display = visivel ? '' : 'none';
+
+        if (visivel) {
+            if (statusLinha === 'Pago') {
+                totalRecebidoFiltrado += valorLinha;
+                qtdPagosFiltrado++;
+            } else {
+                totalReceberFiltrado += valorLinha;
+                qtdInadimplentesFiltrado++;
+            }
+        }
     });
+
+    atualizarCardsFinanceiros(
+        totalRecebidoFiltrado,
+        totalReceberFiltrado,
+        qtdInadimplentesFiltrado,
+        qtdPagosFiltrado
+    );
 }
 
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
@@ -3487,13 +3542,9 @@ async function loadFinanceiro() {
     const resposta = await apiRequest('/alunos');
     const lista = Array.isArray(resposta) ? resposta : (resposta?.dados || []);
     alunosGlobais = lista;
+    registrosFinanceiroMesAtual = [];
 
     tbody.innerHTML = '';
-
-    let totalRecebidoMes = 0;
-    let totalReceberMes = 0;
-    let qtdInadimplentesMes = 0;
-    let qtdPagosMes = 0;
 
     if (lista.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno matriculado.</td></tr>`;
@@ -3501,23 +3552,59 @@ async function loadFinanceiro() {
         return;
     }
 
+    const [anoRef, mesRefNum] = mesSelecionado ? mesSelecionado.split('-') : ['', ''];
+    const compBr = mesSelecionado ? `${mesRefNum}/${anoRef}` : '';
+
     lista.forEach((item) => {
         if (!alunoElegivelNoMesFinanceiro(item, mesSelecionado)) return;
         const parcela = obterParcelaDoMes(item, mesSelecionado);
         const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
         const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        const statusParcela = parcela.status || 'Pendente'; // 'Pago' | 'Pendente' | 'Em Análise'
+        const statusParcela = parcela.status || 'Pendente';
         const isPago = statusParcela === 'Pago';
         const emAnalise = statusParcela === 'Em Análise';
 
-        if (isPago) {
-            totalRecebidoMes += valorCobranca;
-            qtdPagosMes++;
-        } else {
-            totalReceberMes += valorCobranca;
-            qtdInadimplentesMes++;
-        }
+        const nascBr = formatarDataNascimentoCurta(item.data_nascimento); // DD/MM/AAAA
+        const isAniversarianteMes = nascBr.length >= 5 && nascBr.slice(3, 5) === mesRefNum;
+        const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${mesSelecionado.replace('-', '')}`;
+
+        // Palavras-chave indexadas para o campo único de busca
+        const tagsStatus = isPago
+            ? 'pago pagos quitado'
+            : (emAnalise ? 'em analise comprovante enviado pendente pendentes' : 'pendente pendentes aberto em aberto atrasado');
+        const tagsAniversario = isAniversarianteMes ? 'aniversariante aniversariantes aniv aniversario' : '';
+        const textoBuscaIndexado = [
+            item.nome,
+            item.matricula,
+            item.cpf,
+            item.telefone,
+            idComprovante,
+            parcela.numero_nf,
+            mesSelecionado,
+            compBr,
+            nascBr,
+            tagsStatus,
+            tagsAniversario
+        ].filter(Boolean).join(' ');
+
+        registrosFinanceiroMesAtual.push({
+            id: item.id,
+            matricula: item.matricula || '-',
+            nome: item.nome || 'Cliente Desconhecido',
+            cpf: item.cpf || '-',
+            telefone: item.telefone || '-',
+            nascimento: nascBr,
+            aniversarianteMes: isAniversarianteMes,
+            idComprovante,
+            competencia: mesSelecionado,
+            valor: valorCobranca,
+            valorFormatado,
+            status: statusParcela,
+            dataPagamento: parcela.data_pagamento || '-',
+            numeroNf: parcela.numero_nf || '-',
+            textoBuscaIndexado
+        });
 
         const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
         const safeDetalhes = (parcela.detalhes || '').replace(/'/g, "\\'");
@@ -3532,8 +3619,6 @@ async function loadFinanceiro() {
             statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pendente')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
         }
 
-        const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${mesSelecionado.replace('-', '')}`;
-
         const btnReciboTabela = isPago
             ? `<button onclick="emitirReciboPdfAdmin('${item.id}', '${mesSelecionado}', this)" class="text-teal-700 hover:text-white hover:bg-teal-600 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition" title="Emitir Recibo PDF">
                    <i data-feather="printer" class="w-3.5 h-3.5"></i> Recibo
@@ -3546,10 +3631,20 @@ async function loadFinanceiro() {
                </button>`
             : '';
 
+        const infoNascimento = isAniversarianteMes
+            ? `<span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-pink-100 text-pink-700 uppercase">🎂 Aniv. ${nascBr.slice(0, 5)}</span>`
+            : (nascBr !== '-' ? `<span class="block text-[10px] text-gray-400 font-normal">Nasc: ${nascBr}</span>` : '');
+
         tbody.innerHTML += `
-            <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50">
+            <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50"
+                data-status="${statusParcela}"
+                data-valor="${valorCobranca}"
+                data-busca="${textoBuscaIndexado.replace(/"/g, '&quot;')}">
                 <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
-                <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">${item.nome || 'Cliente Desconhecido'}</td>
+                <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">
+                    ${item.nome || 'Cliente Desconhecido'}
+                    ${infoNascimento}
+                </td>
                 <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
                     <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">Ref: ${mesSelecionado}</span>
                     ${valorFormatado}
@@ -3559,7 +3654,7 @@ async function loadFinanceiro() {
                     <div class="inline-flex items-center justify-center gap-1.5">
                         ${btnAnexoTabela}
                         ${btnReciboTabela}
-                        <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Detalhes do Aluno">
+                        <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Histórico Financeiro Completo">
                             <i data-feather="eye" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -3573,10 +3668,175 @@ async function loadFinanceiro() {
         `;
     });
 
-    atualizarCardsFinanceiros(totalRecebidoMes, totalReceberMes, qtdInadimplentesMes, qtdPagosMes);
     filtrarFinanceiro();
     feather.replace();
 }
+
+function imprimirRelatorioFinanceiro() {
+    const mesSelecionado = document.getElementById('filtro-mes-financeiro')?.value || '';
+    const termoBruto = (document.getElementById('busca-financeiro')?.value || '').trim();
+    const tokens = normalizarTextoBusca(termoBruto).split(/\s+/).filter(Boolean);
+
+    const filtrados = registrosFinanceiroMesAtual.filter(r => {
+        if (tokens.length === 0) return true;
+        const base = normalizarTextoBusca(r.textoBuscaIndexado);
+        return tokens.every(tok => base.includes(tok));
+    });
+
+    if (filtrados.length === 0) {
+        alert("Nenhum registro encontrado para imprimir com o filtro atual.");
+        return;
+    }
+
+    let somaRecebido = 0;
+    let somaReceber = 0;
+    let qtdPagos = 0;
+    let qtdPendentes = 0;
+
+    const linhasHtml = filtrados.map((r, idx) => {
+        if (r.status === 'Pago') {
+            somaRecebido += r.valor;
+            qtdPagos++;
+        } else {
+            somaReceber += r.valor;
+            qtdPendentes++;
+        }
+
+        const estiloBadge = r.status === 'Pago'
+            ? 'color:#047857;background:#d1fae5;'
+            : (r.status === 'Em Análise' ? 'color:#1d4ed8;background:#dbeafe;' : 'color:#b45309;background:#fef3c7;');
+
+        return `
+            <tr>
+                <td style="text-align:center;color:#64748b;">${idx + 1}</td>
+                <td style="font-family:monospace;">${r.matricula}</td>
+                <td><strong>${r.nome}</strong></td>
+                <td style="text-align:center;">${r.nascimento}</td>
+                <td>${r.telefone}</td>
+                <td style="font-family:monospace;">${r.idComprovante}</td>
+                <td style="text-align:right;font-weight:700;">${r.valorFormatado}</td>
+                <td style="text-align:center;">
+                    <span style="padding:3px 8px;border-radius:4px;font-size:10px;font-weight:800;text-transform:uppercase;${estiloBadge}">
+                        ${r.status}
+                    </span>
+                </td>
+                <td style="text-align:center;">${r.dataPagamento}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const [anoRef, mesRef] = mesSelecionado ? mesSelecionado.split('-') : ['----', '--'];
+    const referenciaFormatada = `${mesRef}/${anoRef}`;
+    const agoraStr = new Date().toLocaleString('pt-BR');
+    const filtroTexto = termoBruto ? `Filtro aplicado: <strong>"${termoBruto}"</strong>` : 'Filtro aplicado: <strong>Todos os clientes do mês</strong>';
+
+    const janelaPrint = window.open('', '_blank', 'width=1050,height=780');
+    janelaPrint.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Relatório Financeiro UNIVEAS - Ref ${referenciaFormatada}</title>
+            <style>
+                @page { size: A4 landscape; margin: 14mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; }
+                .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #14b8a6; padding-bottom: 12px; margin-bottom: 14px; }
+                .header-left { display: flex; align-items: center; gap: 14px; }
+                .header-left img { height: 56px; width: auto; object-fit: contain; }
+                .inst-nome { font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; }
+                .inst-sub { font-size: 11px; color: #475569; margin: 2px 0 0 0; }
+                .header-right { text-align: right; }
+                .doc-titulo { font-size: 15px; font-weight: 900; color: #0d9488; text-transform: uppercase; margin: 0; }
+                .doc-ref { font-size: 12px; font-weight: 700; color: #334155; margin: 3px 0 0 0; }
+                .doc-data { font-size: 10px; color: #64748b; margin: 2px 0 0 0; }
+                .barra-ref { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #334155; margin-bottom: 14px; display: flex; justify-content: space-between; }
+                .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+                .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff; }
+                .card-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.6px; }
+                .card-val { font-size: 16px; font-weight: 900; margin-top: 4px; color: #0f172a; }
+                table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                th { background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.5px; padding: 8px 6px; text-align: left; }
+                td { padding: 7px 6px; border-bottom: 1px solid #e2e8f0; }
+                tr:nth-child(even) td { background: #f8fafc; }
+                .footer { margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 10px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 10px; }
+                .assinatura { text-align: center; width: 260px; border-top: 1px solid #334155; padding-top: 4px; font-weight: 700; color: #1e293b; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="header-left">
+                    <img src="https://i.imgur.com/ki7mdS2.png" alt="Logo UNIVEAS">
+                    <div>
+                        <p class="inst-nome">ESCOLA TÉCNICA E PROFISSIONALIZANTE UNIVEAS</p>
+                        <p class="inst-sub">Sistema Integrado de Gestão Acadêmica e Financeira (SIGA - UNIVEAS) • Vigia de Nazaré/PA</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <p class="doc-titulo">Relatório Financeiro & Controle de Mensalidades</p>
+                    <p class="doc-ref">Referência: ${referenciaFormatada}</p>
+                    <p class="doc-data">Emissão: ${agoraStr}</p>
+                </div>
+            </div>
+
+            <div class="barra-ref">
+                <span>Competência: <strong>${referenciaFormatada}</strong> &nbsp;|&nbsp; ${filtroTexto}</span>
+                <span>Total Listado: <strong>${filtrados.length} cliente(s)</strong></span>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-label">Total Recebido</div>
+                    <div class="card-val" style="color:#059669;">${somaRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Total A Receber</div>
+                    <div class="card-val" style="color:#d97706;">${somaReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Pagos</div>
+                    <div class="card-val">${qtdPagos}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Pendentes / Em Análise</div>
+                    <div class="card-val" style="color:#dc2626;">${qtdPendentes}</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align:center;width:28px;">#</th>
+                        <th>Matrícula</th>
+                        <th>Cliente / Aluno</th>
+                        <th style="text-align:center;">Nascimento</th>
+                        <th>Telefone</th>
+                        <th>Comprovante / NF</th>
+                        <th style="text-align:right;">Valor</th>
+                        <th style="text-align:center;">Status</th>
+                        <th style="text-align:center;">Data Pgto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhasHtml}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <div>Documento gerado eletronicamente pelo SIGA - UNIVEAS • Secretaria Financeira</div>
+                <div class="assinatura">Secretaria / Diretoria Financeira UNIVEAS</div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 350);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    janelaPrint.document.close();
+}
+
 function atualizarCardsFinanceiros(recebido, receber, inadimplencia, pagosMes) {
     document.getElementById('fin-total-recebido').innerText = `R$ ${recebido.toFixed(2).replace('.', ',')}`;
     document.getElementById('fin-total-receber').innerText = `R$ ${receber.toFixed(2).replace('.', ',')}`;
