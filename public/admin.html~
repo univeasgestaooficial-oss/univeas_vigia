@@ -234,11 +234,14 @@
 
                     <!-- PARTE SUPERIOR: MATRICULAR / EDITAR ALUNO -->
                     <div class="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
-                            <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
-                                <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula / Edição de Aluno
-                            </h4>
-                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-gray-100 pb-4">
+                        <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> Matrícula / Edição de Aluno
+                        </h4>
+                        <button type="button" onclick="abrirModalAcervoLegado()" class="w-full sm:w-auto justify-center bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm transition flex items-center">
+                            <i data-feather="archive" class="w-4 h-4 mr-2"></i> Implantar Aluno Antigo (Acervo)
+                        </button>
+                    </div>
 
                         <form id="form-matricula" class="space-y-6">
                             <input type="hidden" id="aluno_id_edit" name="aluno_id_edit" value="">
@@ -807,12 +810,13 @@
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 7. GESTÃO FINANCEIRA (PADRÃO UNIVEAS) -->
+           <!-- ============================================== -->
+            <!-- 7. GESTÃO FINANCEIRA (CONSOLIDADA POR SEMESTRE) -->
             <!-- ============================================== -->
             <div id="tela-financeiro" class="tela hidden">
                 <div class="flex flex-col space-y-6 md:space-y-8 max-w-6xl mx-auto pb-8">
 
+                    <!-- CARDS DE INDICADORES DO PERÍODO SELECIONADO -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
                             <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Total Recebido</p>
@@ -828,29 +832,111 @@
                             <div class="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
                             <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Inadimplência</p>
                             <h3 class="text-2xl font-black text-red-500 my-2" id="fin-inadimplencia">0</h3>
-                            <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades vencidas</p>
+                            <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades em aberto</p>
                         </div>
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos do Mês</p>
+                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos Confirmados</p>
                             <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-pagamentos-mes">0</h3>
-                            <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Quantidade confirmada</p>
+                            <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Parcelas quitadas</p>
                         </div>
                     </div>
 
-                    <div class="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 border-b border-gray-100 pb-6 mb-6">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mês de Faturamento</label>
-                                <input type="month" id="filtro-mes-financeiro" onchange="loadFinanceiro()" class="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-teal-700 transition w-full sm:w-48 shadow-inner">
+                    <!-- CONSOLIDAÇÃO SEMESTRAL (1º SEMESTRE vs 2º SEMESTRE DO ANO) -->
+                    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-gray-100 pb-3">
+                            <h4 class="text-xs sm:text-sm font-black text-gray-800 uppercase tracking-wider flex items-center">
+                                <span class="w-1 h-4 bg-teal-500 rounded mr-2 inline-block"></span>
+                                Consolidação Financeira por Semestre (<span id="fin-ano-consolidado" class="text-teal-600 ml-1">2026</span>)
+                            </h4>
+                            <span class="text-[11px] font-bold text-gray-400">1º Semestre (Jan–Jun) • 2º Semestre (Jul–Dez)</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 1º Semestre -->
+                            <div class="bg-teal-50/40 border border-teal-100 rounded-xl p-4 flex flex-col justify-between">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="bg-teal-600 text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">1º Semestre (Jan - Jun)</span>
+                                    <button type="button" onclick="selecionarSemestreRapido('1')" class="text-[11px] font-bold text-teal-700 hover:underline">Filtrar 1º Sem →</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+                                    <div class="bg-white p-2.5 rounded-lg border border-teal-100">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Recebido</span>
+                                        <span id="cons-sem1-recebido" class="font-black text-green-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-teal-100">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">A Receber</span>
+                                        <span id="cons-sem1-receber" class="font-black text-amber-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-teal-100">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Quitadas</span>
+                                        <span id="cons-sem1-qtd" class="font-black text-gray-800 text-sm">0 / 0</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="flex items-center space-x-2 sm:space-x-3 w-full md:w-auto">
-                                <div class="relative flex-1 md:w-64">
-                                    <input type="text" id="busca-financeiro" oninput="filtrarFinanceiro()" placeholder="Buscar cliente..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
+                            <!-- 2º Semestre -->
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="bg-slate-800 text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">2º Semestre (Jul - Dez)</span>
+                                    <button type="button" onclick="selecionarSemestreRapido('2')" class="text-[11px] font-bold text-slate-700 hover:underline">Filtrar 2º Sem →</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Recebido</span>
+                                        <span id="cons-sem2-recebido" class="font-black text-green-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">A Receber</span>
+                                        <span id="cons-sem2-receber" class="font-black text-amber-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Quitadas</span>
+                                        <span id="cons-sem2-qtd" class="font-black text-gray-800 text-sm">0 / 0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TABELA E FILTROS AVANÇADOS -->
+                    <div class="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="grid grid-cols-1 md:grid-cols-12 items-end gap-4 border-b border-gray-100 pb-6 mb-6">
+
+                            <!-- Filtro 1: Modo de Visão (Mês Específico ou Semestre Consolidado) -->
+                            <div class="md:col-span-3">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Período / Semestre</label>
+                                <select id="filtro-semestre-financeiro" onchange="aoMudarModoSemestreFinanceiro()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-teal-50/60 font-bold text-teal-800">
+                                    <option value="mes">Mês Específico</option>
+                                    <option value="1">1º Semestre (Jan–Jun)</option>
+                                    <option value="2">2º Semestre (Jul–Dez)</option>
+                                    <option value="anual">Ano Completo (1º e 2º Sem)</option>
+                                </select>
+                            </div>
+
+                            <!-- Filtro 2: Competência / Ano -->
+                            <div class="md:col-span-3" id="box-filtro-mes-fin">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Mês de Faturamento</label>
+                                <input type="month" id="filtro-mes-financeiro" onchange="loadFinanceiro()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-gray-800">
+                            </div>
+
+                            <div class="md:col-span-3 hidden" id="box-filtro-ano-fin">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Ano Letivo</label>
+                                <select id="filtro-ano-financeiro" onchange="loadFinanceiro()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-gray-800">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+
+                            <!-- Filtro 3: Busca Unificada + Impressão -->
+                            <div class="md:col-span-6 flex items-center space-x-2">
+                                <div class="relative flex-1">
+                                    <input type="text" id="busca-financeiro" oninput="filtrarFinanceiro()" placeholder="Buscar aluno, curso, 1º semestre, pago, pendente, aniv..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
                                     <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                                 </div>
-                                <button onclick="window.print()" class="bg-gray-800 text-white px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
-                                    <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir</span>
+                                <button type="button" onclick="imprimirRelatorioFinanceiro()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase flex items-center gap-2 transition shrink-0">
+                                    <i data-feather="printer" class="w-4 h-4"></i>
+                                    <span class="hidden sm:inline">Relatório</span>
                                 </button>
                             </div>
                         </div>
@@ -860,7 +946,8 @@
                                 <thead class="bg-gray-50">
                                     <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                         <th class="py-3 px-4 whitespace-nowrap">ID Comprovante</th>
-                                        <th class="py-3 px-4 whitespace-nowrap">Cliente</th>
+                                        <th class="py-3 px-4 whitespace-nowrap">Cliente / Curso</th>
+                                        <th class="py-3 px-4 text-center whitespace-nowrap">Semestre</th>
                                         <th class="py-3 px-4 text-center whitespace-nowrap">Mês/Ano Ref.</th>
                                         <th class="py-3 px-4 text-center whitespace-nowrap">Status de Pagamento</th>
                                         <th class="py-3 px-4 text-center whitespace-nowrap">View</th>
@@ -874,11 +961,6 @@
 
                 </div>
             </div>
-
-        </main>
-    </div>
-</div>
-
 <!-- ============================================== -->
 <!-- 8. CONFIGURAÇÃO (MODAL DE SOBREPOSIÇÃO) -->
 <!-- ============================================== -->
@@ -981,6 +1063,188 @@
 
     </div>
 </div>
+
+
+<!-- ============================================== -->
+<!-- 10. MODAL IMPLANTAÇÃO DE ALUNO ANTIGO (ACERVO) -->
+<!-- ============================================== -->
+<div id="modal-acervo-legado" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-5xl w-full p-5 sm:p-8 transform scale-95 transition-all max-h-[92vh] overflow-y-auto no-scrollbar border-t-4 border-amber-500">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
+            <div>
+                <h3 class="text-lg sm:text-xl font-black text-gray-900 flex items-center uppercase tracking-tight">
+                    <i data-feather="archive" class="text-amber-500 mr-2.5"></i> Implantação de Aluno Antigo (Acervo)
+                </h3>
+                <p class="text-xs text-gray-500 mt-0.5">Cadastre alunos já ingressantes com data retroativa, mensalidades quitadas/pendentes e histórico de notas.</p>
+            </div>
+            <button type="button" onclick="fecharModalAcervoLegado()" class="text-gray-400 hover:text-red-500 transition p-1">
+                <i data-feather="x" class="h-6 w-6"></i>
+            </button>
+        </div>
+
+        <form id="form-acervo-legado" onsubmit="salvarAlunoAcervoLegado(event)" class="space-y-6">
+            <!-- ETAPA 1: DADOS CADASTRAIS E VÍNCULO -->
+            <div class="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-4">
+                <p class="text-[11px] font-black text-gray-700 uppercase tracking-wider flex items-center">
+                    <span class="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center mr-2">1</span>
+                    Dados Cadastrais & Situação Atual
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome Completo *</label>
+                        <input type="text" id="legado-nome" required placeholder="Nome do aluno" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">CPF *</label>
+                        <input type="text" id="legado-cpf" required placeholder="000.000.000-00" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Data Nascimento</label>
+                        <input type="date" id="legado-nascimento" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp *</label>
+                        <input type="text" id="legado-telefone" required placeholder="(91) 90000-0000" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">E-mail *</label>
+                        <input type="email" id="legado-email" required placeholder="aluno@email.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Endereço Completo *</label>
+                        <input type="text" id="legado-endereco" required placeholder="Rua, Nº, Bairro, Cidade/UF" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-gray-200">
+                    <div class="md:col-span-5">
+                        <label class="block text-[10px] font-bold text-amber-700 uppercase mb-1">Curso Matriculado *</label>
+                        <select id="legado-curso" required onchange="aoMudarCursoOuDataLegado()" class="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-bold text-gray-800 focus:outline-amber-500">
+                            <option value="">Selecione o curso...</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-bold text-amber-700 uppercase mb-1">Data de Ingresso Real *</label>
+                        <input type="date" id="legado-data-matricula" required onchange="aoMudarCursoOuDataLegado()" class="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white font-bold text-gray-800 focus:outline-amber-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status Atual *</label>
+                        <select id="legado-status" onchange="toggleDataTrancamentoLegado()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white font-bold focus:outline-amber-500">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Concluído">Concluído</option>
+                            <option value="Trancado">Trancado</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Pgto Padrão</label>
+                        <select id="legado-forma-pgto" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-amber-500">
+                            <option value="pix">PIX</option>
+                            <option value="boleto">Boleto</option>
+                            <option value="cartao">Cartão</option>
+                        </select>
+                    </div>
+                    <div id="box-legado-trancamento" class="md:col-span-4 hidden">
+                        <label class="block text-[10px] font-bold text-red-600 uppercase mb-1">Data do Trancamento</label>
+                        <input type="date" id="legado-data-trancamento" class="w-full border border-red-200 rounded-lg px-3 py-2 text-sm bg-red-50/40 focus:outline-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ETAPA 2: HISTÓRICO FINANCEIRO -->
+            <div class="bg-teal-50/40 p-4 sm:p-5 rounded-2xl border border-teal-100 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <p class="text-[11px] font-black text-teal-900 uppercase tracking-wider flex items-center">
+                            <span class="w-5 h-5 rounded-full bg-teal-600 text-white text-[10px] flex items-center justify-center mr-2">2</span>
+                            Histórico Financeiro (Mensalidades Anteriores)
+                        </p>
+                        <p class="text-[11px] text-teal-700 mt-0.5">Gerado automaticamente da data de ingresso até o mês atual. Edite status ou valores livremente.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="marcarTodasParcelasLegado('Pago')" class="bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition">
+                            Marcar Todas Pagas
+                        </button>
+                        <button type="button" onclick="adicionarParcelaLegadoManual()" class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition flex items-center">
+                            <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Mês
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto bg-white rounded-xl border border-teal-100">
+                    <table class="min-w-full divide-y divide-gray-100 text-xs text-left">
+                        <thead class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+                            <tr>
+                                <th class="py-2.5 px-3">Competência</th>
+                                <th class="py-2.5 px-3">Situação</th>
+                                <th class="py-2.5 px-3">Valor (R$)</th>
+                                <th class="py-2.5 px-3">Data Pgto</th>
+                                <th class="py-2.5 px-3">Nº Recibo / NF</th>
+                                <th class="py-2.5 px-3 text-right">Remover</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-parcelas-legado" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="py-6 text-center text-gray-400">Selecione o Curso e a Data de Ingresso para gerar as parcelas.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ETAPA 3: HISTÓRICO ACADÊMICO (NOTAS E FALTAS) -->
+            <div class="bg-orange-50/40 p-4 sm:p-5 rounded-2xl border border-orange-100 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <p class="text-[11px] font-black text-orange-900 uppercase tracking-wider flex items-center">
+                            <span class="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center mr-2">3</span>
+                            Histórico Escolar / Notas Já Cursadas
+                        </p>
+                        <p class="text-[11px] text-orange-700 mt-0.5">Deixe em branco as disciplinas que o aluno ainda vai cursar.</p>
+                    </div>
+                    <button type="button" onclick="adicionarLinhaNotaLegado()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition flex items-center w-fit">
+                        <i data-feather="plus" class="w-3 h-3 mr-1"></i> Add Disciplina Avulsa
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto bg-white rounded-xl border border-orange-100">
+                    <table class="min-w-full divide-y divide-gray-100 text-xs text-left">
+                        <thead class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+                            <tr>
+                                <th class="py-2.5 px-3">Módulo / Disciplina</th>
+                                <th class="py-2.5 px-3 w-20 text-center">Faltas</th>
+                                <th class="py-2.5 px-3 w-24 text-center">AV1</th>
+                                <th class="py-2.5 px-3 w-24 text-center">AV2</th>
+                                <th class="py-2.5 px-3 w-24 text-center">Média Final</th>
+                                <th class="py-2.5 px-3 w-32 text-center">Situação</th>
+                                <th class="py-2.5 px-3 w-12 text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-notas-legado" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="7" class="py-6 text-center text-gray-400">Selecione um curso acima para carregar a grade curricular.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onclick="fecharModalAcervoLegado()" class="w-full sm:w-auto bg-gray-100 text-gray-600 font-bold py-2.5 px-6 rounded-xl text-xs uppercase hover:bg-gray-200 transition">
+                    Cancelar
+                </button>
+                <button type="submit" id="btn-salvar-acervo-legado" class="w-full sm:w-auto bg-amber-500 text-white font-bold py-2.5 px-8 rounded-xl text-xs uppercase shadow-md hover:bg-amber-600 transition flex items-center justify-center">
+                    <i data-feather="check-circle" class="w-4 h-4 mr-2"></i> Concluir Implantação no Sistema
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
 
 <script>
 let docentesGlobais = [];
@@ -1787,14 +2051,14 @@ function fecharModalAluno() {
 }
 
 function verPerfilAluno(id_firebase) {
-    const aluno = alunosGlobais.find(a => a.id === id_firebase);
+    const aluno = alunosGlobais.find(a => String(a.id) === String(id_firebase));
     if (!aluno) return alert("Erro ao carregar o perfil.");
 
     let modal = document.getElementById('modal-perfil-aluno');
     if (!modal) {
         const htmlModal = `
         <div id="modal-perfil-aluno" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 transition-all opacity-0">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-5 sm:p-8 transform scale-95 transition-all max-h-[90vh] overflow-y-auto no-scrollbar relative border-t-4 border-teal-500">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-5 sm:p-8 transform scale-95 transition-all max-h-[92vh] overflow-y-auto no-scrollbar relative border-t-4 border-teal-500">
                 <button onclick="fecharModalAluno()" class="absolute top-5 right-5 text-gray-400 hover:text-red-500 transition"><i data-feather="x" class="h-6 w-6"></i></button>
                 <div id="conteudo-perfil-aluno"></div>
             </div>
@@ -1812,7 +2076,7 @@ function verPerfilAluno(id_firebase) {
     let listaCursosHTML = '';
     if (cursosSalvos.length > 0) {
         listaCursosHTML = cursosSalvos.map(c => {
-            const cur = cursosGlobais.find(cg => cg.id == c.curso_id);
+            const cur = cursosGlobais.find(cg => String(cg.id) === String(c.curso_id));
             return cur ? cur.nome_curso : 'Curso Desconhecido';
         }).join('<br>• ');
         listaCursosHTML = '• ' + listaCursosHTML;
@@ -1820,6 +2084,115 @@ function verPerfilAluno(id_firebase) {
         listaCursosHTML = 'Nenhum curso vinculado';
     }
 
+    // Monta o histórico financeiro completo (parcelas gravadas + competências elegíveis até hoje)
+    let mapaMensalidades = {};
+    try {
+        if (aluno.mensalidades_json) {
+            mapaMensalidades = typeof aluno.mensalidades_json === 'string'
+                ? JSON.parse(aluno.mensalidades_json)
+                : { ...aluno.mensalidades_json };
+        }
+    } catch (e) {}
+
+    const dtMat = parseDataIsoLocal(aluno.data_matricula || aluno.data_cadastro || aluno.created_at) || new Date();
+    const compPorMat = obterCompetenciaInicialCiclo(dtMat);
+    const compsGravadas = Object.keys(mapaMensalidades || {}).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+    const compInicio = (compsGravadas.length > 0 && compsGravadas[0] < compPorMat) ? compsGravadas[0] : compPorMat;
+
+    const hoje = new Date();
+    const compAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    const todasCompetenciasSet = new Set(compsGravadas);
+
+    let [anoIter, mesIter] = compInicio.split('-').map(Number);
+    const [anoFim, mesFim] = compAtual.split('-').map(Number);
+    let guardaLoop = 0;
+    while ((anoIter < anoFim || (anoIter === anoFim && mesIter <= mesFim)) && guardaLoop < 72) {
+        const compIter = `${anoIter}-${String(mesIter).padStart(2, '0')}`;
+        if (alunoElegivelNoMesFinanceiro(aluno, compIter)) {
+            todasCompetenciasSet.add(compIter);
+        }
+        mesIter++;
+        if (mesIter > 12) {
+            mesIter = 1;
+            anoIter++;
+        }
+        guardaLoop++;
+    }
+
+    const competenciasOrdenadas = Array.from(todasCompetenciasSet).sort().reverse();
+    let totalPagoHist = 0;
+    let totalAbertoHist = 0;
+    let qtdPagasHist = 0;
+    let qtdAbertasHist = 0;
+    let linhasHistoricoHTML = '';
+
+    const safeNome = (aluno.nome || 'Aluno').replace(/'/g, "\\'");
+
+    competenciasOrdenadas.forEach(comp => {
+        const parc = obterParcelaDoMes(aluno, comp);
+        const valorNum = parseFloat(parc.valor || 0);
+        const valorFmt = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const statusParc = parc.status || 'Pendente';
+        const isPago = statusParc === 'Pago';
+        const isAnalise = statusParc === 'Em Análise';
+
+        if (isPago) {
+            totalPagoHist += valorNum;
+            qtdPagasHist++;
+        } else {
+            totalAbertoHist += valorNum;
+            qtdAbertasHist++;
+        }
+
+        let badgeStatus = '';
+        if (isPago) {
+            badgeStatus = '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-black uppercase">Pago</span>';
+        } else if (isAnalise) {
+            badgeStatus = '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-black uppercase">Em Análise</span>';
+        } else {
+            badgeStatus = '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase">Pendente</span>';
+        }
+
+        const safeDetalhes = (parc.detalhes || '').replace(/'/g, "\\'");
+        const safeNF = (parc.numero_nf || '').replace(/'/g, "\\'");
+
+        const btnRecibo = isPago
+            ? `<button type="button" onclick="emitirReciboPdfAdmin('${aluno.id}', '${comp}', this)" class="text-teal-700 hover:bg-teal-600 hover:text-white bg-teal-50 border border-teal-200 px-2 py-1 rounded text-[10px] font-bold uppercase transition" title="Recibo PDF">Recibo</button>`
+            : '';
+
+        const btnComprovante = (isAnalise || parc.comprovante_id)
+            ? `<button type="button" onclick="verComprovanteMes('${aluno.id}', '${comp}')" class="text-blue-600 hover:bg-blue-600 hover:text-white bg-blue-50 border border-blue-200 p-1.5 rounded transition" title="Ver Comprovante"><i data-feather="paperclip" class="w-3.5 h-3.5"></i></button>`
+            : '';
+
+        linhasHistoricoHTML += `
+            <tr class="hover:bg-gray-50 transition border-b border-gray-100">
+                <td class="py-2.5 px-3 font-mono font-bold text-gray-800 text-xs whitespace-nowrap">${comp}</td>
+                <td class="py-2.5 px-3 text-center whitespace-nowrap">${badgeStatus}</td>
+                <td class="py-2.5 px-3 font-black text-gray-800 text-xs whitespace-nowrap">
+                    ${valorFmt}
+                    ${parc.desconto_percentual > 0 ? `<span class="block text-[9px] text-teal-600 font-bold">${parc.desconto_percentual}% OFF</span>` : ''}
+                </td>
+                <td class="py-2.5 px-3 text-gray-500 text-xs whitespace-nowrap">${parc.data_pagamento || '-'}</td>
+                <td class="py-2.5 px-3 text-gray-500 font-mono text-xs whitespace-nowrap">${parc.numero_nf || '-'}</td>
+                <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center justify-end gap-1">
+                        ${btnComprovante}
+                        ${btnRecibo}
+                        <button type="button" onclick="fecharModalAluno(); abrirModalPendencia('${aluno.id}', '${safeNome}', '${comp}', '${safeDetalhes}', '${safeNF}', '${statusParc}')" class="text-gray-600 hover:bg-gray-800 hover:text-white bg-gray-100 px-2 py-1 rounded text-[10px] font-bold uppercase transition" title="Editar / Dar Baixa nesta Parcela">
+                            Editar
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    if (!linhasHistoricoHTML) {
+        linhasHistoricoHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-400">Nenhuma parcela registrada até o momento.</td></tr>`;
+    }
+
+    const totalPagoFmt = totalPagoHist.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const totalAbertoFmt = totalAbertoHist.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const alunoNome = aluno.nome || 'Sem Nome';
 
     const htmlConteudo = `
@@ -1836,30 +2209,58 @@ function verPerfilAluno(id_firebase) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div>
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados Pessoais</p>
-                <ul class="text-sm font-medium text-gray-700 space-y-2.5 bg-gray-50 p-4 rounded-xl border border-gray-100 h-full">
+                <ul class="text-sm font-medium text-gray-700 space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100 h-full">
                     <li class="flex items-center"><i data-feather="phone" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> ${aluno.telefone || 'Não informado'}</li>
                     <li class="flex items-center break-all"><i data-feather="mail" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> ${aluno.email || 'Não informado'}</li>
                     <li class="flex items-center"><i data-feather="credit-card" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> CPF: ${aluno.cpf || 'Não informado'}</li>
-                    <li class="flex items-center"><i data-feather="calendar" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Nasc: ${aluno.data_nascimento || '--/--/----'}</li>
+                    <li class="flex items-center"><i data-feather="calendar" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Matrícula em: ${aluno.data_matricula || '--/--/----'}</li>
                 </ul>
             </div>
             <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados Acadêmicos e Endereço</p>
-                <ul class="text-sm font-medium text-gray-700 space-y-2.5 bg-teal-50/30 p-4 rounded-xl border border-teal-100 h-full">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Dados Acadêmicos e Contrato</p>
+                <ul class="text-sm font-medium text-gray-700 space-y-2 bg-teal-50/30 p-4 rounded-xl border border-teal-100 h-full">
                     <li class="flex items-start"><i data-feather="book" class="w-4 h-4 mr-2 mt-0.5 text-teal-500 shrink-0"></i> <span class="break-words"><strong>Cursos:</strong><br>${listaCursosHTML}</span></li>
-                    <li class="flex items-start"><i data-feather="map-pin" class="w-4 h-4 mr-2 mt-0.5 text-teal-500 shrink-0"></i> <span class="break-words">Endereço: ${aluno.endereco || 'Não informado'}</span></li>
-                    <li class="flex items-center"><i data-feather="user-check" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> PCD: <span class="uppercase ml-1">${aluno.pcd || 'Não'}</span></li>
+                    <li class="flex items-start"><i data-feather="map-pin" class="w-4 h-4 mr-2 mt-0.5 text-teal-500 shrink-0"></i> <span class="break-words">${aluno.endereco || 'Não informado'}</span></li>
+                    <li class="flex items-center"><i data-feather="dollar-sign" class="w-4 h-4 mr-2 text-teal-500 shrink-0"></i> Venc. Dia ${aluno.dia_vencimento || '05'} • <span class="uppercase ml-1">${aluno.forma_pagamento || 'PIX'}</span></li>
                 </ul>
             </div>
         </div>
 
-        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <p class="text-[10px] font-bold text-gray-600 uppercase flex items-center mb-3">
-                <i data-feather="dollar-sign" class="h-4 w-4 mr-1.5 text-teal-500"></i> Informações Financeiras
-            </p>
-            <div class="grid grid-cols-2 gap-4 text-xs">
-                <div class="bg-white p-2.5 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Dia de Vencimento</span><span class="font-bold text-gray-800">Dia ${aluno.dia_vencimento || '-'}</span></div>
-                <div class="bg-white p-2.5 rounded border border-gray-100 shadow-sm"><span class="block text-[9px] text-gray-400 uppercase">Forma de Pagamento</span><span class="font-bold text-gray-800 capitalize">${aluno.forma_pagamento || '-'}</span></div>
+        <!-- HISTÓRICO FINANCEIRO COMPLETO DO CLIENTE -->
+        <div class="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                    <p class="text-xs font-black text-gray-800 uppercase flex items-center">
+                        <i data-feather="layers" class="h-4 w-4 mr-2 text-teal-500"></i> Histórico Financeiro Completo
+                    </p>
+                    <p class="text-[11px] text-gray-500">Todas as mensalidades quitadas, em análise e em aberto deste cliente.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span class="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-[11px] font-black">
+                        Pago (${qtdPagasHist}): ${totalPagoFmt}
+                    </span>
+                    <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-lg text-[11px] font-black">
+                        Em Aberto (${qtdAbertasHist}): ${totalAbertoFmt}
+                    </span>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto bg-white rounded-xl border border-gray-200 max-h-72 overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-100 text-left">
+                    <thead class="bg-gray-100 sticky top-0 z-10 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th class="py-2.5 px-3">Competência</th>
+                            <th class="py-2.5 px-3 text-center">Status</th>
+                            <th class="py-2.5 px-3">Valor</th>
+                            <th class="py-2.5 px-3">Data Pgto</th>
+                            <th class="py-2.5 px-3">NF / Recibo</th>
+                            <th class="py-2.5 px-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 font-medium">
+                        ${linhasHistoricoHTML}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
@@ -1934,13 +2335,67 @@ async function loadDocentes() {
     });
     feather.replace();
 }
+
+
+let registrosFinanceiroMesAtual = [];
+
+function formatarDataNascimentoCurta(dataIso) {
+    if (!dataIso) return '-';
+    const str = String(dataIso).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const [a, m, d] = str.slice(0, 10).split('-');
+        return `${d}/${m}/${a}`;
+    }
+    return str;
+}
+
+function normalizarTextoBusca(str) {
+    return String(str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+
+
+
 function filtrarFinanceiro() {
-    const termo = (document.getElementById('busca-financeiro')?.value || '').toLowerCase();
-    const linhas = document.querySelectorAll('.linha-financeiro');
-    linhas.forEach(linha => {
-        const nome = linha.querySelector('.busca-nome').innerText.toLowerCase();
-        linha.style.display = nome.includes(termo) ? '' : 'none';
+    const termoBruto = document.getElementById('busca-financeiro')?.value || '';
+    const termo = normalizarTextoBusca(termoBruto);
+
+    let totalRecebidoFiltrado = 0;
+    let totalReceberFiltrado = 0;
+    let qtdInadimplentesFiltrado = 0;
+    let qtdPagosFiltrado = 0;
+
+    document.querySelectorAll('.linha-financeiro').forEach(linha => {
+        const textoIndexado = normalizarTextoBusca(linha.dataset.busca || '');
+        const statusLinha = linha.dataset.status || 'Pendente';
+        const valorLinha = parseFloat(linha.dataset.valor || '0') || 0;
+
+        const tokens = termo.split(/\s+/).filter(Boolean);
+        const visivel = tokens.every(tok => textoIndexado.includes(tok));
+
+        linha.style.display = visivel ? '' : 'none';
+
+        if (visivel) {
+            if (statusLinha === 'Pago') {
+                totalRecebidoFiltrado += valorLinha;
+                qtdPagosFiltrado++;
+            } else {
+                totalReceberFiltrado += valorLinha;
+                qtdInadimplentesFiltrado++;
+            }
+        }
     });
+
+    atualizarCardsFinanceiros(
+        totalRecebidoFiltrado,
+        totalReceberFiltrado,
+        qtdInadimplentesFiltrado,
+        qtdPagosFiltrado
+    );
 }
 
 document.getElementById('form-matricula')?.addEventListener('submit', async (e) => {
@@ -3146,6 +3601,83 @@ function alunoElegivelNoMesFinanceiro(aluno, mesRef) {
     return true;
 }
 
+function obterSemestreDaCompetencia(mesRef) {
+    if (!mesRef || !mesRef.includes('-')) return { numero: '1', label: '1º Semestre' };
+    const mes = parseInt(mesRef.split('-')[1], 10);
+    return mes <= 6
+        ? { numero: '1', label: '1º Semestre' }
+        : { numero: '2', label: '2º Semestre' };
+}
+
+function aoMudarModoSemestreFinanceiro() {
+    const modo = document.getElementById('filtro-semestre-financeiro')?.value || 'mes';
+    const boxMes = document.getElementById('box-filtro-mes-fin');
+    const boxAno = document.getElementById('box-filtro-ano-fin');
+
+    if (modo === 'mes') {
+        boxMes?.classList.remove('hidden');
+        boxAno?.classList.add('hidden');
+    } else {
+        boxMes?.classList.add('hidden');
+        boxAno?.classList.remove('hidden');
+        const mesAtualVal = document.getElementById('filtro-mes-financeiro')?.value;
+        if (mesAtualVal) {
+            const anoAtual = mesAtualVal.split('-')[0];
+            const selAno = document.getElementById('filtro-ano-financeiro');
+            if (selAno) selAno.value = anoAtual;
+        }
+    }
+    loadFinanceiro();
+}
+
+function selecionarSemestreRapido(numSemestre) {
+    const selModo = document.getElementById('filtro-semestre-financeiro');
+    if (selModo) {
+        selModo.value = numSemestre;
+        aoMudarModoSemestreFinanceiro();
+    }
+}
+
+function calcularConsolidacaoSemestralAnual(listaAlunos, anoBase) {
+    const resumo = {
+        sem1: { recebido: 0, receber: 0, pagas: 0, total: 0 },
+        sem2: { recebido: 0, receber: 0, pagas: 0, total: 0 }
+    };
+
+    const hoje = new Date();
+    const compLimiteHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    listaAlunos.forEach(aluno => {
+        for (let m = 1; m <= 12; m++) {
+            const comp = `${anoBase}-${String(m).padStart(2, '0')}`;
+            if (comp > compLimiteHoje) continue;
+            if (!alunoElegivelNoMesFinanceiro(aluno, comp)) continue;
+
+            const parcela = obterParcelaDoMes(aluno, comp);
+            const valor = parseFloat(parcela.valor || calcularValorMensalidadeAluno(aluno) || 0);
+            const alvo = m <= 6 ? resumo.sem1 : resumo.sem2;
+
+            alvo.total++;
+            if (parcela.status === 'Pago') {
+                alvo.recebido += valor;
+                alvo.pagas++;
+            } else {
+                alvo.receber += valor;
+            }
+        }
+    });
+
+    const elAno = document.getElementById('fin-ano-consolidado');
+    if (elAno) elAno.innerText = anoBase;
+
+    document.getElementById('cons-sem1-recebido').innerText = resumo.sem1.recebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem1-receber').innerText = resumo.sem1.receber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem1-qtd').innerText = `${resumo.sem1.pagas} / ${resumo.sem1.total}`;
+
+    document.getElementById('cons-sem2-recebido').innerText = resumo.sem2.recebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem2-receber').innerText = resumo.sem2.receber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem2-qtd').innerText = `${resumo.sem2.pagas} / ${resumo.sem2.total}`;
+}
 
 async function loadFinanceiro() {
     const inputMes = document.getElementById('filtro-mes-financeiro');
@@ -3154,107 +3686,381 @@ async function loadFinanceiro() {
         inputMes.value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     }
 
+    const modoFiltro = document.getElementById('filtro-semestre-financeiro')?.value || 'mes';
     const mesSelecionado = inputMes ? inputMes.value : '';
+    const anoSelecionado = modoFiltro === 'mes'
+        ? (mesSelecionado ? mesSelecionado.split('-')[0] : String(new Date().getFullYear()))
+        : (document.getElementById('filtro-ano-financeiro')?.value || String(new Date().getFullYear()));
+
     const tbody = document.getElementById('tabela-financeiro');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando faturamento do mês...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-xs text-gray-500">Consolidando faturamento...</td></tr>';
 
     if (cursosGlobais.length === 0) await loadCursos();
 
     const resposta = await apiRequest('/alunos');
     const lista = Array.isArray(resposta) ? resposta : (resposta?.dados || []);
     alunosGlobais = lista;
+    registrosFinanceiroMesAtual = [];
+
+    // Atualiza o painel comparativo 1º Semestre vs 2º Semestre
+    calcularConsolidacaoSemestralAnual(lista, anoSelecionado);
+
+    // Define as competências (YYYY-MM) que serão listadas na tabela
+    const hoje = new Date();
+    const compAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    let competenciasAlvo = [];
+
+    if (modoFiltro === 'mes') {
+        competenciasAlvo = [mesSelecionado];
+    } else if (modoFiltro === '1') {
+        for (let m = 1; m <= 6; m++) {
+            const c = `${anoSelecionado}-${String(m).padStart(2, '0')}`;
+            if (c <= compAtual) competenciasAlvo.push(c);
+        }
+    } else if (modoFiltro === '2') {
+        for (let m = 7; m <= 12; m++) {
+            const c = `${anoSelecionado}-${String(m).padStart(2, '0')}`;
+            if (c <= compAtual) competenciasAlvo.push(c);
+        }
+    } else {
+        for (let m = 1; m <= 12; m++) {
+            const c = `${anoSelecionado}-${String(m).padStart(2, '0')}`;
+            if (c <= compAtual) competenciasAlvo.push(c);
+        }
+    }
 
     tbody.innerHTML = '';
 
-    let totalRecebidoMes = 0;
-    let totalReceberMes = 0;
-    let qtdInadimplentesMes = 0;
-    let qtdPagosMes = 0;
-
-    if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno matriculado.</td></tr>`;
+    if (lista.length === 0 || competenciasAlvo.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum registro encontrado para o período.</td></tr>`;
         atualizarCardsFinanceiros(0, 0, 0, 0);
         return;
     }
 
-    lista.forEach((item) => {
-        if (!alunoElegivelNoMesFinanceiro(item, mesSelecionado)) return;
-        const parcela = obterParcelaDoMes(item, mesSelecionado);
-        const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
-        const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    // Ordena competências da mais recente para a mais antiga quando em visão semestral/anual
+    competenciasAlvo.sort().reverse();
 
-        const statusParcela = parcela.status || 'Pendente'; // 'Pago' | 'Pendente' | 'Em Análise'
-        const isPago = statusParcela === 'Pago';
-        const emAnalise = statusParcela === 'Em Análise';
+    competenciasAlvo.forEach(compRef => {
+        const [anoRef, mesRefNum] = compRef.split('-');
+        const compBr = `${mesRefNum}/${anoRef}`;
+        const semInfo = obterSemestreDaCompetencia(compRef);
 
-        if (isPago) {
-            totalRecebidoMes += valorCobranca;
-            qtdPagosMes++;
-        } else {
-            totalReceberMes += valorCobranca;
-            qtdInadimplentesMes++;
-        }
+        lista.forEach((item) => {
+            if (!alunoElegivelNoMesFinanceiro(item, compRef)) return;
 
-        const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
-        const safeDetalhes = (parcela.detalhes || '').replace(/'/g, "\\'");
-        const safeNF = (parcela.numero_nf || '').replace(/'/g, "\\'");
+            const parcela = obterParcelaDoMes(item, compRef);
+            const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
+            const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        let statusHtml = '';
-        if (isPago) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pago')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
-        } else if (emAnalise) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Em Análise')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${parcela.comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
-        } else {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pendente')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
-        }
+            const statusParcela = parcela.status || 'Pendente';
+            const isPago = statusParcela === 'Pago';
+            const emAnalise = statusParcela === 'Em Análise';
 
-        const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${mesSelecionado.replace('-', '')}`;
+            const cursoObj = cursosGlobais.find(c => String(c.id) === String(item.curso_id));
+            const nomeCurso = cursoObj?.nome_curso || 'Curso Vinculado';
 
-        const btnReciboTabela = isPago
-            ? `<button onclick="emitirReciboPdfAdmin('${item.id}', '${mesSelecionado}', this)" class="text-teal-700 hover:text-white hover:bg-teal-600 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition" title="Emitir Recibo PDF">
-                   <i data-feather="printer" class="w-3.5 h-3.5"></i> Recibo
-               </button>`
-            : '';
+            const nascBr = formatarDataNascimentoCurta(item.data_nascimento);
+            const isAniversarianteMes = nascBr.length >= 5 && nascBr.slice(3, 5) === mesRefNum;
+            const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${compRef.replace('-', '')}`;
 
-        const btnAnexoTabela = (emAnalise || parcela.comprovante_id)
-            ? `<button onclick="verComprovanteMes('${item.id}', '${mesSelecionado}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 border border-blue-200 p-2 rounded transition" title="Ver Comprovante Anexado">
-                   <i data-feather="paperclip" class="w-4 h-4"></i>
-               </button>`
-            : '';
+            const tagsStatus = isPago
+                ? 'pago pagos quitado'
+                : (emAnalise ? 'em analise comprovante enviado pendente pendentes' : 'pendente pendentes aberto em aberto atrasado');
+            const tagsAniversario = isAniversarianteMes ? 'aniversariante aniversariantes aniv aniversario' : '';
+            const textoBuscaIndexado = [
+                item.nome,
+                item.matricula,
+                item.cpf,
+                item.telefone,
+                nomeCurso,
+                semInfo.label,
+                `${semInfo.numero}o semestre`,
+                idComprovante,
+                parcela.numero_nf,
+                compRef,
+                compBr,
+                nascBr,
+                tagsStatus,
+                tagsAniversario
+            ].filter(Boolean).join(' ');
 
-        tbody.innerHTML += `
-            <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50">
-                <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
-                <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">${item.nome || 'Cliente Desconhecido'}</td>
-                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
-                    <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">Ref: ${mesSelecionado}</span>
-                    ${valorFormatado}
-                </td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">
-                    <div class="inline-flex items-center justify-center gap-1.5">
-                        ${btnAnexoTabela}
-                        ${btnReciboTabela}
-                        <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Detalhes do Aluno">
-                            <i data-feather="eye" class="w-4 h-4"></i>
+            registrosFinanceiroMesAtual.push({
+                id: item.id,
+                matricula: item.matricula || '-',
+                nome: item.nome || 'Cliente Desconhecido',
+                curso: nomeCurso,
+                semestre: semInfo.label,
+                cpf: item.cpf || '-',
+                telefone: item.telefone || '-',
+                nascimento: nascBr,
+                aniversarianteMes: isAniversarianteMes,
+                idComprovante,
+                competencia: compRef,
+                valor: valorCobranca,
+                valorFormatado,
+                status: statusParcela,
+                dataPagamento: parcela.data_pagamento || '-',
+                numeroNf: parcela.numero_nf || '-',
+                textoBuscaIndexado
+            });
+
+            const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
+            const safeDetalhes = (parcela.detalhes || '').replace(/'/g, "\\'");
+            const safeNF = (parcela.numero_nf || '').replace(/'/g, "\\'");
+
+            let statusHtml = '';
+            if (isPago) {
+                statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${compRef}', '${safeDetalhes}', '${safeNF}', 'Pago')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
+            } else if (emAnalise) {
+                statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${compRef}', '${safeDetalhes}', '${safeNF}', 'Em Análise')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${parcela.comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
+            } else {
+                statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${compRef}', '${safeDetalhes}', '${safeNF}', 'Pendente')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
+            }
+
+            const badgeSemestre = semInfo.numero === '1'
+                ? `<span class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-md text-[10px] font-black uppercase">1º Sem</span>`
+                : `<span class="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] font-black uppercase">2º Sem</span>`;
+
+            const btnReciboTabela = isPago
+                ? `<button onclick="emitirReciboPdfAdmin('${item.id}', '${compRef}', this)" class="text-teal-700 hover:text-white hover:bg-teal-600 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition" title="Emitir Recibo PDF">
+                       <i data-feather="printer" class="w-3.5 h-3.5"></i> Recibo
+                   </button>`
+                : '';
+
+            const btnAnexoTabela = (emAnalise || parcela.comprovante_id)
+                ? `<button onclick="verComprovanteMes('${item.id}', '${compRef}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 border border-blue-200 p-2 rounded transition" title="Ver Comprovante Anexado">
+                       <i data-feather="paperclip" class="w-4 h-4"></i>
+                   </button>`
+                : '';
+
+            const infoNascimento = isAniversarianteMes
+                ? `<span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-pink-100 text-pink-700 uppercase">🎂 Aniv. ${nascBr.slice(0, 5)}</span>`
+                : '';
+
+            tbody.innerHTML += `
+                <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50"
+                    data-status="${statusParcela}"
+                    data-valor="${valorCobranca}"
+                    data-busca="${textoBuscaIndexado.replace(/"/g, '&quot;')}">
+                    <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
+                    <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">
+                        ${item.nome || 'Cliente Desconhecido'} ${infoNascimento}
+                        <span class="block text-[10px] text-gray-400 font-semibold normal-case mt-0.5">${nomeCurso}</span>
+                    </td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">${badgeSemestre}</td>
+                    <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
+                        <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">Ref: ${compBr}</span>
+                        ${valorFormatado}
+                    </td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
+                        <div class="inline-flex items-center justify-center gap-1.5">
+                            ${btnAnexoTabela}
+                            ${btnReciboTabela}
+                            <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Histórico Financeiro Completo">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
+                        <button onclick="informarNFFinanceiro('${item.id}', '${compRef}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Anexar/Atualizar Nota Fiscal deste mês">
+                            <i data-feather="cloud-upload" class="w-4 h-4"></i>
                         </button>
-                    </div>
-                </td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">
-                    <button onclick="informarNFFinanceiro('${item.id}', '${mesSelecionado}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Anexar/Atualizar Nota Fiscal deste mês">
-                        <i data-feather="cloud-upload" class="w-4 h-4"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
+                    </td>
+                </tr>
+            `;
+        });
     });
 
-    atualizarCardsFinanceiros(totalRecebidoMes, totalReceberMes, qtdInadimplentesMes, qtdPagosMes);
+    if (registrosFinanceiroMesAtual.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhuma mensalidade elegível encontrada para o período selecionado.</td></tr>`;
+    }
+
     filtrarFinanceiro();
     feather.replace();
 }
+
+function imprimirRelatorioFinanceiro() {
+    const modoFiltro = document.getElementById('filtro-semestre-financeiro')?.value || 'mes';
+    const mesSelecionado = document.getElementById('filtro-mes-financeiro')?.value || '';
+    const anoSelecionado = document.getElementById('filtro-ano-financeiro')?.value || String(new Date().getFullYear());
+    const termoBruto = (document.getElementById('busca-financeiro')?.value || '').trim();
+    const tokens = normalizarTextoBusca(termoBruto).split(/\s+/).filter(Boolean);
+
+    const filtrados = registrosFinanceiroMesAtual.filter(r => {
+        if (tokens.length === 0) return true;
+        const base = normalizarTextoBusca(r.textoBuscaIndexado);
+        return tokens.every(tok => base.includes(tok));
+    });
+
+    if (filtrados.length === 0) {
+        alert("Nenhum registro encontrado para imprimir com o filtro atual.");
+        return;
+    }
+
+    let somaRecebido = 0;
+    let somaReceber = 0;
+    let qtdPagos = 0;
+    let qtdPendentes = 0;
+
+    const linhasHtml = filtrados.map((r, idx) => {
+        if (r.status === 'Pago') {
+            somaRecebido += r.valor;
+            qtdPagos++;
+        } else {
+            somaReceber += r.valor;
+            qtdPendentes++;
+        }
+
+        const estiloBadge = r.status === 'Pago'
+            ? 'color:#047857;background:#d1fae5;'
+            : (r.status === 'Em Análise' ? 'color:#1d4ed8;background:#dbeafe;' : 'color:#b45309;background:#fef3c7;');
+
+        const [a, m] = r.competencia.split('-');
+
+        return `
+            <tr>
+                <td style="text-align:center;color:#64748b;">${idx + 1}</td>
+                <td style="font-family:monospace;">${r.matricula}</td>
+                <td><strong>${r.nome}</strong><br><span style="font-size:9px;color:#64748b;">${r.curso}</span></td>
+                <td style="text-align:center;font-weight:700;">${r.semestre}</td>
+                <td style="text-align:center;">${m}/${a}</td>
+                <td style="font-family:monospace;">${r.idComprovante}</td>
+                <td style="text-align:right;font-weight:700;">${r.valorFormatado}</td>
+                <td style="text-align:center;">
+                    <span style="padding:3px 8px;border-radius:4px;font-size:10px;font-weight:800;text-transform:uppercase;${estiloBadge}">
+                        ${r.status}
+                    </span>
+                </td>
+                <td style="text-align:center;">${r.dataPagamento}</td>
+            </tr>
+        `;
+    }).join('');
+
+    let referenciaFormatada = '';
+    if (modoFiltro === 'mes') {
+        const [anoRef, mesRef] = mesSelecionado ? mesSelecionado.split('-') : ['----', '--'];
+        referenciaFormatada = `Mês ${mesRef}/${anoRef}`;
+    } else if (modoFiltro === '1') {
+        referenciaFormatada = `1º Semestre / ${anoSelecionado} (Jan–Jun)`;
+    } else if (modoFiltro === '2') {
+        referenciaFormatada = `2º Semestre / ${anoSelecionado} (Jul–Dez)`;
+    } else {
+        referenciaFormatada = `Consolidado Anual ${anoSelecionado} (1º e 2º Semestres)`;
+    }
+
+    const agoraStr = new Date().toLocaleString('pt-BR');
+    const filtroTexto = termoBruto ? `Filtro aplicado: <strong>"${termoBruto}"</strong>` : 'Filtro aplicado: <strong>Todos os lançamentos do período</strong>';
+
+    const janelaPrint = window.open('', '_blank', 'width=1050,height=780');
+    janelaPrint.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Relatório Financeiro UNIVEAS - ${referenciaFormatada}</title>
+            <style>
+                @page { size: A4 landscape; margin: 14mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; }
+                .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #14b8a6; padding-bottom: 12px; margin-bottom: 14px; }
+                .header-left { display: flex; align-items: center; gap: 14px; }
+                .header-left img { height: 56px; width: auto; object-fit: contain; }
+                .inst-nome { font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; }
+                .inst-sub { font-size: 11px; color: #475569; margin: 2px 0 0 0; }
+                .header-right { text-align: right; }
+                .doc-titulo { font-size: 15px; font-weight: 900; color: #0d9488; text-transform: uppercase; margin: 0; }
+                .doc-ref { font-size: 12px; font-weight: 700; color: #334155; margin: 3px 0 0 0; }
+                .doc-data { font-size: 10px; color: #64748b; margin: 2px 0 0 0; }
+                .barra-ref { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #334155; margin-bottom: 14px; display: flex; justify-content: space-between; }
+                .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+                .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #ffffff; }
+                .card-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.6px; }
+                .card-val { font-size: 16px; font-weight: 900; margin-top: 4px; color: #0f172a; }
+                table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                th { background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.5px; padding: 8px 6px; text-align: left; }
+                td { padding: 7px 6px; border-bottom: 1px solid #e2e8f0; }
+                tr:nth-child(even) td { background: #f8fafc; }
+                .footer { margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 10px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 10px; }
+                .assinatura { text-align: center; width: 260px; border-top: 1px solid #334155; padding-top: 4px; font-weight: 700; color: #1e293b; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="header-left">
+                    <img src="https://i.imgur.com/ki7mdS2.png" alt="Logo UNIVEAS">
+                    <div>
+                        <p class="inst-nome">ESCOLA TÉCNICA E PROFISSIONALIZANTE UNIVEAS</p>
+                        <p class="inst-sub">Sistema Integrado de Gestão Acadêmica e Financeira (SIGA - UNIVEAS) • Vigia de Nazaré/PA</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <p class="doc-titulo">Relatório Financeiro Consolidado</p>
+                    <p class="doc-ref">${referenciaFormatada}</p>
+                    <p class="doc-data">Emissão: ${agoraStr}</p>
+                </div>
+            </div>
+
+            <div class="barra-ref">
+                <span>Período: <strong>${referenciaFormatada}</strong> &nbsp;|&nbsp; ${filtroTexto}</span>
+                <span>Total Listado: <strong>${filtrados.length} lançamento(s)</strong></span>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-label">Total Recebido</div>
+                    <div class="card-val" style="color:#059669;">${somaRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Total A Receber</div>
+                    <div class="card-val" style="color:#d97706;">${somaReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Parcelas Pagas</div>
+                    <div class="card-val">${qtdPagos}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Pendentes / Em Análise</div>
+                    <div class="card-val" style="color:#dc2626;">${qtdPendentes}</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align:center;width:28px;">#</th>
+                        <th>Matrícula</th>
+                        <th>Cliente / Curso</th>
+                        <th style="text-align:center;">Semestre</th>
+                        <th style="text-align:center;">Competência</th>
+                        <th>Comprovante / NF</th>
+                        <th style="text-align:right;">Valor</th>
+                        <th style="text-align:center;">Status</th>
+                        <th style="text-align:center;">Data Pgto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhasHtml}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <div>Documento gerado eletronicamente pelo SIGA - UNIVEAS • Secretaria Financeira</div>
+                <div class="assinatura">Secretaria / Diretoria Financeira UNIVEAS</div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 350);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    janelaPrint.document.close();
+}
+
 function atualizarCardsFinanceiros(recebido, receber, inadimplencia, pagosMes) {
     document.getElementById('fin-total-recebido').innerText = `R$ ${recebido.toFixed(2).replace('.', ',')}`;
     document.getElementById('fin-total-receber').innerText = `R$ ${receber.toFixed(2).replace('.', ',')}`;
@@ -3273,11 +4079,6 @@ async function informarNFFinanceiro(alunoId, competencia) {
     const parcelaAtual = obterParcelaDoMes(alunoAtual, mesRef);
     await persistirParcelaIsoladaAluno(alunoId, mesRef, parcelaAtual.status, parcelaAtual.detalhes || '', nf);
 }
-
-
-
-
-
 
 function toggleCampoDetalhes(valor) {
     const bloco = document.getElementById('bloco-detalhes-pendencia');
@@ -3680,6 +4481,7 @@ function calcularValorComPontualidadeAdmin(valorIntegral, competencia, dataRefer
     return { valorIntegral: integral, valorFinal: integral, descontoPct: 0, eleganteDesconto: false };
 }
 
+
 function obterParcelaDoMes(aluno, mesRef) {
     let mapa = {};
     try {
@@ -3695,9 +4497,11 @@ function obterParcelaDoMes(aluno, mesRef) {
     if (mapa && mapa[mesRef] && mapa[mesRef].status) {
         const reg = mapa[mesRef];
 
-        // Se já foi pago ou teve valor definido manualmente, preserva o valor gravado
+        // Se já foi pago ou teve valor definido manualmente, preserva fielmente o valor e o desconto gravados
         if (reg.status === 'Pago' || reg.valor_manual) {
-            const vIntegralReg = reg.valor_integral !== undefined ? Number(reg.valor_integral) : valorIntegral;
+            const vIntegralReg = reg.valor_integral !== undefined && Number(reg.valor_integral) > 0
+                ? Number(reg.valor_integral)
+                : valorIntegral;
             const vFinalReg = reg.valor !== undefined ? Number(reg.valor) : vIntegralReg;
             const descReg = reg.desconto_percentual !== undefined
                 ? Number(reg.desconto_percentual)
@@ -3753,57 +4557,88 @@ function obterParcelaDoMes(aluno, mesRef) {
     };
 }
 
-// Recalcula o sugestivo quando o financeiro muda a data no modal (mantendo editável)
+// Recalcula ao mudar a data no modal, respeitando a trava "Manter 23% OFF" caso ativada
 function recalcularSugestaoPorDataModal() {
     const alunoId = document.getElementById('pendencia_aluno_id')?.value;
     const competencia = document.getElementById('pendencia_competencia')?.value;
     const dataPgtoIso = document.getElementById('input-data-pagamento')?.value;
     const inputValor = document.getElementById('input-valor-pago');
-    const elBadge = document.getElementById('badge-regra-modal');
+    const chkManterDesconto = document.getElementById('chk-manter-desconto-modal');
 
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
     const dtRef = dataPgtoIso ? parseDataIsoLocal(dataPgtoIso) : new Date();
     const calc = calcularValorComPontualidadeAdmin(valorIntegral, competencia, dtRef);
 
-    if (inputValor) {
-        inputValor.value = calc.valorFinal.toFixed(2);
+    // Se a data informada for até o dia 05, marca automaticamente a preservação do desconto
+    if (calc.descontoPct > 0 && chkManterDesconto) {
+        chkManterDesconto.checked = true;
     }
-    if (elBadge) {
-        elBadge.innerHTML = calc.descontoPct > 0
-            ? `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">23% OFF (Pgto até dia 05)</span>`
-            : `<span class="inline-block bg-amber-100 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Integral (Após dia 05)</span>`;
+
+    if (chkManterDesconto && chkManterDesconto.checked) {
+        const valorComDesc = Math.round(valorIntegral * 0.77 * 100) / 100;
+        if (inputValor) inputValor.value = valorComDesc.toFixed(2);
+    } else {
+        if (inputValor) inputValor.value = calc.valorFinal.toFixed(2);
+    }
+
+    atualizarBadgeValorManual();
+}
+
+function toggleManterDescontoModal() {
+    const chk = document.getElementById('chk-manter-desconto-modal');
+    if (chk && chk.checked) {
+        aplicarAtalhoValorModal(0.77, true);
+    } else {
+        recalcularSugestaoPorDataModal();
     }
 }
 
 function atualizarBadgeValorManual() {
     const alunoId = document.getElementById('pendencia_aluno_id')?.value;
+    const competencia = document.getElementById('pendencia_competencia')?.value;
+    const dataPgtoIso = document.getElementById('input-data-pagamento')?.value;
     const inputValor = document.getElementById('input-valor-pago');
     const elBadge = document.getElementById('badge-regra-modal');
+    const chkManterDesconto = document.getElementById('chk-manter-desconto-modal');
     if (!inputValor || !elBadge) return;
 
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
     const valorDigitado = parseFloat(inputValor.value) || 0;
+    const dtRef = dataPgtoIso ? parseDataIsoLocal(dataPgtoIso) : new Date();
+    const calcRegra = calcularValorComPontualidadeAdmin(valorIntegral, competencia, dtRef);
 
     if (valorIntegral > 0 && valorDigitado < valorIntegral) {
         const pct = Math.round(((valorIntegral - valorDigitado) / valorIntegral) * 100);
-        elBadge.innerHTML = `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Desconto (${pct}% OFF)</span>`;
+        if (chkManterDesconto && pct === 23) chkManterDesconto.checked = true;
+
+        const origem = calcRegra.eleganteDesconto
+            ? `Pontualidade (${pct}% OFF)`
+            : `Promoção Admin (${pct}% OFF)`;
+        elBadge.innerHTML = `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">${origem}</span>`;
     } else if (valorDigitado > valorIntegral && valorIntegral > 0) {
+        if (chkManterDesconto) chkManterDesconto.checked = false;
         elBadge.innerHTML = `<span class="inline-block bg-rose-100 text-rose-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Com Acréscimo / Juros</span>`;
     } else {
+        if (chkManterDesconto) chkManterDesconto.checked = false;
         elBadge.innerHTML = `<span class="inline-block bg-gray-200 text-gray-700 text-[9px] font-black px-2 py-0.5 rounded uppercase">Valor Integral</span>`;
     }
 }
 
-function aplicarAtalhoValorModal(fator) {
+function aplicarAtalhoValorModal(fator, manterCheck = false) {
     const alunoId = document.getElementById('pendencia_aluno_id')?.value;
     const inputValor = document.getElementById('input-valor-pago');
+    const chkManterDesconto = document.getElementById('chk-manter-desconto-modal');
     if (!inputValor) return;
 
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
     inputValor.value = (Math.round(valorIntegral * fator * 100) / 100).toFixed(2);
+
+    if (chkManterDesconto) {
+        chkManterDesconto.checked = fator < 1 || manterCheck;
+    }
     atualizarBadgeValorManual();
 }
 
@@ -3814,9 +4649,13 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const parcela = obterParcelaDoMes(alunoObj, competencia);
     const hojeIso = new Date().toISOString().slice(0, 10);
+
+    // Se a parcela já estava paga ou com valor customizado, mantém exatamente o valor e a data salvos
     const dataInicialModal = parcela.data_pagamento_iso || hojeIso;
-    const valorInicialModal = (parcela.valor !== undefined ? Number(parcela.valor) : calcularValorMensalidadeAluno(alunoObj)).toFixed(2);
-    const vIntegralFmt = (parcela.valor_integral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const valorBaseCurso = calcularValorMensalidadeAluno(alunoObj);
+    const valorInicialModal = (parcela.valor !== undefined ? Number(parcela.valor) : valorBaseCurso).toFixed(2);
+    const vIntegralFmt = (parcela.valor_integral || valorBaseCurso || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const jaTemDesconto = Number(valorInicialModal) < Number(parcela.valor_integral || valorBaseCurso || 0);
 
     const htmlModal = `
     <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
@@ -3849,15 +4688,20 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
                         <input type="number" step="0.01" min="0" id="input-valor-pago" value="${valorInicialModal}" oninput="atualizarBadgeValorManual()" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-base font-black text-gray-900 bg-white focus:outline-teal-500">
                         <div id="badge-regra-modal" class="shrink-0 text-right"></div>
                     </div>
+
+                    <label class="mt-2.5 flex items-center gap-2 cursor-pointer select-none bg-teal-50/70 border border-teal-100 px-2.5 py-1.5 rounded-lg">
+                        <input type="checkbox" id="chk-manter-desconto-modal" ${jaTemDesconto ? 'checked' : ''} onchange="toggleManterDescontoModal()" class="rounded text-teal-600 focus:ring-teal-500">
+                        <span class="text-[10px] font-bold text-teal-800">Manter desconto de 23% OFF (mesmo se a baixa for lançada após dia 05)</span>
+                    </label>
+
                     <div class="flex items-center gap-2 mt-2">
-                        <button type="button" onclick="aplicarAtalhoValorModal(0.77)" class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-[10px] font-black uppercase hover:bg-teal-100 transition">
+                        <button type="button" onclick="aplicarAtalhoValorModal(0.77, true)" class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-[10px] font-black uppercase hover:bg-teal-100 transition">
                             Aplicar 23% OFF
                         </button>
-                        <button type="button" onclick="aplicarAtalhoValorModal(1.0)" class="px-2.5 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-black uppercase hover:bg-gray-200 transition">
+                        <button type="button" onclick="aplicarAtalhoValorModal(1.0, false)" class="px-2.5 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-black uppercase hover:bg-gray-200 transition">
                             Valor Integral
                         </button>
                     </div>
-                    <p class="text-[9px] text-gray-400 mt-1.5">Alterar a data recalcula a regra do dia 05, use os atalhos ou digite livremente o valor negociado.</p>
                 </div>
 
                 <div>
@@ -3896,6 +4740,7 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
     atualizarBadgeValorManual();
     if (typeof feather !== 'undefined') feather.replace();
 }
+
 
 async function salvarPendenciaAluno(e) {
     e.preventDefault();
@@ -4042,6 +4887,359 @@ function calcularValorMensalidadeAluno(aluno, listaCursos = cursosGlobais) {
 
     return valSalvo || 0;
 }
+
+
+// ==========================================
+// IMPLANTAÇÃO DE ALUNO ANTIGO (ACERVO LEGADO)
+// ==========================================
+async function abrirModalAcervoLegado() {
+    if (!cursosGlobais || cursosGlobais.length === 0) {
+        await loadCursos();
+    }
+
+    const selectCurso = document.getElementById('legado-curso');
+    let opts = '<option value="">Selecione o curso...</option>';
+    cursosGlobais.forEach(c => {
+        opts += `<option value="${c.id}">${c.nome_curso || c.codigo}</option>`;
+    });
+    selectCurso.innerHTML = opts;
+
+    document.getElementById('form-acervo-legado').reset();
+    document.getElementById('box-legado-trancamento').classList.add('hidden');
+    document.getElementById('tbody-parcelas-legado').innerHTML =
+        '<tr><td colspan="6" class="py-6 text-center text-gray-400">Selecione o Curso e a Data de Ingresso para gerar as parcelas.</td></tr>';
+    document.getElementById('tbody-notas-legado').innerHTML =
+        '<tr><td colspan="7" class="py-6 text-center text-gray-400">Selecione um curso acima para carregar a grade curricular.</td></tr>';
+
+    const modal = document.getElementById('modal-acervo-legado');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function fecharModalAcervoLegado() {
+    const modal = document.getElementById('modal-acervo-legado');
+    if (!modal) return;
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function toggleDataTrancamentoLegado() {
+    const status = document.getElementById('legado-status').value;
+    const box = document.getElementById('box-legado-trancamento');
+    if (status === 'Trancado') box.classList.remove('hidden');
+    else box.classList.add('hidden');
+}
+
+function aoMudarCursoOuDataLegado() {
+    const cursoId = document.getElementById('legado-curso').value;
+    const dataMatStr = document.getElementById('legado-data-matricula').value;
+
+    if (cursoId) {
+        carregarDisciplinasLegado(cursoId);
+    }
+    if (cursoId && dataMatStr) {
+        gerarParcelasHistoricasLegado(cursoId, dataMatStr);
+    }
+}
+
+function gerarParcelasHistoricasLegado(cursoId, dataMatStr) {
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    const valorIntegral = parseFloat(curso?.valor_mensalidade || 0);
+    const dtInicio = parseDataIsoLocal(dataMatStr);
+    if (!dtInicio) return;
+
+    const compInicio = obterCompetenciaInicialCiclo(dtInicio);
+    const hoje = new Date();
+    const compFim = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    const tbody = document.getElementById('tbody-parcelas-legado');
+    tbody.innerHTML = '';
+
+    let [ano, mes] = compInicio.split('-').map(Number);
+    const [anoFim, mesFim] = compFim.split('-').map(Number);
+
+    let geradas = 0;
+    while ((ano < anoFim || (ano === anoFim && mes <= mesFim)) && geradas < 60) {
+        const comp = `${ano}-${String(mes).padStart(2, '0')}`;
+        const isMesAtual = comp === compFim;
+        const statusPadrao = isMesAtual ? 'Pendente' : 'Pago';
+        const dataPgtoSugerida = `${comp}-05`;
+        const calc = calcularValorComPontualidadeAdmin(valorIntegral, comp, parseDataIsoLocal(dataPgtoSugerida));
+
+        adicionarLinhaParcelaHtml({
+            competencia: comp,
+            status: statusPadrao,
+            valor: calc.valorFinal.toFixed(2),
+            data_pagamento: statusPadrao === 'Pago' ? dataPgtoSugerida : '',
+            numero_nf: ''
+        });
+
+        mes++;
+        if (mes > 12) {
+            mes = 1;
+            ano++;
+        }
+        geradas++;
+    }
+
+    if (geradas === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">Nenhuma parcela retroativa necessária (início no próximo mês).</td></tr>';
+    }
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function adicionarParcelaLegadoManual() {
+    const cursoId = document.getElementById('legado-curso').value;
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    const valorIntegral = parseFloat(curso?.valor_mensalidade || 0);
+    const hoje = new Date();
+    const compHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    const tbody = document.getElementById('tbody-parcelas-legado');
+    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+    adicionarLinhaParcelaHtml({
+        competencia: compHoje,
+        status: 'Pago',
+        valor: (valorIntegral * 0.77).toFixed(2),
+        data_pagamento: `${compHoje}-05`,
+        numero_nf: ''
+    });
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function adicionarLinhaParcelaHtml(p) {
+    const tbody = document.getElementById('tbody-parcelas-legado');
+    const tr = document.createElement('tr');
+    tr.className = 'linha-parcela-legado hover:bg-gray-50';
+    tr.innerHTML = `
+        <td class="py-2 px-3">
+            <input type="month" value="${p.competencia}" class="leg-parc-comp border border-gray-200 rounded px-2 py-1 text-xs font-bold text-teal-800">
+        </td>
+        <td class="py-2 px-3">
+            <select class="leg-parc-status border border-gray-200 rounded px-2 py-1 text-xs font-bold bg-white">
+                <option value="Pago" ${p.status === 'Pago' ? 'selected' : ''}>Pago</option>
+                <option value="Pendente" ${p.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+            </select>
+        </td>
+        <td class="py-2 px-3">
+            <input type="number" step="0.01" min="0" value="${p.valor}" class="leg-parc-valor w-24 border border-gray-200 rounded px-2 py-1 text-xs font-bold">
+        </td>
+        <td class="py-2 px-3">
+            <input type="date" value="${p.data_pagamento || ''}" class="leg-parc-data border border-gray-200 rounded px-2 py-1 text-xs">
+        </td>
+        <td class="py-2 px-3">
+            <input type="text" value="${p.numero_nf || ''}" placeholder="Opcional" class="leg-parc-nf w-28 border border-gray-200 rounded px-2 py-1 text-xs">
+        </td>
+        <td class="py-2 px-3 text-right">
+            <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
+                <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function marcarTodasParcelasLegado(novoStatus) {
+    document.querySelectorAll('.linha-parcela-legado').forEach(tr => {
+        const sel = tr.querySelector('.leg-parc-status');
+        const comp = tr.querySelector('.leg-parc-comp').value;
+        const dtInput = tr.querySelector('.leg-parc-data');
+        sel.value = novoStatus;
+        if (novoStatus === 'Pago' && !dtInput.value && comp) {
+            dtInput.value = `${comp}-05`;
+        }
+    });
+}
+
+function carregarDisciplinasLegado(cursoId) {
+    const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
+    const tbody = document.getElementById('tbody-notas-legado');
+    tbody.innerHTML = '';
+
+    let grade = [];
+    try {
+        const raw = curso?.disciplinas_json || curso?.grade_curricular || curso?.disciplinas || curso?.modulos || '[]';
+        grade = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {}
+
+    if (!grade || grade.length === 0) {
+        adicionarLinhaNotaLegado('');
+        return;
+    }
+
+    grade.forEach(mod => {
+        const nomeMod = mod.nome || mod.disciplina || '';
+        if (nomeMod) adicionarLinhaNotaLegado(nomeMod);
+    });
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function adicionarLinhaNotaLegado(nomeDisciplina = '') {
+    const tbody = document.getElementById('tbody-notas-legado');
+    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+    const tr = document.createElement('tr');
+    tr.className = 'linha-nota-legado hover:bg-gray-50';
+    tr.innerHTML = `
+        <td class="py-2 px-3">
+            <input type="text" value="${nomeDisciplina}" placeholder="Nome da Disciplina" class="leg-nota-disc w-full border border-gray-200 rounded px-2.5 py-1.5 text-xs font-bold text-gray-800">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" value="0" class="leg-nota-faltas w-16 text-center border border-gray-200 rounded py-1.5 text-xs">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="recalcularLinhaNotaLegado(this)" class="leg-nota-av1 w-20 text-center border border-gray-200 rounded py-1.5 text-xs font-bold">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="recalcularLinhaNotaLegado(this)" class="leg-nota-av2 w-20 text-center border border-gray-200 rounded py-1.5 text-xs font-bold">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="atualizarSituacaoPorMediaLegado(this)" class="leg-nota-media w-20 text-center border border-orange-200 bg-orange-50/50 rounded py-1.5 text-xs font-black text-gray-900">
+        </td>
+        <td class="py-2 px-3 text-center">
+            <select class="leg-nota-sit border border-gray-200 rounded px-2 py-1.5 text-xs font-bold bg-white">
+                <option value="">Não cursada</option>
+                <option value="Aprovado">Aprovado</option>
+                <option value="Recuperação">Recuperação</option>
+                <option value="Reprovado">Reprovado</option>
+            </select>
+        </td>
+        <td class="py-2 px-3 text-right">
+            <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
+                <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function recalcularLinhaNotaLegado(inputEl) {
+    const tr = inputEl.closest('tr');
+    const v1 = parseFloat(tr.querySelector('.leg-nota-av1').value);
+    const v2 = parseFloat(tr.querySelector('.leg-nota-av2').value);
+    const inputMedia = tr.querySelector('.leg-nota-media');
+
+    if (!isNaN(v1) && !isNaN(v2)) {
+        inputMedia.value = ((v1 + v2) / 2).toFixed(1);
+        atualizarSituacaoPorMediaLegado(inputMedia);
+    } else if (!isNaN(v1)) {
+        inputMedia.value = v1.toFixed(1);
+        atualizarSituacaoPorMediaLegado(inputMedia);
+    }
+}
+
+function atualizarSituacaoPorMediaLegado(inputMedia) {
+    const tr = inputMedia.closest('tr');
+    const selSit = tr.querySelector('.leg-nota-sit');
+    const m = parseFloat(inputMedia.value);
+    if (isNaN(m)) {
+        selSit.value = '';
+    } else {
+        selSit.value = m >= 8.0 ? 'Aprovado' : 'Recuperação';
+    }
+}
+
+async function salvarAlunoAcervoLegado(e) {
+    e.preventDefault();
+
+    const parcelas = [];
+    document.querySelectorAll('.linha-parcela-legado').forEach(tr => {
+        const comp = tr.querySelector('.leg-parc-comp').value;
+        const status = tr.querySelector('.leg-parc-status').value;
+        const valor = parseFloat(tr.querySelector('.leg-parc-valor').value) || 0;
+        const dataPgto = tr.querySelector('.leg-parc-data').value || null;
+        const nf = tr.querySelector('.leg-parc-nf').value.trim();
+        if (comp) {
+            parcelas.push({
+                competencia: comp,
+                status: status,
+                valor: valor,
+                data_pagamento: dataPgto,
+                numero_nf: nf
+            });
+        }
+    });
+
+    const notas = [];
+    document.querySelectorAll('.linha-nota-legado').forEach(tr => {
+        const disc = tr.querySelector('.leg-nota-disc').value.trim();
+        const faltas = parseInt(tr.querySelector('.leg-nota-faltas').value) || 0;
+        const av1Raw = tr.querySelector('.leg-nota-av1').value;
+        const av2Raw = tr.querySelector('.leg-nota-av2').value;
+        const mediaRaw = tr.querySelector('.leg-nota-media').value;
+        const sit = tr.querySelector('.leg-nota-sit').value;
+
+        const temAlgumLancamento = av1Raw !== '' || av2Raw !== '' || mediaRaw !== '' || sit !== '';
+        if (disc && temAlgumLancamento) {
+            const mapaNotas = {};
+            if (av1Raw !== '') {
+                mapaNotas['Primeira avaliação'] = parseFloat(av1Raw);
+                mapaNotas['AV1'] = parseFloat(av1Raw);
+            }
+            if (av2Raw !== '') {
+                mapaNotas['Segunda avaliação'] = parseFloat(av2Raw);
+                mapaNotas['AV2'] = parseFloat(av2Raw);
+            }
+            if (av1Raw === '' && av2Raw === '' && mediaRaw !== '') {
+                mapaNotas['Média Histórica'] = parseFloat(mediaRaw);
+            }
+
+            notas.push({
+                disciplina: disc,
+                faltas: faltas,
+                notas: mapaNotas,
+                media: mediaRaw !== '' ? parseFloat(mediaRaw) : null,
+                situacao: sit || null
+            });
+        }
+    });
+
+    const payload = {
+        nome: document.getElementById('legado-nome').value.trim(),
+        cpf: document.getElementById('legado-cpf').value.trim(),
+        email: document.getElementById('legado-email').value.trim(),
+        telefone: document.getElementById('legado-telefone').value.trim(),
+        endereco: document.getElementById('legado-endereco').value.trim(),
+        curso_id: document.getElementById('legado-curso').value,
+        data_nascimento: document.getElementById('legado-nascimento').value || null,
+        data_matricula: document.getElementById('legado-data-matricula').value,
+        status: document.getElementById('legado-status').value,
+        data_trancamento: document.getElementById('legado-data-trancamento').value || null,
+        forma_pagamento: document.getElementById('legado-forma-pgto').value,
+        parcelas_historicas: parcelas,
+        notas_historicas: notas
+    };
+
+    const btn = document.getElementById('btn-salvar-acervo-legado');
+    const htmlOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Implantando no Acervo...';
+
+    try {
+        const res = await apiRequest('/alunos/legado', 'POST', payload);
+        if (res && res.sucesso) {
+            alert(`${res.mensagem}\nMatrícula gerada: ${res.matricula}`);
+            fecharModalAcervoLegado();
+            await loadAlunos();
+        } else {
+            alert(typeof res?.detail === 'string' ? res.detail : JSON.stringify(res?.detail || 'Erro ao implantar aluno legado.'));
+        }
+    } catch (err) {
+        alert('Erro de comunicação ao implantar aluno.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = htmlOriginal;
+        if (typeof feather !== 'undefined') feather.replace();
+    }
+}
+
 
 // ==========================================
 // GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
