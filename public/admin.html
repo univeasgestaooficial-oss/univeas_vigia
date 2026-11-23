@@ -166,6 +166,9 @@
             <!-- ============================================== -->
             <div id="tela-dashboard" class="tela block">
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+                    <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> INDICADOR GERAL
+                        </h4>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                         <div>
                             <p class="text-[11px] font-bold tracking-wider text-gray-400 uppercase">Total Docentes</p>
@@ -195,6 +198,34 @@
                         <div class="p-3 bg-red-50 text-red-500 rounded-xl"><i data-feather="trending-down" class="h-6 w-6"></i></div>
                     </div>
                 </div>
+
+                <!-- CARDS DE INDICADORES DO PERÍODO SELECIONADO -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <h4 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
+                            <span class="w-1 h-5 bg-teal-500 rounded mr-2 inline-block"></span> INDICADOR FINANCEIRO
+                        </h4>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Total Recebido</p>
+                            <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-total-recebido">R$ 0,00</h3>
+                            <p class="text-xs text-green-500 font-medium flex items-center"><i data-feather="check-circle" class="w-3 h-3 mr-1"></i> Mensalidades pagas</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">A Receber</p>
+                            <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-total-receber">R$ 0,00</h3>
+                            <p class="text-xs text-blue-500 font-medium flex items-center"><i data-feather="clock" class="w-3 h-3 mr-1"></i> Mensalidades pendentes</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
+                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Inadimplência</p>
+                            <h3 class="text-2xl font-black text-red-500 my-2" id="fin-inadimplencia">0</h3>
+                            <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades em aberto</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos Confirmados</p>
+                            <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-pagamentos-mes">0</h3>
+                            <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Parcelas quitadas</p>
+                        </div>
+                    </div>
 
                 <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -815,31 +846,6 @@
             <!-- ============================================== -->
             <div id="tela-financeiro" class="tela hidden">
                 <div class="flex flex-col space-y-6 md:space-y-8 max-w-6xl mx-auto pb-8">
-
-                    <!-- CARDS DE INDICADORES DO PERÍODO SELECIONADO -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Total Recebido</p>
-                            <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-total-recebido">R$ 0,00</h3>
-                            <p class="text-xs text-green-500 font-medium flex items-center"><i data-feather="check-circle" class="w-3 h-3 mr-1"></i> Mensalidades pagas</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">A Receber</p>
-                            <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-total-receber">R$ 0,00</h3>
-                            <p class="text-xs text-blue-500 font-medium flex items-center"><i data-feather="clock" class="w-3 h-3 mr-1"></i> Mensalidades pendentes</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
-                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Inadimplência</p>
-                            <h3 class="text-2xl font-black text-red-500 my-2" id="fin-inadimplencia">0</h3>
-                            <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades em aberto</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos Confirmados</p>
-                            <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-pagamentos-mes">0</h3>
-                            <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Parcelas quitadas</p>
-                        </div>
-                    </div>
 
                     <!-- CONSOLIDAÇÃO SEMESTRAL (1º SEMESTRE vs 2º SEMESTRE DO ANO) -->
                     <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
