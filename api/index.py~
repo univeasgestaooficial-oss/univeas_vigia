@@ -550,6 +550,7 @@ async def matricular_aluno(
         curso_id: str = Form(None),
         cursos_json: str = Form("[]"),
         data_nascimento: str = Form(None),
+        data_matricula: str = Form(None),
         dia_vencimento: str = Form(None),
         forma_pagamento: str = Form(None),
         pcd: str = Form(None),
@@ -559,7 +560,10 @@ async def matricular_aluno(
         detalhes_pendencia_financeira: str = Form("")
 ):
     checar_db()
-    matricula_gerada = f"#{datetime.now().strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
+    agora = datetime.now()
+    dt_mat = _parse_data_pagamento_para_dt(data_matricula) or agora
+
+    matricula_gerada = f"#{dt_mat.strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
 
     try:
         lista_cursos = json.loads(cursos_json)
@@ -570,15 +574,14 @@ async def matricular_aluno(
     if not lista_cursos and curso_principal:
         lista_cursos = [{"curso_id": curso_principal}]
 
-    agora = datetime.now()
     status_final = status or "Ativo"
     is_pendente = (status_final == "Pendente") or (possui_pendencia_financeira == "Sim")
-    mes_ref = _obter_competencia_inicio_aluno({"data_cadastro": agora.isoformat()})
+    mes_ref = _obter_competencia_inicio_aluno({"data_matricula": dt_mat.strftime("%Y-%m-%d")})
 
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
     temp_aluno = {"curso_id": curso_principal, "cursos_json": lista_cursos}
     valor_integral = calcular_valor_mensal_aluno(temp_aluno, cursos_map)
-    calc_inicial = calcular_valor_com_pontualidade(valor_integral, mes_ref, agora)
+    calc_inicial = calcular_valor_com_pontualidade(valor_integral, mes_ref, dt_mat)
 
     status_parcela_inicial = "Pendente" if is_pendente else "Pago"
     mapa_inicial = {
@@ -618,8 +621,8 @@ async def matricular_aluno(
         "numero_nf": "",
         "status_comprovante": "Pendente" if tem_pendencia_imediata else "Aprovado",
         "mensalidades_json": json.dumps(mapa_inicial, ensure_ascii=False),
-        "data_matricula": agora.strftime("%Y-%m-%d"),
-        "data_cadastro": agora.isoformat()
+        "data_matricula": dt_mat.strftime("%Y-%m-%d"),
+        "data_cadastro": dt_mat.isoformat()
     }
 
     _, doc_ref = db.collection("alunos").add(novo_aluno)
@@ -707,6 +710,154 @@ async def alterar_aluno(
 
     return {"sucesso": True, "mensagem": "Aluno atualizado com sucesso"}
 
+
+class ParcelaLegadoItem(BaseModel):
+    competencia: str  # Ex: "2025-03"
+    status: str = "Pago"
+    valor: float
+    data_pagamento: Optional[str] = None
+    numero_nf: Optional[str] = ""
+
+
+class NotaLegadoItem(BaseModel):
+    disciplina: str
+    faltas: int = 0
+    notas: dict = {}  # Ex: {"AV1": 8.5, "AV2": 9.0} ou {"Média Final": 8.5}
+    media: Optional[float] = None
+    situacao: Optional[str] = None
+
+
+class AlunoLegadoPayload(BaseModel):
+    nome: str
+    cpf: str
+    email: str
+    telefone: str
+    endereco: str
+    curso_id: str
+    data_nascimento: Optional[str] = None
+    data_matricula: str  # Aceita YYYY-MM-DD ou DD/MM/YYYY
+    status: str = "Ativo"  # "Ativo", "Concluído" ou "Trancado"
+    data_trancamento: Optional[str] = None
+    forma_pagamento: str = "PIX"
+    parcelas_historicas: List[ParcelaLegadoItem] = []
+    notas_historicas: List[NotaLegadoItem] = []
+
+
+@app.post("/api/v1/alunos/legado")
+async def cadastrar_aluno_legado(payload: AlunoLegadoPayload):
+    checar_db()
+    dt_mat = _parse_data_pagamento_para_dt(payload.data_matricula)
+    if not dt_mat:
+        raise HTTPException(status_code=400, detail="Data de matrícula inválida. Use AAAA-MM-DD ou DD/MM/AAAA.")
+
+    data_mat_iso = dt_mat.strftime("%Y-%m-%d")
+    matricula_gerada = f"#{dt_mat.strftime('%Y%m')}{str(uuid.uuid4().int)[:4]}"
+
+    cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
+    curso_obj = cursos_map.get(payload.curso_id)
+    if not curso_obj:
+        raise HTTPException(status_code=404, detail="Curso informado não encontrado.")
+
+    v_int = calcular_valor_mensal_aluno({"curso_id": payload.curso_id}, cursos_map)
+    mapa_mensalidades = {}
+    agora_iso = datetime.now().isoformat()
+
+    for p in payload.parcelas_historicas:
+        dt_pag = _parse_data_pagamento_para_dt(p.data_pagamento) or dt_mat
+        data_pag_iso = dt_pag.strftime("%Y-%m-%d")
+        data_pag_br = dt_pag.strftime("%d/%m/%Y")
+        desconto_pct = round(((v_int - p.valor) / v_int) * 100) if (v_int > 0 and p.valor < v_int) else 0
+
+        mapa_mensalidades[p.competencia] = {
+            "competencia": p.competencia,
+            "status": p.status,
+            "valor_integral": v_int,
+            "valor": round(float(p.valor), 2),
+            "valor_manual": True,
+            "desconto_percentual": max(0, desconto_pct),
+            "numero_nf": p.numero_nf or "",
+            "data_pagamento": data_pag_br if p.status == "Pago" else "",
+            "data_pagamento_iso": data_pag_iso if p.status == "Pago" else "",
+            "atualizado_em": agora_iso
+        }
+
+    mes_atual = datetime.now().strftime("%Y-%m")
+    pendentes_atuais = [
+        v for v in mapa_mensalidades.values()
+        if v.get("status") == "Pendente" and str(v.get("competencia", "")) <= mes_atual
+    ]
+    tem_pendencia = len(pendentes_atuais) > 0
+
+    dt_tranc = _parse_data_pagamento_para_dt(payload.data_trancamento)
+    data_tranc_iso = dt_tranc.strftime("%Y-%m-%d") if dt_tranc else (
+        datetime.now().strftime("%Y-%m-%d") if payload.status == "Trancado" else ""
+    )
+
+    novo_aluno = {
+        "matricula": matricula_gerada,
+        "cpf": payload.cpf,
+        "nome": payload.nome,
+        "email": payload.email,
+        "telefone": payload.telefone,
+        "endereco": payload.endereco,
+        "curso": payload.curso_id,
+        "curso_id": payload.curso_id,
+        "cursos_json": [{"curso_id": payload.curso_id}],
+        "data_nascimento": payload.data_nascimento,
+        "dia_vencimento": "05",
+        "forma_pagamento": payload.forma_pagamento,
+        "status": payload.status,
+        "data_trancamento": data_tranc_iso,
+        "possui_pendencia_financeira": "Sim" if tem_pendencia else "Não",
+        "detalhes_pendencia_financeira": f"Pendência de acervo ({pendentes_atuais[0]['competencia']})" if tem_pendencia else "",
+        "status_comprovante": "Pendente" if tem_pendencia else "Aprovado",
+        "mensalidades_json": json.dumps(mapa_mensalidades, ensure_ascii=False),
+        "data_matricula": data_mat_iso,
+        "data_cadastro": dt_mat.isoformat(),
+        "registro_legado": True
+    }
+
+    _, doc_ref = db.collection("alunos").add(novo_aluno)
+    aluno_id = doc_ref.id
+
+    for comp, dados_p in mapa_mensalidades.items():
+        db.collection("mensalidades").document(f"{aluno_id}__{comp}").set({
+            "aluno_id": aluno_id,
+            **dados_p
+        }, merge=True)
+
+    for n in payload.notas_historicas:
+        if n.media is not None:
+            media_final = round(float(n.media), 1)
+            sit_final = n.situacao or ("Aprovado" if media_final >= 8.0 else "Recuperação")
+        else:
+            media_calc, sit_calc = _calcular_media_backend(n.notas, [])
+            media_final = media_calc
+            sit_final = n.situacao or sit_calc
+
+        doc_id = f"LEGADO__{payload.curso_id}__{n.disciplina.strip().upper()}__{aluno_id}".replace("/", "-")
+        db.collection("diarios").document(doc_id).set({
+            "docente_id": "ACERVO_HISTORICO",
+            "turma_id": f"{payload.curso_id}_{n.disciplina.strip()}",
+            "data_aula": data_mat_iso,
+            "conteudo_ministrado": "Implantação de Acervo Histórico - Secretaria Acadêmica",
+            "origem": "Admin",
+            "avaliacoes": [{
+                "aluno_id": str(aluno_id),
+                "faltas": int(n.faltas or 0),
+                "notas": n.notas,
+                "media": media_final,
+                "situacao": sit_final
+            }],
+            "data_registro": agora_iso
+        })
+
+    return {
+        "sucesso": True,
+        "id": aluno_id,
+        "matricula": matricula_gerada,
+        "mensagem": "Aluno legado e histórico implantados com sucesso!"
+    }
 
 @app.delete("/api/v1/alunos/{aluno_id}")
 async def excluir_aluno(aluno_id: str):
@@ -2015,7 +2166,7 @@ async def listar_diario_consolidado_admin(
             aid = str(lanc.get("aluno_id"))
             chave = (aid, c_id, disc_key)
             if chave not in agregado:
-                agregado[chave] = {"faltas": 0, "notas": {}}
+                agregado[chave] = {"faltas": 0, "notas": {}, "media_salva": None, "situacao_salva": None}
             agregado[chave]["faltas"] += int(lanc.get("faltas", 0))
             for rem in lanc.get("notas_removidas", []):
                 agregado[chave]["notas"].pop(rem, None)
@@ -2024,10 +2175,14 @@ async def listar_diario_consolidado_admin(
                     agregado[chave]["notas"].pop(k, None)
                 else:
                     agregado[chave]["notas"][k] = float(v)
+            if lanc.get("media") is not None:
+                agregado[chave]["media_salva"] = float(lanc.get("media"))
+            if lanc.get("situacao"):
+                agregado[chave]["situacao_salva"] = lanc.get("situacao")
 
     resultado = []
     for a in alunos:
-        if a.get("status") in ["Trancado", "Concluído", "Cancelado"]:
+        if a.get("status") in ["Cancelado"]:
             continue
 
         ids_cursos = set()
@@ -2078,12 +2233,15 @@ async def listar_diario_consolidado_admin(
                         for av in avals_raw
                     }
                     media_calc, sit_calc = _calcular_media_backend(dados_lanc["notas"], avals_raw)
+                    media_final = dados_lanc.get("media_salva") if dados_lanc.get("media_salva") is not None else media_calc
+                    sit_final = dados_lanc.get("situacao_salva") or sit_calc
 
                     resultado.append({
                         "aluno_id": a["id"],
                         "nome": a.get("nome", "Aluno"),
                         "nome_aluno": a.get("nome", "Aluno"),
                         "matricula": a.get("matricula", "S/N"),
+                        "status_aluno": a.get("status", "Ativo"),
                         "curso_id": cid,
                         "nome_curso": nome_curso,
                         "disciplina": nome_disc,
@@ -2093,14 +2251,11 @@ async def listar_diario_consolidado_admin(
                         "pesos_avaliacoes": pesos_map,
                         "faltas": dados_lanc["faltas"],
                         "notas": dados_lanc["notas"],
-                        "media": media_calc,
-                        "situacao": sit_calc
+                        "media": media_final,
+                        "situacao": sit_final
                     })
 
     return resultado
-
-
-
 
 @app.post("/api/v1/diario/salvar")
 async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
