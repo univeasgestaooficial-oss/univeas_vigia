@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import uuid
 from datetime import datetime
@@ -57,23 +56,18 @@ class PerfilDocentePayload(BaseModel):
 
 class TurmaConfigPayload(BaseModel):
     turma_id: str
-    curso_id: Optional[str] = None
-    nome_modulo: Optional[str] = None
-    data_inicio: Optional[str] = None
-    data_fim: Optional[str] = None
-    ementa: Optional[str] = None
+    data_inicio: str = None
+    data_fim: str = None
+    ementa: str = None
     ch_teoria: int = 0
     ch_pratica: int = 0
-    ch_es: Optional[int] = None
     ch_estagio: int = 0
     ch_total: int = 0
     dias_aula: List[str] = []
-    hora_inicio: Optional[str] = None
-    hora_fim: Optional[str] = None
-    hora_aula_inicio: Optional[str] = None
-    hora_aula_fim: Optional[str] = None
+    hora_inicio: str = None
+    hora_fim: str = None
     avaliacoes: List[dict] = []
-    justificativa: Optional[str] = None
+    justificativa: str = None
 
 
 class MaterialPayload(BaseModel):
@@ -345,6 +339,7 @@ def obter_mapa_mensalidades_unificado(
             else:
                 parcela["elegivel_desconto"] = float(parcela["valor"]) < v_int
         else:
+            # Se já está Pago, mantém o valor gravado; só calcula se estiver zerado/vazio
             if not eh_manual and (parcela.get("valor") is None or float(parcela.get("valor")) <= 0):
                 dt_pag = _parse_data_pagamento_para_dt(
                     parcela.get("data_pagamento_iso") or parcela.get("data_pagamento")
@@ -362,7 +357,7 @@ def obter_mapa_mensalidades_unificado(
 
 
 def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
-    """Mantém documento do aluno e a coleção 'mensalidades' 100% espelhados, sem marcar parcelas futuras como atraso."""
+    """Mantém  documento do aluno e a coleção 'mensalidades' 100% espelhados, sem marcar parcelas futuras como atraso."""
     aluno_ref = db.collection("alunos").document(str(aluno_id))
     snap = aluno_ref.get()
     if not snap.exists:
@@ -395,7 +390,6 @@ def sincronizar_estado_aluno(aluno_id: str, mapa_mensalidades: dict):
         "mensalidades_json": json.dumps(mapa_mensalidades, ensure_ascii=False),
         "data_atualizacao_financeira": datetime.now().isoformat()
     })
-
 
 def _obter_competencia_inicio_aluno(aluno_dict: dict, mapa_mensalidades: Optional[dict] = None) -> str:
     """Calcula a competência inicial do ciclo respeitando o corte do dia 05 e histórico já gravado."""
@@ -466,7 +460,6 @@ def _aluno_elegivel_no_mes_financeiro(aluno_dict: dict, mes_alvo: str, mapa_mens
             return False
 
     return True
-
 
 # ==========================================
 # 2.5 AUTENTICAÇÃO DO ADMINISTRADOR
@@ -545,7 +538,6 @@ async def listar_alunos():
     docs = db.collection("alunos").stream()
     alunos = [{"id": doc.id, **doc.to_dict()} for doc in docs]
     return alunos
-
 
 @app.post("/api/v1/alunos/matricular")
 async def matricular_aluno(
@@ -653,7 +645,6 @@ async def matricular_aluno(
         "mensagem": "Aluno matriculado com sucesso!"
     }
 
-
 @app.put("/api/v1/alunos/{aluno_id}")
 async def alterar_aluno(
         aluno_id: str,
@@ -707,7 +698,7 @@ async def alterar_aluno(
     aluno_anterior = ref.get().to_dict() or {}
     if status == "Trancado":
         dados_atualizados["data_trancamento"] = (
-            aluno_anterior.get("data_trancamento") or datetime.now().strftime("%Y-%m-%d")
+                aluno_anterior.get("data_trancamento") or datetime.now().strftime("%Y-%m-%d")
         )
     elif status in ["Ativo", "Pendente"]:
         dados_atualizados["data_trancamento"] = ""
@@ -731,7 +722,7 @@ class ParcelaLegadoItem(BaseModel):
 class NotaLegadoItem(BaseModel):
     disciplina: str
     faltas: int = 0
-    notas: dict = {}
+    notas: dict = {}  # Ex: {"AV1": 8.5, "AV2": 9.0} ou {"Média Final": 8.5}
     media: Optional[float] = None
     situacao: Optional[str] = None
 
@@ -744,8 +735,8 @@ class AlunoLegadoPayload(BaseModel):
     endereco: str
     curso_id: str
     data_nascimento: Optional[str] = None
-    data_matricula: str
-    status: str = "Ativo"
+    data_matricula: str  # Aceita YYYY-MM-DD ou DD/MM/YYYY
+    status: str = "Ativo"  # "Ativo", "Concluído" ou "Trancado"
     data_trancamento: Optional[str] = None
     forma_pagamento: str = "PIX"
     parcelas_historicas: List[ParcelaLegadoItem] = []
@@ -867,7 +858,6 @@ async def cadastrar_aluno_legado(payload: AlunoLegadoPayload):
         "matricula": matricula_gerada,
         "mensagem": "Aluno legado e histórico implantados com sucesso!"
     }
-
 
 @app.delete("/api/v1/alunos/{aluno_id}")
 async def excluir_aluno(aluno_id: str):
@@ -1171,7 +1161,7 @@ async def gerar_pdf_curso(curso_id: str):
                         continue
                     t = int(disc.get('ch_teoria', 0) or 0)
                     p = int(disc.get('ch_pratica', 0) or 0)
-                    es = int(disc.get('ch_es', 0) or disc.get('ch_estagio', 0) or 0)
+                    es = int(disc.get('ch_es', 0) or 0)
                     tot = t + p + es
 
                     t_mod += t
@@ -1287,7 +1277,6 @@ async def listar_mensalidades(competencia: Optional[str] = None):
 
     return {"lista": lista_unificada}
 
-
 @app.get("/api/v1/financeiro/indicadores")
 async def obter_indicadores_financeiros(competencia: Optional[str] = None):
     checar_db()
@@ -1327,7 +1316,6 @@ async def obter_indicadores_financeiros(competencia: Optional[str] = None):
         "pagamentos_mes": pagamentos_mes_qtd
     }
 
-
 @app.get("/api/v1/financeiro/parcelas/{aluno_id}")
 def listar_parcelas_aluno(aluno_id: str):
     checar_db()
@@ -1357,7 +1345,8 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
     dt_ref = _parse_data_pagamento_para_dt(payload.data_pagamento) or datetime.now()
     calc = calcular_valor_com_pontualidade(v_int, comp, dt_ref)
 
-    valor_gravar = float(payload.valor) if payload.valor is not None and float(payload.valor) >= 0 else calc["valor_final"]
+    valor_gravar = float(payload.valor) if payload.valor is not None and float(payload.valor) >= 0 else calc[
+        "valor_final"]
     eh_manual = round(valor_gravar, 2) not in [round(calc["valor_final"], 2), round(v_int, 2)]
 
     dados = {
@@ -1368,7 +1357,8 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
         "valor_integral": v_int,
         "valor": valor_gravar,
         "valor_manual": eh_manual,
-        "desconto_percentual": round(((v_int - valor_gravar) / v_int) * 100) if (v_int > 0 and valor_gravar < v_int) else 0,
+        "desconto_percentual": round(((v_int - valor_gravar) / v_int) * 100) if (
+                    v_int > 0 and valor_gravar < v_int) else 0,
         "status": payload.status,
         "numero_nf": payload.numero_nf or "",
         "data_pagamento": payload.data_pagamento or (
@@ -1522,11 +1512,11 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
     m_snap = m_ref.get()
     agora = datetime.now()
     agora_iso = agora.isoformat()
-    m_dados = m_snap.to_dict() if m_snap.exists else {}
 
     if m_snap.exists:
+        m_dados = m_snap.to_dict()
         aluno_id = str(m_dados.get("aluno_id", ""))
-        comp = m_dados.get("competencia") or agora.strftime("%Y-%m")
+        comp = m_dados.get("competencia") or datetime.now().strftime("%Y-%m")
     elif "__" in mensalidade_id:
         aluno_id, comp = mensalidade_id.split("__", 1)
     else:
@@ -1537,26 +1527,16 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
     cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
 
     v_int = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
-    eh_manual = bool(m_dados.get("valor_manual", False))
-
-    if eh_manual and float(m_dados.get("valor") or 0) > 0:
-        valor_final = float(m_dados["valor"])
-        desconto_pct = int(m_dados.get("desconto_percentual") or (round(((v_int - valor_final) / v_int) * 100) if v_int > 0 and valor_final < v_int else 0))
-    else:
-        calc = calcular_valor_com_pontualidade(v_int, comp, agora)
-        valor_final = calc["valor_final"]
-        desconto_pct = calc["desconto_percentual"]
+    calc = calcular_valor_com_pontualidade(v_int, comp, agora)
 
     dados_baixa = {
         "aluno_id": aluno_id,
         "competencia": comp,
         "status": "Pago",
-        "valor_integral": v_int,
-        "valor": valor_final,
-        "valor_manual": eh_manual,
-        "desconto_percentual": desconto_pct,
-        "data_pagamento": agora.strftime("%d/%m/%Y"),
-        "data_pagamento_iso": agora.strftime("%Y-%m-%d"),
+        "valor_integral": calc["valor_integral"],
+        "valor": calc["valor_final"],
+        "desconto_percentual": calc["desconto_percentual"],
+        "data_pagamento": agora.strftime("%Y-%m-%d"),
         "atualizado_em": agora_iso
     }
     m_ref.set(dados_baixa, merge=True)
@@ -1567,12 +1547,7 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
         mapa[comp] = {**mapa.get(comp, {}), **dados_baixa}
         sincronizar_estado_aluno(aluno_id, mapa)
 
-    return {
-        "sucesso": True,
-        "mensagem": "Baixa realizada com sucesso.",
-        "valor_cobrado": valor_final,
-        "desconto_percentual": desconto_pct
-    }
+    return {"sucesso": True, "mensagem": "Baixa realizada com sucesso.", "valor_cobrado": calc["valor_final"], "desconto_percentual": calc["desconto_percentual"]}
 
 
 @app.post("/api/v1/financeiro/auditar/{mensalidade_id}")
@@ -1583,11 +1558,11 @@ async def auditar_e_quitar_mensalidade(mensalidade_id: str, acao: str = Form(...
     agora_iso = agora.isoformat()
     m_ref = db.collection("mensalidades").document(mensalidade_id)
     m_snap = m_ref.get()
-    m_dados = m_snap.to_dict() if m_snap.exists else {}
 
     if m_snap.exists:
+        m_dados = m_snap.to_dict()
         aluno_id = str(m_dados.get("aluno_id", ""))
-        comp = m_dados.get("competencia") or agora.strftime("%Y-%m")
+        comp = m_dados.get("competencia") or datetime.now().strftime("%Y-%m")
     elif "__" in mensalidade_id:
         aluno_id, comp = mensalidade_id.split("__", 1)
     else:
@@ -1598,44 +1573,28 @@ async def auditar_e_quitar_mensalidade(mensalidade_id: str, acao: str = Form(...
     cursos_map = {d.id: d.to_dict() for d in db.collection("cursos").stream()}
 
     v_int = calcular_valor_mensal_aluno(aluno_dados, cursos_map)
-    eh_manual = bool(m_dados.get("valor_manual", False))
+    calc = calcular_valor_com_pontualidade(v_int, comp, agora)
 
-    dt_referencia = agora
-    comp_id = m_dados.get("comprovante_id")
-    if comp_id:
-        comp_snap = db.collection("comprovantes_pagamento").document(comp_id).get()
-        if comp_snap.exists:
-            dt_envio = _parse_data_pagamento_para_dt(comp_snap.to_dict().get("data_envio"))
-            if dt_envio:
-                dt_referencia = dt_envio
-
-    if eh_manual and float(m_dados.get("valor") or 0) > 0:
-        valor_final = float(m_dados["valor"])
-        desconto_pct = int(m_dados.get("desconto_percentual") or (round(((v_int - valor_final) / v_int) * 100) if v_int > 0 and valor_final < v_int else 0))
-    else:
-        calc = calcular_valor_com_pontualidade(v_int, comp, dt_referencia)
-        valor_final = calc["valor_final"]
-        desconto_pct = calc["desconto_percentual"]
-
-    dados_auditoria = {
+    m_ref.set({
         "aluno_id": aluno_id,
         "competencia": comp,
         "status": novo_status,
-        "valor_integral": v_int,
-        "valor": valor_final,
-        "valor_manual": eh_manual,
-        "desconto_percentual": desconto_pct,
-        "data_pagamento": dt_referencia.strftime("%d/%m/%Y") if acao == "aprovar" else "",
-        "data_pagamento_iso": dt_referencia.strftime("%Y-%m-%d") if acao == "aprovar" else "",
+        "valor_integral": calc["valor_integral"],
+        "valor": calc["valor_final"],
+        "desconto_percentual": calc["desconto_percentual"],
+        "data_pagamento": agora.strftime("%Y-%m-%d") if acao == "aprovar" else None,
         "atualizado_em": agora_iso
-    }
-    m_ref.set(dados_auditoria, merge=True)
+    }, merge=True)
 
     if aluno_doc.exists:
         mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", aluno_id).stream()]
         mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_dados, cursos_map, mens_docs)
-        if comp:
-            mapa[comp] = {**mapa.get(comp, {}), **dados_auditoria}
+        if comp and comp in mapa:
+            mapa[comp]["status"] = novo_status
+            mapa[comp]["valor_integral"] = calc["valor_integral"]
+            mapa[comp]["valor"] = calc["valor_final"]
+            mapa[comp]["desconto_percentual"] = calc["desconto_percentual"]
+            mapa[comp]["data_pagamento"] = agora.strftime("%Y-%m-%d") if acao == "aprovar" else None
         sincronizar_estado_aluno(aluno_id, mapa)
 
     return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
@@ -1787,7 +1746,6 @@ async def listar_turmas_docente(authorization: str = Header(None)):
 
         turmas_formatadas.append({
             "id": f"{c_id}_{mod_nome}",
-            "curso_id": c_id,
             "nome_disciplina": mod_nome,
             "curso_pai": nome_curso,
             "carga_horaria": ch_total,
@@ -1818,22 +1776,17 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
     grade = curso_dados.get("grade_curricular", [])
     modulo_atualizado = False
 
-    val_estagio = payload.ch_es if payload.ch_es is not None else payload.ch_estagio
-    val_hora_inicio = payload.hora_aula_inicio or payload.hora_inicio
-    val_hora_fim = payload.hora_aula_fim or payload.hora_fim
-
     def atualizar_obj(obj):
         obj["data_inicio"] = payload.data_inicio
         obj["data_fim"] = payload.data_fim
         obj["ementa"] = payload.ementa
         obj["ch_teoria"] = payload.ch_teoria
         obj["ch_pratica"] = payload.ch_pratica
-        obj["ch_es"] = val_estagio
-        obj["ch_estagio"] = val_estagio
+        obj["ch_estagio"] = payload.ch_estagio
         obj["ch_total"] = payload.ch_total
         obj["dias_aula"] = payload.dias_aula
-        obj["hora_aula_inicio"] = val_hora_inicio
-        obj["hora_aula_fim"] = val_hora_fim
+        obj['hora_aula_inicio'] = payload.hora_inicio
+        obj['hora_aula_fim'] = payload.hora_fim
         obj["avaliacoes"] = [av for av in payload.avaliacoes]
 
     for m in grade:
@@ -1878,7 +1831,6 @@ async def configurar_disciplina(payload: TurmaConfigPayload, authorization: str 
 
     return {"sucesso": True, "mensagem": mensagem_retorno}
 
-
 def _normalizar_turma_key(turma_id: str) -> str:
     if "_" in turma_id:
         c_id, d_nome = turma_id.split("_", 1)
@@ -1890,6 +1842,7 @@ def _calcular_media_backend(notas: dict, avaliacoes_config: list):
     if not isinstance(notas, dict) or not notas:
         return None, "Cursando"
 
+    # Filtra apenas as chaves principais (av_0_..., av_1_...) ou chaves únicas para não duplicar aliases
     chaves_indexadas = [k for k in notas.keys() if str(k).startswith("av_")]
     chaves_usar = chaves_indexadas if chaves_indexadas else [
         k for k in notas.keys() if k not in ("AV1", "AV2", "nota1", "nota2")
@@ -1897,40 +1850,24 @@ def _calcular_media_backend(notas: dict, avaliacoes_config: list):
     if not chaves_usar:
         chaves_usar = list(notas.keys())
 
-    soma_ponderada = 0.0
-    soma_pesos_lancados = 0.0
+    soma_notas = 0.0
     qtd_validas = 0
 
     for k in chaves_usar:
         v = notas.get(k)
         if v is not None and str(v).strip() != "":
             try:
-                nota_num = max(0.0, float(v))
-                peso = extrair_peso_nota_firestore(str(k), avaliacoes_config)
-                soma_ponderada += nota_num * peso
-                soma_pesos_lancados += peso
+                soma_notas += float(v)
                 qtd_validas += 1
             except Exception:
                 pass
 
-    if qtd_validas == 0 or soma_pesos_lancados <= 0:
+    if qtd_validas == 0:
         return None, "Cursando"
 
-    has_config = isinstance(avaliacoes_config, list) and len(avaliacoes_config) > 0
-    total_previsto = len(avaliacoes_config) if has_config else qtd_validas
-
-    if has_config:
-        soma_pesos_total = sum(
-            float(av.get("peso", 1) or 1) if isinstance(av, dict) else 1.0
-            for av in avaliacoes_config
-        )
-    else:
-        soma_pesos_total = soma_pesos_lancados
-
-    if soma_pesos_total <= 0:
-        soma_pesos_total = soma_pesos_lancados
-
-    media = round(soma_ponderada / soma_pesos_total, 1)
+    # Regra oficial UNIVEAS: Soma das notas dividida por 2
+    media = round(soma_notas / 2.0, 1)
+    total_previsto = len(avaliacoes_config) if isinstance(avaliacoes_config, list) and len(avaliacoes_config) > 0 else qtd_validas
 
     if qtd_validas < total_previsto:
         situacao = "Parcial"
@@ -1938,7 +1875,6 @@ def _calcular_media_backend(notas: dict, avaliacoes_config: list):
         situacao = "Aprovado" if media >= 8.0 else "Recuperação"
 
     return media, situacao
-
 
 @app.get("/api/v1/docente/diario/{turma_id}")
 async def obter_diario_turma_docente(turma_id: str, authorization: str = Header(None)):
@@ -2021,6 +1957,7 @@ async def salvar_diario_eletronico(
     safe_data = payload.data_aula.replace("/", "-")
     doc_id = f"{safe_turma}__{safe_data}"
 
+    # Preserva faltas já registradas nesta mesma data caso o professor reabra o dia só para lançar/editar notas
     doc_existente = db.collection("diarios").document(doc_id).get()
     faltas_anteriores_dia = {}
     if doc_existente.exists:
@@ -2034,7 +1971,7 @@ async def salvar_diario_eletronico(
             item["faltas"] = faltas_anteriores_dia[str(lanc.aluno_id)]
 
         media_calc, sit_calc = _calcular_media_backend(item.get("notas", {}), avaliacoes_config)
-        item["media"] = item["media"] if item["media"] is not None else media_calc
+        item["media"] = item["media"] if item.get("media") is not None else media_calc
         item["situacao"] = item["situacao"] or sit_calc
         avaliacoes_dict.append(item)
 
@@ -2050,7 +1987,6 @@ async def salvar_diario_eletronico(
 
     db.collection("diarios").document(doc_id).set(registro_diario)
     return {"sucesso": True, "mensagem": "Diário registrado e médias sincronizadas com o boletim!"}
-
 
 @app.post("/api/v1/docente/material/upload")
 async def upload_material_didatico(
@@ -2321,7 +2257,6 @@ async def listar_diario_consolidado_admin(
 
     return resultado
 
-
 @app.post("/api/v1/diario/salvar")
 async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
     checar_db()
@@ -2360,7 +2295,6 @@ async def salvar_diario_consolidado_admin(payload: DiarioAdminPayload):
         })
 
     return {"sucesso": True, "mensagem": "Diário consolidado e sincronizado com sucesso!"}
-
 
 # ==========================================
 # 8. MÓDULO CONFIGURAÇÕES DO SISTEMA
@@ -2885,13 +2819,7 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
                 total_faltas += int(lanc.get("faltas", 0))
                 if disc_key not in lancamentos_por_disc:
                     lancamentos_por_disc[disc_key] = {}
-                for rem in lanc.get("notas_removidas", []):
-                    lancamentos_por_disc[disc_key].pop(rem, None)
-                for k, v in (lanc.get("notas") or {}).items():
-                    if v is None or str(v).strip() == "":
-                        lancamentos_por_disc[disc_key].pop(k, None)
-                    else:
-                        lancamentos_por_disc[disc_key][k] = v
+                lancamentos_por_disc[disc_key].update(lanc.get("notas", {}))
 
     medias_disciplinas = []
     for disc_key, notas_dict in lancamentos_por_disc.items():
@@ -2902,6 +2830,7 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
 
     media_geral = round(sum(medias_disciplinas) / len(medias_disciplinas), 1) if medias_disciplinas else 0.0
 
+    # --- BLOCO FINANCEIRO SINCRONIZADO ---
     cursos_map = {c.id: c.to_dict() for c in db.collection("cursos").stream()}
     mens_docs = [{"id": d.id, **d.to_dict()} for d in db.collection("mensalidades").where("aluno_id", "==", str(aluno_id)).stream()]
     mapa_fin = obter_mapa_mensalidades_unificado(str(aluno_id), aluno_dados, cursos_map, mens_docs)
@@ -2917,7 +2846,6 @@ async def obter_dashboard_aluno(authorization: str = Header(None)):
         "status_financeiro": "Pendente" if tem_pendente_atual else "Regular",
         "disciplinas_atuais": disciplinas_atuais[:3]
     }
-
 
 @app.get("/api/v1/aluno/cursos")
 async def listar_cursos_aluno(authorization: str = Header(None)):
@@ -2946,7 +2874,6 @@ async def listar_cursos_aluno(authorization: str = Header(None)):
             resultado.append({"id": c_doc.id, **c_doc.to_dict()})
 
     return resultado
-
 
 @app.get("/api/v1/aluno/boletim/{curso_id}")
 async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
@@ -3103,7 +3030,7 @@ async def obter_boletim_aluno(curso_id: str, authorization: str = Header(None)):
                 "hora_aula_fim": disc_matriz.get("hora_aula_fim") or disc_matriz.get("hora_fim") or m.get("hora_aula_fim") or "",
                 "ch_teoria": disc_matriz.get("ch_teoria", 0),
                 "ch_pratica": disc_matriz.get("ch_pratica", 0),
-                "ch_es": disc_matriz.get("ch_es", disc_matriz.get("ch_estagio", 0)),
+                "ch_es": disc_matriz.get("ch_es", 0),
                 "ch_total": disc_matriz.get("ch_total", 40),
                 "avaliacoes_previstas": avaliacoes_previstas
             }
@@ -3121,12 +3048,10 @@ async def listar_materiais_aluno(curso_id: str, authorization: str = Header(None
     docs = db.collection("materiais_didaticos").stream()
     for doc in docs:
         m = doc.to_dict()
-        t_id = str(m.get("turma_id", ""))
-        if t_id == str(curso_id) or t_id.startswith(f"{curso_id}_"):
+        t_id = m.get("turma_id", "")
+        if curso_id in t_id:
             if not m.get("disciplina") and "_" in t_id:
                 m["disciplina"] = t_id.split("_", 1)[1].strip()
-            if not m.get("nome_turma") and "_" in t_id:
-                m["nome_turma"] = t_id.split("_", 1)[1].strip()
             materiais.append({"id": doc.id, **m})
 
     return materiais
@@ -3181,6 +3106,8 @@ async def listar_notificacoes_aluno(authorization: str = Header(None)):
     return notificacoes
 
 
+import re  # garanta este import no topo do arquivo, se ainda não houver
+
 @app.get("/api/v1/aluno/perfil")
 async def obter_perfil_aluno(authorization: str = Header(None)):
     checar_db()
@@ -3215,7 +3142,6 @@ async def obter_perfil_aluno(authorization: str = Header(None)):
         "numero_nf": dados.get("numero_nf", ""),
         "mensalidades_json": mapa_unificado
     }
-
 
 @app.put("/api/v1/aluno/perfil")
 @app.post("/api/v1/aluno/perfil")
@@ -3280,15 +3206,13 @@ def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
     valor_pago = float(parcela.get("valor") or valor_integral)
     desconto_pct = int(parcela.get("desconto_percentual") or 0)
     desconto_reais = max(0.0, round(valor_integral - valor_pago, 2))
-    eh_manual = bool(parcela.get("valor_manual", False))
 
     def fmt_brl(v: float) -> str:
         return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     valor_int_fmt = fmt_brl(valor_integral)
     valor_fmt = fmt_brl(valor_pago)
-    motivo_desc = "Desconto Promocional / Negociado" if eh_manual else "Pontualidade até dia 05"
-    desc_fmt = f"{fmt_brl(desconto_reais)} ({desconto_pct}% — {motivo_desc})" if desconto_pct > 0 else "Sem desconto"
+    desc_fmt = f"{fmt_brl(desconto_reais)} ({desconto_pct}% Pontualidade até dia 05)" if desconto_pct > 0 else "Sem desconto (após dia 05)"
 
     matricula_limpa = str(aluno.get("matricula", "000")).replace("#", "")
     numero_nf = parcela.get("numero_nf") or f"REC-{matricula_limpa}-{competencia.replace('-', '')}"
@@ -3296,10 +3220,11 @@ def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
     partes_comp = competencia.split("-")
     comp_fmt = f"{partes_comp[1]}/{partes_comp[0]}" if len(partes_comp) == 2 else competencia
 
-    dt_baixa = _parse_data_pagamento_para_dt(
-        parcela.get("data_pagamento_iso") or parcela.get("data_pagamento") or parcela.get("atualizado_em")
-    ) or datetime.now()
-    data_baixa_fmt = dt_baixa.strftime("%d/%m/%Y")
+    data_baixa_raw = parcela.get("data_pagamento") or parcela.get("atualizado_em") or datetime.now().isoformat()
+    try:
+        data_baixa_fmt = datetime.fromisoformat(str(data_baixa_raw).replace("Z", "")).strftime("%d/%m/%Y")
+    except Exception:
+        data_baixa_fmt = str(data_baixa_raw)
 
     curso_id = aluno.get("curso_id") or aluno.get("curso")
     nome_curso = cursos_map.get(str(curso_id), {}).get("nome_curso", "Curso Técnico / Profissionalizante").upper()
@@ -3421,7 +3346,6 @@ def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
         headers={"Content-Disposition": f"attachment; filename={nome_arq}"}
     )
 
-
 @app.post("/api/v1/aluno/financeiro/comprovante")
 async def aluno_enviar_comprovante_portal(
         comprovante: UploadFile = File(...),
@@ -3480,7 +3404,6 @@ async def aluno_enviar_comprovante_portal(
     sincronizar_estado_aluno(str(aluno_id), mapa)
 
     return {"sucesso": True, "mensagem": f"Comprovante da competência {mes_ref} enviado com sucesso!"}
-
 
 @app.get("/api/v1/aluno/financeiro/recibo/{competencia}/pdf")
 async def gerar_recibo_mensalidade_aluno_pdf(competencia: str, authorization: str = Header(None)):
