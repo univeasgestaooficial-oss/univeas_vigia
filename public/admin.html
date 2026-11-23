@@ -206,8 +206,8 @@
                                 <input type="text" id="busca-notificacoes" oninput="filtrarNotificacoes()" placeholder="Buscar notificação..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
                                 <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                             </div>
-                            <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm uppercase flex items-center hover:bg-gray-900 transition shrink-0">
-                                <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir</span>
+                            <button onclick="imprimirListaNotificacoes()" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
+                                <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
                             </button>
                         </div>
                     </div>
@@ -442,7 +442,7 @@
                                     <input type="text" id="filtro-docs-emitidos" oninput="filtrarTabelaDocumentosEmitidos()" placeholder="Nome, Tipo, Matrícula..." class="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-univeas-orange">
                                     <i data-feather="search" class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"></i>
                                 </div>
-                                <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
+                                <button onclick="imprimirListaDocumentosEmitidos()" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-gray-900 transition flex items-center shrink-0">
                                     <i data-feather="printer" class="h-4 w-4 sm:mr-2"></i> <span class="hidden sm:inline">Imprimir PDF</span>
                                 </button>
                             </div>
@@ -1641,13 +1641,18 @@ async function carregarPautaDiario() {
         registrosSalvos = Array.isArray(respDiario) ? respDiario : (respDiario.lancamentos || respDiario.dados || []);
     }
 
-    const alunosDaTurma = alunosGlobais.filter(a => alunoPertenceAoCurso(a, cursoId) && a.status !== 'Cancelado');
-
-    if (alunosDaTurma.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-xs text-gray-500">Nenhum aluno matriculado neste curso até o momento.</td></tr>';
-        atualizarResumoEstatisticoDiario([]);
-        return;
-    }
+    // Em carregarPautaDiario() no admin.html
+const alunosDaTurma = alunosGlobais
+        .filter(a => {
+            if (!alunoPertenceAoCurso(a, cursoId)) return false;
+            const statusNorm = String(a.status || 'Ativo')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim()
+                .toUpperCase();
+            return !['CANCELADO', 'TRANCADO', 'CONCLUIDO'].includes(statusNorm);
+        })
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
     const moduloNorm = normalizarTextoDiario(modulo);
     const periodoNorm = normalizarTextoDiario(periodo);
@@ -1684,21 +1689,24 @@ async function carregarPautaDiario() {
 
     renderizarLinhasDiario();
 }
-
 function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
-    let somaNotas = 0;
+    let somaPonderada = 0;
+    let somaPesosTotal = 0;
     let totalAvaliacoes = avaliacoesConfig.length;
     let avaliacoesLancadas = 0;
 
     avaliacoesConfig.forEach(av => {
+        const peso = parseFloat(av.peso) || 1;
+        somaPesosTotal += peso;
+
         const raw = notasObj ? notasObj[av.chave] : null;
         if (raw !== '' && raw !== null && raw !== undefined && !isNaN(parseFloat(raw))) {
-            somaNotas += Math.max(0, parseFloat(raw));
+            somaPonderada += Math.max(0, parseFloat(raw)) * peso;
             avaliacoesLancadas++;
         }
     });
 
-    if (avaliacoesLancadas === 0) {
+    if (avaliacoesLancadas === 0 || somaPesosTotal === 0) {
         return {
             mediaNum: null,
             completo: false,
@@ -1707,8 +1715,8 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
         };
     }
 
-    // Regra oficial UNIVEAS: Soma das notas dividida por 2
-    const media = somaNotas / 2;
+    // Divide pela soma total dos pesos do módulo (se todos pesos forem 1, equivale a dividir pelo nº de avaliações)
+    const media = somaPonderada / somaPesosTotal;
     const mediaTexto = media.toFixed(1).replace('.', ',');
     const completo = avaliacoesLancadas === totalAvaliacoes;
 
@@ -1737,6 +1745,7 @@ function calcularSituacaoAlunoPonderada(notasObj, avaliacoesConfig) {
         };
     }
 }
+
 
 function atualizarFaltaLinhaDiario(idx, valor) {
     if (!pautaAtualDiario[idx]) return;
@@ -2024,7 +2033,7 @@ function editarAluno(id_firebase) {
     } catch (e) { console.error(e); }
 
     if (cursosSalvos.length === 0) adicionarCursoAluno();
-    else cursosSalvos.forEach(c => adicionarCursoAluno(c.curso_id));
+    else cursosSalvos.forEach(c => adicionarCursoAluno(c.curso_id || c.id || c));
 
     form.dia_vencimento.value = aluno.dia_vencimento || '';
     form.forma_pagamento.value = aluno.forma_pagamento || 'boleto';
@@ -2425,10 +2434,7 @@ document.getElementById('form-matricula')?.addEventListener('submit', async (e) 
         formData.set('valor_mensalidade', (Math.round(somaValorMensalidade * 100) / 100).toFixed(2));
     }
 
-    if (!idEdit) {
-        const hojeIso = new Date().toISOString().slice(0, 10);
-        formData.set('data_matricula', hojeIso);
-    }
+
     if (!idEdit) {
         const hojeIso = new Date().toISOString().slice(0, 10);
         formData.set('data_matricula', hojeIso);
@@ -2492,7 +2498,17 @@ document.querySelector('#form-matricula button[type="reset"]')?.addEventListener
     btnSubmit.innerText = 'Salvar Aluno';
     btnSubmit.classList.replace('bg-yellow-500', 'bg-teal-500');
     btnSubmit.classList.replace('hover:bg-yellow-600', 'hover:bg-teal-600');
+
+    document.getElementById('container-cursos-aluno').innerHTML = '';
+        contadorCursosAluno = 0;
+        setTimeout(() => {
+            adicionarCursoAluno();
+            const inputDia = document.querySelector('#form-matricula input[name="dia_vencimento"]');
+            if (inputDia) inputDia.value = '5';
+        }, 10);
 });
+
+
 
 document.getElementById('form-docente')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3430,6 +3446,27 @@ async function excluirDocumentoEmitido(idDoc) {
         alert(result?.detail || "Erro ao excluir documento.");
     }
 }
+function imprimirListaDocumentosEmitidos() {
+    const linhas = Array.from(document.querySelectorAll('#tabela-documentos-emitidos tr'))
+        .filter(tr => tr.style.display !== 'none')
+        .map(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length < 3) return '';
+            return `<tr><td>${cols[0].innerText}</td><td>${cols[1].innerText}</td><td>${cols[2].innerText}</td></tr>`;
+        }).join('');
+
+    const win = window.open('', '_blank', 'width=900,height=650');
+    win.document.write(`
+        <html><head><title>Documentos Emitidos - UNIVEAS</title>
+        <style>body{font-family:Arial,sans-serif;padding:24px;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f3f4f6;}</style>
+        </head><body>
+        <h2>UNIVEAS - Relatório de Documentos Emitidos</h2>
+        <table><thead><tr><th>Documento</th><th>Aluno</th><th>Data/Hora</th></tr></thead><tbody>${linhas}</tbody></table>
+        <script>window.onload=function(){window.print();}<\/script>
+        </body></html>
+    `);
+    win.document.close();
+}
 
 async function emitirNovoDocumento() {
     const inputBusca = document.getElementById('doc-busca-aluno').value.trim();
@@ -4265,6 +4302,17 @@ async function abrirModalSistema() {
     }
 }
 
+function fecharModalSistema() {
+    const modal = document.getElementById('modal-sistema');
+    if (modal) {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }, 300);
+    }
+}
+
 function filtrarAlunosDocumento() {
     document.getElementById('doc-aluno-id-selecionado').value = '';
     const termo = (document.getElementById('doc-busca-aluno').value || '').trim().toLowerCase();
@@ -4742,6 +4790,8 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
 }
 
 
+
+
 async function salvarPendenciaAluno(e) {
     e.preventDefault();
     const alunoId = document.getElementById('pendencia_aluno_id').value;
@@ -4751,18 +4801,37 @@ async function salvarPendenciaAluno(e) {
     const numeroNF = document.getElementById('input-nf-aluno').value;
     const dataPgtoIso = document.getElementById('input-data-pagamento').value;
     const valorInformado = parseFloat(document.getElementById('input-valor-pago').value);
+    const manterDesconto = Boolean(document.getElementById('chk-manter-desconto-modal')?.checked);
 
     const btnSubmit = e.target.querySelector('button[type="submit"]');
     const textoOriginal = btnSubmit.innerText;
     btnSubmit.innerText = "Salvando...";
 
-    await persistirParcelaIsoladaAluno(alunoId, competencia, novoStatus, detalhes, numeroNF, dataPgtoIso, valorInformado);
+    await persistirParcelaIsoladaAluno(
+        alunoId,
+        competencia,
+        novoStatus,
+        detalhes,
+        numeroNF,
+        dataPgtoIso,
+        valorInformado,
+        manterDesconto
+    );
 
     btnSubmit.innerText = textoOriginal;
     fecharModalPendencia();
 }
 
-async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela, detalhes, numeroNF, dataPgtoIso = '', valorCustom = null) {
+async function persistirParcelaIsoladaAluno(
+    alunoId,
+    competencia,
+    statusParcela,
+    detalhes,
+    numeroNF,
+    dataPgtoIso = '',
+    valorCustom = null,
+    forcarValorManual = false
+) {
     const alunoAtual = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     let mapaMensalidades = {};
     try {
@@ -4796,13 +4865,16 @@ async function persistirParcelaIsoladaAluno(alunoId, competencia, statusParcela,
         ? Math.round(((valorIntegral - valorFinalGravado) / valorIntegral) * 100)
         : 0;
 
+    // Garante que o desconto concedido pelo Admin nunca seja revertido após o dia 05 no portal do aluno
+    const isValorManual = Boolean(forcarValorManual) || (valorFinalGravado !== calcPadrao.valorFinal) || (descontoGravado > 0);
+
     mapaMensalidades[competencia] = {
         ...(mapaMensalidades[competencia] || {}),
         competencia: competencia,
         status: statusParcela,
         valor_integral: valorIntegral,
         valor: valorFinalGravado,
-        valor_manual: valorFinalGravado !== calcPadrao.valorFinal,
+        valor_manual: isValorManual,
         desconto_percentual: descontoGravado,
         detalhes: detalhes || '',
         numero_nf: numeroNF || '',
@@ -4872,7 +4944,7 @@ function calcularValorMensalidadeAluno(aluno, listaCursos = cursosGlobais) {
         const curso = listaCursos.find(c =>
             String(c.id) === ref ||
             String(c.codigo || '').trim().toUpperCase() === ref.toUpperCase() ||
-            String(c.nome || '').trim().toUpperCase() === ref.toUpperCase()
+            String(c.nome_curso || c.nome || '').trim().toUpperCase() === ref.toUpperCase()
         );
         if (curso) {
             somaIntegral += parseFloat(curso.valor_mensalidade || 0);
@@ -5057,6 +5129,59 @@ function marcarTodasParcelasLegado(novoStatus) {
     });
 }
 
+
+function adicionarLinhaNotaLegado(nomeDisciplina = '') {
+    const tbody = document.getElementById('tbody-notas-legado');
+    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+    const tr = document.createElement('tr');
+    tr.className = 'linha-nota-legado hover:bg-gray-50';
+    tr.innerHTML = `
+        <td class="py-2.5 px-3">
+            <input type="text" value="${nomeDisciplina}" placeholder="Nome da Disciplina" class="leg-nota-disc w-full border border-gray-200 rounded px-2.5 py-1.5 text-xs font-bold text-gray-800">
+        </td>
+        <td class="py-2.5 px-3 text-center">
+            <input type="number" min="0" value="0" class="leg-nota-faltas w-14 text-center border border-gray-200 rounded py-1 text-xs">
+        </td>
+        <td colspan="2" class="py-2.5 px-3">
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] font-bold text-gray-500 uppercase">AV1 (Peso 1)</span>
+                    <input type="number" min="0" max="10" step="0.1" placeholder="-"
+                        data-chave="av_0_Primeira avaliação" data-tipo="Primeira avaliação" data-peso="1"
+                        oninput="recalcularLinhaNotaLegado(this)"
+                        class="leg-nota-item w-16 text-center border border-gray-200 rounded py-1 text-xs font-bold bg-white">
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] font-bold text-gray-500 uppercase">AV2 (Peso 1)</span>
+                    <input type="number" min="0" max="10" step="0.1" placeholder="-"
+                        data-chave="av_1_Segunda avaliação" data-tipo="Segunda avaliação" data-peso="1"
+                        oninput="recalcularLinhaNotaLegado(this)"
+                        class="leg-nota-item w-16 text-center border border-gray-200 rounded py-1 text-xs font-bold bg-white">
+                </div>
+            </div>
+        </td>
+        <td class="py-2.5 px-3 text-center">
+            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="atualizarSituacaoPorMediaLegado(this)" class="leg-nota-media w-16 text-center border border-orange-200 bg-orange-50/50 rounded py-1 text-xs font-black text-gray-900">
+        </td>
+        <td class="py-2.5 px-3 text-center">
+            <select class="leg-nota-sit border border-gray-200 rounded px-2 py-1 text-xs font-bold bg-white">
+                <option value="">Não cursada</option>
+                <option value="Aprovado">Aprovado</option>
+                <option value="Recuperação">Recuperação</option>
+                <option value="Reprovado">Reprovado</option>
+            </select>
+        </td>
+        <td class="py-2.5 px-3 text-right">
+            <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
+                <i data-feather="trash-2" class="w-4 h-4"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
 function carregarDisciplinasLegado(cursoId) {
     const curso = cursosGlobais.find(c => String(c.id) === String(cursoId));
     const tbody = document.getElementById('tbody-notas-legado');
@@ -5069,81 +5194,105 @@ function carregarDisciplinasLegado(cursoId) {
     } catch (e) {}
 
     if (!grade || grade.length === 0) {
-        adicionarLinhaNotaLegado('');
+        tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-amber-600 text-xs font-bold">Este curso não possui módulos cadastrados na matriz.</td></tr>';
         return;
     }
 
     grade.forEach(mod => {
         const nomeMod = mod.nome || mod.disciplina || '';
-        if (nomeMod) adicionarLinhaNotaLegado(nomeMod);
+        if (!nomeMod) return;
+
+        const avaliacoes = Array.isArray(mod.avaliacoes) && mod.avaliacoes.length > 0
+            ? mod.avaliacoes
+            : [{ tipo: 'Primeira avaliação', peso: 1, data: '' }, { tipo: 'Segunda avaliação', peso: 1, data: '' }];
+
+        const inputsAvalHtml = avaliacoes.map((av, idx) => {
+            const tipo = typeof av === 'object' ? (av.tipo || `Avaliação ${idx + 1}`) : String(av);
+            const peso = typeof av === 'object' ? (parseFloat(av.peso) || 1) : 1;
+            const dataAv = typeof av === 'object' ? (av.data || '') : '';
+            const chave = `av_${idx}_${tipo}`;
+            return `
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] font-bold text-gray-500 uppercase truncate max-w-[100px]" title="${tipo} (Peso ${peso})${dataAv ? ' • ' + dataAv : ''}">
+                        ${tipo} (P${peso})
+                    </span>
+                    <input type="number" min="0" max="10" step="0.1" placeholder="-"
+                        data-chave="${chave}" data-tipo="${tipo}" data-peso="${peso}"
+                        oninput="recalcularLinhaNotaLegado(this)"
+                        class="leg-nota-item w-16 text-center border border-gray-200 rounded py-1 text-xs font-bold bg-white">
+                </div>
+            `;
+        }).join('');
+
+        const tr = document.createElement('tr');
+        tr.className = 'linha-nota-legado hover:bg-gray-50';
+        tr.innerHTML = `
+            <td class="py-2.5 px-3">
+                <input type="text" value="${nomeMod}" readonly class="leg-nota-disc w-full bg-transparent text-xs font-bold text-gray-800 outline-none">
+                <span class="text-[10px] text-gray-400">${mod.semestre || 'Módulo Único'}</span>
+            </td>
+            <td class="py-2.5 px-3 text-center">
+                <input type="number" min="0" value="0" class="leg-nota-faltas w-14 text-center border border-gray-200 rounded py-1 text-xs">
+            </td>
+            <td colspan="2" class="py-2.5 px-3">
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                    ${inputsAvalHtml}
+                </div>
+            </td>
+            <td class="py-2.5 px-3 text-center">
+                <input type="number" min="0" max="10" step="0.1" placeholder="-" readonly class="leg-nota-media w-16 text-center border border-orange-200 bg-orange-50/50 rounded py-1 text-xs font-black text-gray-900">
+            </td>
+            <td class="py-2.5 px-3 text-center">
+                <select class="leg-nota-sit border border-gray-200 rounded px-2 py-1 text-xs font-bold bg-white">
+                    <option value="">Não cursada</option>
+                    <option value="Aprovado">Aprovado</option>
+                    <option value="Recuperação">Recuperação</option>
+                    <option value="Reprovado">Reprovado</option>
+                </select>
+            </td>
+            <td class="py-2.5 px-3 text-right">
+                <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
+                    <i data-feather="trash-2" class="w-4 h-4"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
     });
-    if (typeof feather !== 'undefined') feather.replace();
-}
 
-function adicionarLinhaNotaLegado(nomeDisciplina = '') {
-    const tbody = document.getElementById('tbody-notas-legado');
-    if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
-
-    const tr = document.createElement('tr');
-    tr.className = 'linha-nota-legado hover:bg-gray-50';
-    tr.innerHTML = `
-        <td class="py-2 px-3">
-            <input type="text" value="${nomeDisciplina}" placeholder="Nome da Disciplina" class="leg-nota-disc w-full border border-gray-200 rounded px-2.5 py-1.5 text-xs font-bold text-gray-800">
-        </td>
-        <td class="py-2 px-3 text-center">
-            <input type="number" min="0" value="0" class="leg-nota-faltas w-16 text-center border border-gray-200 rounded py-1.5 text-xs">
-        </td>
-        <td class="py-2 px-3 text-center">
-            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="recalcularLinhaNotaLegado(this)" class="leg-nota-av1 w-20 text-center border border-gray-200 rounded py-1.5 text-xs font-bold">
-        </td>
-        <td class="py-2 px-3 text-center">
-            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="recalcularLinhaNotaLegado(this)" class="leg-nota-av2 w-20 text-center border border-gray-200 rounded py-1.5 text-xs font-bold">
-        </td>
-        <td class="py-2 px-3 text-center">
-            <input type="number" min="0" max="10" step="0.1" placeholder="-" oninput="atualizarSituacaoPorMediaLegado(this)" class="leg-nota-media w-20 text-center border border-orange-200 bg-orange-50/50 rounded py-1.5 text-xs font-black text-gray-900">
-        </td>
-        <td class="py-2 px-3 text-center">
-            <select class="leg-nota-sit border border-gray-200 rounded px-2 py-1.5 text-xs font-bold bg-white">
-                <option value="">Não cursada</option>
-                <option value="Aprovado">Aprovado</option>
-                <option value="Recuperação">Recuperação</option>
-                <option value="Reprovado">Reprovado</option>
-            </select>
-        </td>
-        <td class="py-2 px-3 text-right">
-            <button type="button" onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 p-1">
-                <i data-feather="trash-2" class="w-4 h-4"></i>
-            </button>
-        </td>
-    `;
-    tbody.appendChild(tr);
     if (typeof feather !== 'undefined') feather.replace();
 }
 
 function recalcularLinhaNotaLegado(inputEl) {
     const tr = inputEl.closest('tr');
-    const v1 = parseFloat(tr.querySelector('.leg-nota-av1').value);
-    const v2 = parseFloat(tr.querySelector('.leg-nota-av2').value);
+    const inputs = Array.from(tr.querySelectorAll('.leg-nota-item'));
     const inputMedia = tr.querySelector('.leg-nota-media');
-
-    if (!isNaN(v1) && !isNaN(v2)) {
-        inputMedia.value = ((v1 + v2) / 2).toFixed(1);
-        atualizarSituacaoPorMediaLegado(inputMedia);
-    } else if (!isNaN(v1)) {
-        inputMedia.value = v1.toFixed(1);
-        atualizarSituacaoPorMediaLegado(inputMedia);
-    }
-}
-
-function atualizarSituacaoPorMediaLegado(inputMedia) {
-    const tr = inputMedia.closest('tr');
     const selSit = tr.querySelector('.leg-nota-sit');
-    const m = parseFloat(inputMedia.value);
-    if (isNaN(m)) {
+
+    let somaPonderada = 0;
+    let somaPesosTotal = 0;
+    let preenchidas = 0;
+
+    inputs.forEach(inp => {
+        const peso = parseFloat(inp.dataset.peso) || 1;
+        somaPesosTotal += peso;
+
+        if (inp.value !== '' && !isNaN(parseFloat(inp.value))) {
+            somaPonderada += Math.max(0, parseFloat(inp.value)) * peso;
+            preenchidas++;
+        }
+    });
+
+    if (preenchidas === 0 || somaPesosTotal === 0) {
+        inputMedia.value = '';
         selSit.value = '';
-    } else {
-        selSit.value = m >= 8.0 ? 'Aprovado' : 'Recuperação';
+        return;
     }
+
+    const media = somaPonderada / somaPesosTotal;
+    inputMedia.value = media.toFixed(1);
+    selSit.value = preenchidas === inputs.length
+        ? (media >= 8.0 ? 'Aprovado' : 'Recuperação')
+        : '';
 }
 
 async function salvarAlunoAcervoLegado(e) {
@@ -5167,36 +5316,39 @@ async function salvarAlunoAcervoLegado(e) {
         }
     });
 
+    const cursoIdSelecionado = document.getElementById('legado-curso').value;
     const notas = [];
     document.querySelectorAll('.linha-nota-legado').forEach(tr => {
         const disc = tr.querySelector('.leg-nota-disc').value.trim();
         const faltas = parseInt(tr.querySelector('.leg-nota-faltas').value) || 0;
-        const av1Raw = tr.querySelector('.leg-nota-av1').value;
-        const av2Raw = tr.querySelector('.leg-nota-av2').value;
         const mediaRaw = tr.querySelector('.leg-nota-media').value;
         const sit = tr.querySelector('.leg-nota-sit').value;
+        const itensNota = Array.from(tr.querySelectorAll('.leg-nota-item'));
 
-        const temAlgumLancamento = av1Raw !== '' || av2Raw !== '' || mediaRaw !== '' || sit !== '';
-        if (disc && temAlgumLancamento) {
-            const mapaNotas = {};
-            if (av1Raw !== '') {
-                mapaNotas['Primeira avaliação'] = parseFloat(av1Raw);
-                mapaNotas['AV1'] = parseFloat(av1Raw);
-            }
-            if (av2Raw !== '') {
-                mapaNotas['Segunda avaliação'] = parseFloat(av2Raw);
-                mapaNotas['AV2'] = parseFloat(av2Raw);
-            }
-            if (av1Raw === '' && av2Raw === '' && mediaRaw !== '') {
-                mapaNotas['Média Histórica'] = parseFloat(mediaRaw);
-            }
+        const mapaNotas = {};
+        let temAlgumaNota = false;
 
+        itensNota.forEach((inp, idx) => {
+            if (inp.value !== '' && !isNaN(parseFloat(inp.value))) {
+                const val = parseFloat(inp.value);
+                mapaNotas[inp.dataset.chave] = val;
+                mapaNotas[inp.dataset.tipo] = val;
+                if (idx === 0) mapaNotas['AV1'] = val;
+                if (idx === 1) mapaNotas['AV2'] = val;
+                temAlgumaNota = true;
+            }
+        });
+
+        if (disc && (temAlgumaNota || sit !== '')) {
             notas.push({
+                curso_id: String(cursoIdSelecionado),
                 disciplina: disc,
+                modulo: disc,
+                periodo: 'Módulo Único',
                 faltas: faltas,
                 notas: mapaNotas,
                 media: mediaRaw !== '' ? parseFloat(mediaRaw) : null,
-                situacao: sit || null
+                situacao: sit || 'Cursando'
             });
         }
     });
@@ -5207,7 +5359,7 @@ async function salvarAlunoAcervoLegado(e) {
         email: document.getElementById('legado-email').value.trim(),
         telefone: document.getElementById('legado-telefone').value.trim(),
         endereco: document.getElementById('legado-endereco').value.trim(),
-        curso_id: document.getElementById('legado-curso').value,
+        curso_id: cursoIdSelecionado,
         data_nascimento: document.getElementById('legado-nascimento').value || null,
         data_matricula: document.getElementById('legado-data-matricula').value,
         status: document.getElementById('legado-status').value,
@@ -5240,17 +5392,37 @@ async function salvarAlunoAcervoLegado(e) {
     }
 }
 
+function imprimirListaNotificacoes() {
+    const linhas = Array.from(document.querySelectorAll('#tabela-notificacoes tr'))
+        .filter(tr => tr.style.display !== 'none')
+        .map(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length < 2) return '';
+            return `<tr><td>${cols[0].innerText}</td><td>${cols[1].innerText}</td></tr>`;
+        }).join('');
 
-// ==========================================
-// GESTÃO FINANCEIRA ISOLADA POR ALUNO E MÊS (YYYY-MM)
-// ==========================================
-function fecharModalSistema() {
-    const modal = document.getElementById('modal-sistema');
-    modal.classList.add('opacity-0');
-    setTimeout(() => {
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-    }, 300);
+    const janela = window.open('', '_blank', 'width=900,height=650');
+    janela.document.write(`
+        <html><head><title>Notificações - SIGA UNIVEAS</title>
+        <style>body{font-family:Arial,sans-serif;padding:24px;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f3f4f6;}</style>
+        </head><body>
+        <h2>UNIVEAS - Relatório de Notificações (Pré-Matrículas)</h2>
+        <table><thead><tr><th>Descrição</th><th>Status</th></tr></thead><tbody>${linhas}</tbody></table>
+        <script>window.onload=function(){window.print();}<\/script>
+        </body></html>
+    `);
+    janela.document.close();
+}
+
+function atualizarSituacaoPorMediaLegado(inputMedia) {
+    const tr = inputMedia.closest('tr');
+    const selSit = tr.querySelector('.leg-nota-sit');
+    const m = parseFloat(inputMedia.value);
+    if (isNaN(m)) {
+        selSit.value = '';
+    } else {
+        selSit.value = m >= 8.0 ? 'Aprovado' : 'Recuperação';
+    }
 }
 
 window.addEventListener('load', () => { setTimeout(() => adicionarCursoAluno(), 500); });
