@@ -810,12 +810,13 @@
                 </div>
             </div>
 
-            <!-- ============================================== -->
-            <!-- 7. GESTÃO FINANCEIRA (PADRÃO UNIVEAS) -->
+           <!-- ============================================== -->
+            <!-- 7. GESTÃO FINANCEIRA (CONSOLIDADA POR SEMESTRE) -->
             <!-- ============================================== -->
             <div id="tela-financeiro" class="tela hidden">
                 <div class="flex flex-col space-y-6 md:space-y-8 max-w-6xl mx-auto pb-8">
 
+                    <!-- CARDS DE INDICADORES DO PERÍODO SELECIONADO -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
                             <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Total Recebido</p>
@@ -831,30 +832,111 @@
                             <div class="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
                             <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Inadimplência</p>
                             <h3 class="text-2xl font-black text-red-500 my-2" id="fin-inadimplencia">0</h3>
-                            <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades vencidas</p>
+                            <p class="text-xs text-red-400 font-medium flex items-center"><i data-feather="alert-circle" class="w-3 h-3 mr-1"></i> Mensalidades em aberto</p>
                         </div>
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos do Mês</p>
+                            <p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Pagamentos Confirmados</p>
                             <h3 class="text-2xl font-black text-gray-800 my-2" id="fin-pagamentos-mes">0</h3>
-                            <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Quantidade confirmada</p>
+                            <p class="text-xs text-teal-600 font-medium flex items-center"><i data-feather="bar-chart-2" class="w-3 h-3 mr-1"></i> Parcelas quitadas</p>
                         </div>
                     </div>
 
-                    <div class="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 border-b border-gray-100 pb-6 mb-6">
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
-                                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mês de Faturamento</label>
-                                <input type="month" id="filtro-mes-financeiro" onchange="loadFinanceiro()" class="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-teal-700 transition w-full sm:w-48 shadow-inner">
+                    <!-- CONSOLIDAÇÃO SEMESTRAL (1º SEMESTRE vs 2º SEMESTRE DO ANO) -->
+                    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b border-gray-100 pb-3">
+                            <h4 class="text-xs sm:text-sm font-black text-gray-800 uppercase tracking-wider flex items-center">
+                                <span class="w-1 h-4 bg-teal-500 rounded mr-2 inline-block"></span>
+                                Consolidação Financeira por Semestre (<span id="fin-ano-consolidado" class="text-teal-600 ml-1">2026</span>)
+                            </h4>
+                            <span class="text-[11px] font-bold text-gray-400">1º Semestre (Jan–Jun) • 2º Semestre (Jul–Dez)</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 1º Semestre -->
+                            <div class="bg-teal-50/40 border border-teal-100 rounded-xl p-4 flex flex-col justify-between">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="bg-teal-600 text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">1º Semestre (Jan - Jun)</span>
+                                    <button type="button" onclick="selecionarSemestreRapido('1')" class="text-[11px] font-bold text-teal-700 hover:underline">Filtrar 1º Sem →</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+                                    <div class="bg-white p-2.5 rounded-lg border border-teal-100">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Recebido</span>
+                                        <span id="cons-sem1-recebido" class="font-black text-green-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-teal-100">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">A Receber</span>
+                                        <span id="cons-sem1-receber" class="font-black text-amber-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-teal-100">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Quitadas</span>
+                                        <span id="cons-sem1-qtd" class="font-black text-gray-800 text-sm">0 / 0</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="flex items-center space-x-2 sm:space-x-3 w-full md:w-auto">
-                                <div class="relative flex-1 md:w-64">
-                                    <input type="text" id="busca-financeiro" oninput="filtrarFinanceiro()" placeholder="Buscar nome, pago, pendente, aniversário (ex: 15/11 ou aniv)..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
+                            <!-- 2º Semestre -->
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="bg-slate-800 text-white px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">2º Semestre (Jul - Dez)</span>
+                                    <button type="button" onclick="selecionarSemestreRapido('2')" class="text-[11px] font-bold text-slate-700 hover:underline">Filtrar 2º Sem →</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Recebido</span>
+                                        <span id="cons-sem2-recebido" class="font-black text-green-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">A Receber</span>
+                                        <span id="cons-sem2-receber" class="font-black text-amber-600 text-sm">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <span class="block text-[9px] font-bold text-gray-400 uppercase">Quitadas</span>
+                                        <span id="cons-sem2-qtd" class="font-black text-gray-800 text-sm">0 / 0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TABELA E FILTROS AVANÇADOS -->
+                    <div class="bg-white p-5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="grid grid-cols-1 md:grid-cols-12 items-end gap-4 border-b border-gray-100 pb-6 mb-6">
+
+                            <!-- Filtro 1: Modo de Visão (Mês Específico ou Semestre Consolidado) -->
+                            <div class="md:col-span-3">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Período / Semestre</label>
+                                <select id="filtro-semestre-financeiro" onchange="aoMudarModoSemestreFinanceiro()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-teal-50/60 font-bold text-teal-800">
+                                    <option value="mes">Mês Específico</option>
+                                    <option value="1">1º Semestre (Jan–Jun)</option>
+                                    <option value="2">2º Semestre (Jul–Dez)</option>
+                                    <option value="anual">Ano Completo (1º e 2º Sem)</option>
+                                </select>
+                            </div>
+
+                            <!-- Filtro 2: Competência / Ano -->
+                            <div class="md:col-span-3" id="box-filtro-mes-fin">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Mês de Faturamento</label>
+                                <input type="month" id="filtro-mes-financeiro" onchange="loadFinanceiro()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-gray-800">
+                            </div>
+
+                            <div class="md:col-span-3 hidden" id="box-filtro-ano-fin">
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Ano Letivo</label>
+                                <select id="filtro-ano-financeiro" onchange="loadFinanceiro()" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 bg-gray-50 font-bold text-gray-800">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+
+                            <!-- Filtro 3: Busca Unificada + Impressão -->
+                            <div class="md:col-span-6 flex items-center space-x-2">
+                                <div class="relative flex-1">
+                                    <input type="text" id="busca-financeiro" oninput="filtrarFinanceiro()" placeholder="Buscar aluno, curso, 1º semestre, pago, pendente, aniv..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-teal-500 transition shadow-sm">
                                     <i data-feather="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400"></i>
                                 </div>
-                                <button type="button" onclick="imprimirRelatorioFinanceiro()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                                <button type="button" onclick="imprimirRelatorioFinanceiro()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase flex items-center gap-2 transition shrink-0">
                                     <i data-feather="printer" class="w-4 h-4"></i>
-                                    Imprimir Relatório
+                                    <span class="hidden sm:inline">Relatório</span>
                                 </button>
                             </div>
                         </div>
@@ -864,7 +946,8 @@
                                 <thead class="bg-gray-50">
                                     <tr class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                         <th class="py-3 px-4 whitespace-nowrap">ID Comprovante</th>
-                                        <th class="py-3 px-4 whitespace-nowrap">Cliente</th>
+                                        <th class="py-3 px-4 whitespace-nowrap">Cliente / Curso</th>
+                                        <th class="py-3 px-4 text-center whitespace-nowrap">Semestre</th>
                                         <th class="py-3 px-4 text-center whitespace-nowrap">Mês/Ano Ref.</th>
                                         <th class="py-3 px-4 text-center whitespace-nowrap">Status de Pagamento</th>
                                         <th class="py-3 px-4 text-center whitespace-nowrap">View</th>
@@ -878,11 +961,6 @@
 
                 </div>
             </div>
-
-        </main>
-    </div>
-</div>
-
 <!-- ============================================== -->
 <!-- 8. CONFIGURAÇÃO (MODAL DE SOBREPOSIÇÃO) -->
 <!-- ============================================== -->
@@ -3523,6 +3601,83 @@ function alunoElegivelNoMesFinanceiro(aluno, mesRef) {
     return true;
 }
 
+function obterSemestreDaCompetencia(mesRef) {
+    if (!mesRef || !mesRef.includes('-')) return { numero: '1', label: '1º Semestre' };
+    const mes = parseInt(mesRef.split('-')[1], 10);
+    return mes <= 6
+        ? { numero: '1', label: '1º Semestre' }
+        : { numero: '2', label: '2º Semestre' };
+}
+
+function aoMudarModoSemestreFinanceiro() {
+    const modo = document.getElementById('filtro-semestre-financeiro')?.value || 'mes';
+    const boxMes = document.getElementById('box-filtro-mes-fin');
+    const boxAno = document.getElementById('box-filtro-ano-fin');
+
+    if (modo === 'mes') {
+        boxMes?.classList.remove('hidden');
+        boxAno?.classList.add('hidden');
+    } else {
+        boxMes?.classList.add('hidden');
+        boxAno?.classList.remove('hidden');
+        const mesAtualVal = document.getElementById('filtro-mes-financeiro')?.value;
+        if (mesAtualVal) {
+            const anoAtual = mesAtualVal.split('-')[0];
+            const selAno = document.getElementById('filtro-ano-financeiro');
+            if (selAno) selAno.value = anoAtual;
+        }
+    }
+    loadFinanceiro();
+}
+
+function selecionarSemestreRapido(numSemestre) {
+    const selModo = document.getElementById('filtro-semestre-financeiro');
+    if (selModo) {
+        selModo.value = numSemestre;
+        aoMudarModoSemestreFinanceiro();
+    }
+}
+
+function calcularConsolidacaoSemestralAnual(listaAlunos, anoBase) {
+    const resumo = {
+        sem1: { recebido: 0, receber: 0, pagas: 0, total: 0 },
+        sem2: { recebido: 0, receber: 0, pagas: 0, total: 0 }
+    };
+
+    const hoje = new Date();
+    const compLimiteHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    listaAlunos.forEach(aluno => {
+        for (let m = 1; m <= 12; m++) {
+            const comp = `${anoBase}-${String(m).padStart(2, '0')}`;
+            if (comp > compLimiteHoje) continue;
+            if (!alunoElegivelNoMesFinanceiro(aluno, comp)) continue;
+
+            const parcela = obterParcelaDoMes(aluno, comp);
+            const valor = parseFloat(parcela.valor || calcularValorMensalidadeAluno(aluno) || 0);
+            const alvo = m <= 6 ? resumo.sem1 : resumo.sem2;
+
+            alvo.total++;
+            if (parcela.status === 'Pago') {
+                alvo.recebido += valor;
+                alvo.pagas++;
+            } else {
+                alvo.receber += valor;
+            }
+        }
+    });
+
+    const elAno = document.getElementById('fin-ano-consolidado');
+    if (elAno) elAno.innerText = anoBase;
+
+    document.getElementById('cons-sem1-recebido').innerText = resumo.sem1.recebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem1-receber').innerText = resumo.sem1.receber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem1-qtd').innerText = `${resumo.sem1.pagas} / ${resumo.sem1.total}`;
+
+    document.getElementById('cons-sem2-recebido').innerText = resumo.sem2.recebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem2-receber').innerText = resumo.sem2.receber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('cons-sem2-qtd').innerText = `${resumo.sem2.pagas} / ${resumo.sem2.total}`;
+}
 
 async function loadFinanceiro() {
     const inputMes = document.getElementById('filtro-mes-financeiro');
@@ -3531,11 +3686,16 @@ async function loadFinanceiro() {
         inputMes.value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
     }
 
+    const modoFiltro = document.getElementById('filtro-semestre-financeiro')?.value || 'mes';
     const mesSelecionado = inputMes ? inputMes.value : '';
+    const anoSelecionado = modoFiltro === 'mes'
+        ? (mesSelecionado ? mesSelecionado.split('-')[0] : String(new Date().getFullYear()))
+        : (document.getElementById('filtro-ano-financeiro')?.value || String(new Date().getFullYear()));
+
     const tbody = document.getElementById('tabela-financeiro');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500">Carregando faturamento do mês...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-xs text-gray-500">Consolidando faturamento...</td></tr>';
 
     if (cursosGlobais.length === 0) await loadCursos();
 
@@ -3544,136 +3704,188 @@ async function loadFinanceiro() {
     alunosGlobais = lista;
     registrosFinanceiroMesAtual = [];
 
+    // Atualiza o painel comparativo 1º Semestre vs 2º Semestre
+    calcularConsolidacaoSemestralAnual(lista, anoSelecionado);
+
+    // Define as competências (YYYY-MM) que serão listadas na tabela
+    const hoje = new Date();
+    const compAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    let competenciasAlvo = [];
+
+    if (modoFiltro === 'mes') {
+        competenciasAlvo = [mesSelecionado];
+    } else if (modoFiltro === '1') {
+        for (let m = 1; m <= 6; m++) {
+            const c = `${anoSelecionado}-${String(m).padStart(2, '0')}`;
+            if (c <= compAtual) competenciasAlvo.push(c);
+        }
+    } else if (modoFiltro === '2') {
+        for (let m = 7; m <= 12; m++) {
+            const c = `${anoSelecionado}-${String(m).padStart(2, '0')}`;
+            if (c <= compAtual) competenciasAlvo.push(c);
+        }
+    } else {
+        for (let m = 1; m <= 12; m++) {
+            const c = `${anoSelecionado}-${String(m).padStart(2, '0')}`;
+            if (c <= compAtual) competenciasAlvo.push(c);
+        }
+    }
+
     tbody.innerHTML = '';
 
-    if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum aluno matriculado.</td></tr>`;
+    if (lista.length === 0 || competenciasAlvo.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhum registro encontrado para o período.</td></tr>`;
         atualizarCardsFinanceiros(0, 0, 0, 0);
         return;
     }
 
-    const [anoRef, mesRefNum] = mesSelecionado ? mesSelecionado.split('-') : ['', ''];
-    const compBr = mesSelecionado ? `${mesRefNum}/${anoRef}` : '';
+    // Ordena competências da mais recente para a mais antiga quando em visão semestral/anual
+    competenciasAlvo.sort().reverse();
 
-    lista.forEach((item) => {
-        if (!alunoElegivelNoMesFinanceiro(item, mesSelecionado)) return;
-        const parcela = obterParcelaDoMes(item, mesSelecionado);
-        const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
-        const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    competenciasAlvo.forEach(compRef => {
+        const [anoRef, mesRefNum] = compRef.split('-');
+        const compBr = `${mesRefNum}/${anoRef}`;
+        const semInfo = obterSemestreDaCompetencia(compRef);
 
-        const statusParcela = parcela.status || 'Pendente';
-        const isPago = statusParcela === 'Pago';
-        const emAnalise = statusParcela === 'Em Análise';
+        lista.forEach((item) => {
+            if (!alunoElegivelNoMesFinanceiro(item, compRef)) return;
 
-        const nascBr = formatarDataNascimentoCurta(item.data_nascimento); // DD/MM/AAAA
-        const isAniversarianteMes = nascBr.length >= 5 && nascBr.slice(3, 5) === mesRefNum;
-        const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${mesSelecionado.replace('-', '')}`;
+            const parcela = obterParcelaDoMes(item, compRef);
+            const valorCobranca = parseFloat(parcela.valor || calcularValorMensalidadeAluno(item) || 0);
+            const valorFormatado = valorCobranca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // Palavras-chave indexadas para o campo único de busca
-        const tagsStatus = isPago
-            ? 'pago pagos quitado'
-            : (emAnalise ? 'em analise comprovante enviado pendente pendentes' : 'pendente pendentes aberto em aberto atrasado');
-        const tagsAniversario = isAniversarianteMes ? 'aniversariante aniversariantes aniv aniversario' : '';
-        const textoBuscaIndexado = [
-            item.nome,
-            item.matricula,
-            item.cpf,
-            item.telefone,
-            idComprovante,
-            parcela.numero_nf,
-            mesSelecionado,
-            compBr,
-            nascBr,
-            tagsStatus,
-            tagsAniversario
-        ].filter(Boolean).join(' ');
+            const statusParcela = parcela.status || 'Pendente';
+            const isPago = statusParcela === 'Pago';
+            const emAnalise = statusParcela === 'Em Análise';
 
-        registrosFinanceiroMesAtual.push({
-            id: item.id,
-            matricula: item.matricula || '-',
-            nome: item.nome || 'Cliente Desconhecido',
-            cpf: item.cpf || '-',
-            telefone: item.telefone || '-',
-            nascimento: nascBr,
-            aniversarianteMes: isAniversarianteMes,
-            idComprovante,
-            competencia: mesSelecionado,
-            valor: valorCobranca,
-            valorFormatado,
-            status: statusParcela,
-            dataPagamento: parcela.data_pagamento || '-',
-            numeroNf: parcela.numero_nf || '-',
-            textoBuscaIndexado
-        });
+            const cursoObj = cursosGlobais.find(c => String(c.id) === String(item.curso_id));
+            const nomeCurso = cursoObj?.nome_curso || 'Curso Vinculado';
 
-        const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
-        const safeDetalhes = (parcela.detalhes || '').replace(/'/g, "\\'");
-        const safeNF = (parcela.numero_nf || '').replace(/'/g, "\\'");
+            const nascBr = formatarDataNascimentoCurta(item.data_nascimento);
+            const isAniversarianteMes = nascBr.length >= 5 && nascBr.slice(3, 5) === mesRefNum;
+            const idComprovante = parcela.numero_nf || `#FIN-${item.matricula || '000'}-${compRef.replace('-', '')}`;
 
-        let statusHtml = '';
-        if (isPago) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pago')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
-        } else if (emAnalise) {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Em Análise')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${parcela.comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
-        } else {
-            statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${mesSelecionado}', '${safeDetalhes}', '${safeNF}', 'Pendente')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
-        }
+            const tagsStatus = isPago
+                ? 'pago pagos quitado'
+                : (emAnalise ? 'em analise comprovante enviado pendente pendentes' : 'pendente pendentes aberto em aberto atrasado');
+            const tagsAniversario = isAniversarianteMes ? 'aniversariante aniversariantes aniv aniversario' : '';
+            const textoBuscaIndexado = [
+                item.nome,
+                item.matricula,
+                item.cpf,
+                item.telefone,
+                nomeCurso,
+                semInfo.label,
+                `${semInfo.numero}o semestre`,
+                idComprovante,
+                parcela.numero_nf,
+                compRef,
+                compBr,
+                nascBr,
+                tagsStatus,
+                tagsAniversario
+            ].filter(Boolean).join(' ');
 
-        const btnReciboTabela = isPago
-            ? `<button onclick="emitirReciboPdfAdmin('${item.id}', '${mesSelecionado}', this)" class="text-teal-700 hover:text-white hover:bg-teal-600 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition" title="Emitir Recibo PDF">
-                   <i data-feather="printer" class="w-3.5 h-3.5"></i> Recibo
-               </button>`
-            : '';
+            registrosFinanceiroMesAtual.push({
+                id: item.id,
+                matricula: item.matricula || '-',
+                nome: item.nome || 'Cliente Desconhecido',
+                curso: nomeCurso,
+                semestre: semInfo.label,
+                cpf: item.cpf || '-',
+                telefone: item.telefone || '-',
+                nascimento: nascBr,
+                aniversarianteMes: isAniversarianteMes,
+                idComprovante,
+                competencia: compRef,
+                valor: valorCobranca,
+                valorFormatado,
+                status: statusParcela,
+                dataPagamento: parcela.data_pagamento || '-',
+                numeroNf: parcela.numero_nf || '-',
+                textoBuscaIndexado
+            });
 
-        const btnAnexoTabela = (emAnalise || parcela.comprovante_id)
-            ? `<button onclick="verComprovanteMes('${item.id}', '${mesSelecionado}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 border border-blue-200 p-2 rounded transition" title="Ver Comprovante Anexado">
-                   <i data-feather="paperclip" class="w-4 h-4"></i>
-               </button>`
-            : '';
+            const safeNome = (item.nome || 'Cliente Desconhecido').replace(/'/g, "\\'");
+            const safeDetalhes = (parcela.detalhes || '').replace(/'/g, "\\'");
+            const safeNF = (parcela.numero_nf || '').replace(/'/g, "\\'");
 
-        const infoNascimento = isAniversarianteMes
-            ? `<span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-pink-100 text-pink-700 uppercase">🎂 Aniv. ${nascBr.slice(0, 5)}</span>`
-            : (nascBr !== '-' ? `<span class="block text-[10px] text-gray-400 font-normal">Nasc: ${nascBr}</span>` : '');
+            let statusHtml = '';
+            if (isPago) {
+                statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${compRef}', '${safeDetalhes}', '${safeNF}', 'Pago')" class="bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-green-200 transition shadow-sm w-full cursor-pointer">PAGO</button>`;
+            } else if (emAnalise) {
+                statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${compRef}', '${safeDetalhes}', '${safeNF}', 'Em Análise')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-200 transition shadow-sm w-full cursor-pointer" title="Arquivo: ${parcela.comprovante_nome || 'Anexo'}">COMPROVANTE ENVIADO</button>`;
+            } else {
+                statusHtml = `<button onclick="abrirModalPendencia('${item.id}', '${safeNome}', '${compRef}', '${safeDetalhes}', '${safeNF}', 'Pendente')" class="bg-yellow-50 text-yellow-600 px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-200 transition shadow-sm w-full cursor-pointer">PENDENTE</button>`;
+            }
 
-        tbody.innerHTML += `
-            <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50"
-                data-status="${statusParcela}"
-                data-valor="${valorCobranca}"
-                data-busca="${textoBuscaIndexado.replace(/"/g, '&quot;')}">
-                <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
-                <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">
-                    ${item.nome || 'Cliente Desconhecido'}
-                    ${infoNascimento}
-                </td>
-                <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
-                    <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">Ref: ${mesSelecionado}</span>
-                    ${valorFormatado}
-                </td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">
-                    <div class="inline-flex items-center justify-center gap-1.5">
-                        ${btnAnexoTabela}
-                        ${btnReciboTabela}
-                        <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Histórico Financeiro Completo">
-                            <i data-feather="eye" class="w-4 h-4"></i>
+            const badgeSemestre = semInfo.numero === '1'
+                ? `<span class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-md text-[10px] font-black uppercase">1º Sem</span>`
+                : `<span class="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] font-black uppercase">2º Sem</span>`;
+
+            const btnReciboTabela = isPago
+                ? `<button onclick="emitirReciboPdfAdmin('${item.id}', '${compRef}', this)" class="text-teal-700 hover:text-white hover:bg-teal-600 bg-teal-50 border border-teal-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition" title="Emitir Recibo PDF">
+                       <i data-feather="printer" class="w-3.5 h-3.5"></i> Recibo
+                   </button>`
+                : '';
+
+            const btnAnexoTabela = (emAnalise || parcela.comprovante_id)
+                ? `<button onclick="verComprovanteMes('${item.id}', '${compRef}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 border border-blue-200 p-2 rounded transition" title="Ver Comprovante Anexado">
+                       <i data-feather="paperclip" class="w-4 h-4"></i>
+                   </button>`
+                : '';
+
+            const infoNascimento = isAniversarianteMes
+                ? `<span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-pink-100 text-pink-700 uppercase">🎂 Aniv. ${nascBr.slice(0, 5)}</span>`
+                : '';
+
+            tbody.innerHTML += `
+                <tr class="linha-financeiro hover:bg-gray-50 transition border-b border-gray-50"
+                    data-status="${statusParcela}"
+                    data-valor="${valorCobranca}"
+                    data-busca="${textoBuscaIndexado.replace(/"/g, '&quot;')}">
+                    <td class="py-4 px-4 text-gray-500 font-mono text-xs whitespace-nowrap">${idComprovante}</td>
+                    <td class="busca-nome py-4 px-4 text-gray-800 font-bold uppercase text-xs whitespace-nowrap">
+                        ${item.nome || 'Cliente Desconhecido'} ${infoNascimento}
+                        <span class="block text-[10px] text-gray-400 font-semibold normal-case mt-0.5">${nomeCurso}</span>
+                    </td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">${badgeSemestre}</td>
+                    <td class="py-4 px-4 text-teal-600 font-black text-xs text-center whitespace-nowrap">
+                        <span class="block text-gray-400 text-[9px] mb-0.5 uppercase tracking-widest">Ref: ${compBr}</span>
+                        ${valorFormatado}
+                    </td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">${statusHtml}</td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
+                        <div class="inline-flex items-center justify-center gap-1.5">
+                            ${btnAnexoTabela}
+                            ${btnReciboTabela}
+                            <button onclick="verPerfilAluno('${item.id}')" class="text-teal-600 hover:text-white hover:bg-teal-500 bg-teal-50 p-2 rounded transition" title="Visualizar Histórico Financeiro Completo">
+                                <i data-feather="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
+                        <button onclick="informarNFFinanceiro('${item.id}', '${compRef}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Anexar/Atualizar Nota Fiscal deste mês">
+                            <i data-feather="cloud-upload" class="w-4 h-4"></i>
                         </button>
-                    </div>
-                </td>
-                <td class="py-4 px-4 text-center whitespace-nowrap">
-                    <button onclick="informarNFFinanceiro('${item.id}', '${mesSelecionado}')" class="text-blue-500 hover:text-white hover:bg-blue-500 bg-blue-50 p-2 rounded transition" title="Anexar/Atualizar Nota Fiscal deste mês">
-                        <i data-feather="cloud-upload" class="w-4 h-4"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
+                    </td>
+                </tr>
+            `;
+        });
     });
+
+    if (registrosFinanceiroMesAtual.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-xs text-gray-500 font-medium">Nenhuma mensalidade elegível encontrada para o período selecionado.</td></tr>`;
+    }
 
     filtrarFinanceiro();
     feather.replace();
 }
 
 function imprimirRelatorioFinanceiro() {
+    const modoFiltro = document.getElementById('filtro-semestre-financeiro')?.value || 'mes';
     const mesSelecionado = document.getElementById('filtro-mes-financeiro')?.value || '';
+    const anoSelecionado = document.getElementById('filtro-ano-financeiro')?.value || String(new Date().getFullYear());
     const termoBruto = (document.getElementById('busca-financeiro')?.value || '').trim();
     const tokens = normalizarTextoBusca(termoBruto).split(/\s+/).filter(Boolean);
 
@@ -3706,13 +3918,15 @@ function imprimirRelatorioFinanceiro() {
             ? 'color:#047857;background:#d1fae5;'
             : (r.status === 'Em Análise' ? 'color:#1d4ed8;background:#dbeafe;' : 'color:#b45309;background:#fef3c7;');
 
+        const [a, m] = r.competencia.split('-');
+
         return `
             <tr>
                 <td style="text-align:center;color:#64748b;">${idx + 1}</td>
                 <td style="font-family:monospace;">${r.matricula}</td>
-                <td><strong>${r.nome}</strong></td>
-                <td style="text-align:center;">${r.nascimento}</td>
-                <td>${r.telefone}</td>
+                <td><strong>${r.nome}</strong><br><span style="font-size:9px;color:#64748b;">${r.curso}</span></td>
+                <td style="text-align:center;font-weight:700;">${r.semestre}</td>
+                <td style="text-align:center;">${m}/${a}</td>
                 <td style="font-family:monospace;">${r.idComprovante}</td>
                 <td style="text-align:right;font-weight:700;">${r.valorFormatado}</td>
                 <td style="text-align:center;">
@@ -3725,10 +3939,20 @@ function imprimirRelatorioFinanceiro() {
         `;
     }).join('');
 
-    const [anoRef, mesRef] = mesSelecionado ? mesSelecionado.split('-') : ['----', '--'];
-    const referenciaFormatada = `${mesRef}/${anoRef}`;
+    let referenciaFormatada = '';
+    if (modoFiltro === 'mes') {
+        const [anoRef, mesRef] = mesSelecionado ? mesSelecionado.split('-') : ['----', '--'];
+        referenciaFormatada = `Mês ${mesRef}/${anoRef}`;
+    } else if (modoFiltro === '1') {
+        referenciaFormatada = `1º Semestre / ${anoSelecionado} (Jan–Jun)`;
+    } else if (modoFiltro === '2') {
+        referenciaFormatada = `2º Semestre / ${anoSelecionado} (Jul–Dez)`;
+    } else {
+        referenciaFormatada = `Consolidado Anual ${anoSelecionado} (1º e 2º Semestres)`;
+    }
+
     const agoraStr = new Date().toLocaleString('pt-BR');
-    const filtroTexto = termoBruto ? `Filtro aplicado: <strong>"${termoBruto}"</strong>` : 'Filtro aplicado: <strong>Todos os clientes do mês</strong>';
+    const filtroTexto = termoBruto ? `Filtro aplicado: <strong>"${termoBruto}"</strong>` : 'Filtro aplicado: <strong>Todos os lançamentos do período</strong>';
 
     const janelaPrint = window.open('', '_blank', 'width=1050,height=780');
     janelaPrint.document.write(`
@@ -3736,7 +3960,7 @@ function imprimirRelatorioFinanceiro() {
         <html lang="pt-BR">
         <head>
             <meta charset="UTF-8">
-            <title>Relatório Financeiro UNIVEAS - Ref ${referenciaFormatada}</title>
+            <title>Relatório Financeiro UNIVEAS - ${referenciaFormatada}</title>
             <style>
                 @page { size: A4 landscape; margin: 14mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; }
@@ -3772,15 +3996,15 @@ function imprimirRelatorioFinanceiro() {
                     </div>
                 </div>
                 <div class="header-right">
-                    <p class="doc-titulo">Relatório Financeiro & Controle de Mensalidades</p>
-                    <p class="doc-ref">Referência: ${referenciaFormatada}</p>
+                    <p class="doc-titulo">Relatório Financeiro Consolidado</p>
+                    <p class="doc-ref">${referenciaFormatada}</p>
                     <p class="doc-data">Emissão: ${agoraStr}</p>
                 </div>
             </div>
 
             <div class="barra-ref">
-                <span>Competência: <strong>${referenciaFormatada}</strong> &nbsp;|&nbsp; ${filtroTexto}</span>
-                <span>Total Listado: <strong>${filtrados.length} cliente(s)</strong></span>
+                <span>Período: <strong>${referenciaFormatada}</strong> &nbsp;|&nbsp; ${filtroTexto}</span>
+                <span>Total Listado: <strong>${filtrados.length} lançamento(s)</strong></span>
             </div>
 
             <div class="cards">
@@ -3793,7 +4017,7 @@ function imprimirRelatorioFinanceiro() {
                     <div class="card-val" style="color:#d97706;">${somaReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
                 </div>
                 <div class="card">
-                    <div class="card-label">Pagos</div>
+                    <div class="card-label">Parcelas Pagas</div>
                     <div class="card-val">${qtdPagos}</div>
                 </div>
                 <div class="card">
@@ -3807,9 +4031,9 @@ function imprimirRelatorioFinanceiro() {
                     <tr>
                         <th style="text-align:center;width:28px;">#</th>
                         <th>Matrícula</th>
-                        <th>Cliente / Aluno</th>
-                        <th style="text-align:center;">Nascimento</th>
-                        <th>Telefone</th>
+                        <th>Cliente / Curso</th>
+                        <th style="text-align:center;">Semestre</th>
+                        <th style="text-align:center;">Competência</th>
                         <th>Comprovante / NF</th>
                         <th style="text-align:right;">Valor</th>
                         <th style="text-align:center;">Status</th>
@@ -3855,11 +4079,6 @@ async function informarNFFinanceiro(alunoId, competencia) {
     const parcelaAtual = obterParcelaDoMes(alunoAtual, mesRef);
     await persistirParcelaIsoladaAluno(alunoId, mesRef, parcelaAtual.status, parcelaAtual.detalhes || '', nf);
 }
-
-
-
-
-
 
 function toggleCampoDetalhes(valor) {
     const bloco = document.getElementById('bloco-detalhes-pendencia');
