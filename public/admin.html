@@ -4481,6 +4481,7 @@ function calcularValorComPontualidadeAdmin(valorIntegral, competencia, dataRefer
     return { valorIntegral: integral, valorFinal: integral, descontoPct: 0, eleganteDesconto: false };
 }
 
+
 function obterParcelaDoMes(aluno, mesRef) {
     let mapa = {};
     try {
@@ -4496,9 +4497,11 @@ function obterParcelaDoMes(aluno, mesRef) {
     if (mapa && mapa[mesRef] && mapa[mesRef].status) {
         const reg = mapa[mesRef];
 
-        // Se já foi pago ou teve valor definido manualmente, preserva o valor gravado
+        // Se já foi pago ou teve valor definido manualmente, preserva fielmente o valor e o desconto gravados
         if (reg.status === 'Pago' || reg.valor_manual) {
-            const vIntegralReg = reg.valor_integral !== undefined ? Number(reg.valor_integral) : valorIntegral;
+            const vIntegralReg = reg.valor_integral !== undefined && Number(reg.valor_integral) > 0
+                ? Number(reg.valor_integral)
+                : valorIntegral;
             const vFinalReg = reg.valor !== undefined ? Number(reg.valor) : vIntegralReg;
             const descReg = reg.desconto_percentual !== undefined
                 ? Number(reg.desconto_percentual)
@@ -4554,57 +4557,88 @@ function obterParcelaDoMes(aluno, mesRef) {
     };
 }
 
-// Recalcula o sugestivo quando o financeiro muda a data no modal (mantendo editável)
+// Recalcula ao mudar a data no modal, respeitando a trava "Manter 23% OFF" caso ativada
 function recalcularSugestaoPorDataModal() {
     const alunoId = document.getElementById('pendencia_aluno_id')?.value;
     const competencia = document.getElementById('pendencia_competencia')?.value;
     const dataPgtoIso = document.getElementById('input-data-pagamento')?.value;
     const inputValor = document.getElementById('input-valor-pago');
-    const elBadge = document.getElementById('badge-regra-modal');
+    const chkManterDesconto = document.getElementById('chk-manter-desconto-modal');
 
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
     const dtRef = dataPgtoIso ? parseDataIsoLocal(dataPgtoIso) : new Date();
     const calc = calcularValorComPontualidadeAdmin(valorIntegral, competencia, dtRef);
 
-    if (inputValor) {
-        inputValor.value = calc.valorFinal.toFixed(2);
+    // Se a data informada for até o dia 05, marca automaticamente a preservação do desconto
+    if (calc.descontoPct > 0 && chkManterDesconto) {
+        chkManterDesconto.checked = true;
     }
-    if (elBadge) {
-        elBadge.innerHTML = calc.descontoPct > 0
-            ? `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">23% OFF (Pgto até dia 05)</span>`
-            : `<span class="inline-block bg-amber-100 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Integral (Após dia 05)</span>`;
+
+    if (chkManterDesconto && chkManterDesconto.checked) {
+        const valorComDesc = Math.round(valorIntegral * 0.77 * 100) / 100;
+        if (inputValor) inputValor.value = valorComDesc.toFixed(2);
+    } else {
+        if (inputValor) inputValor.value = calc.valorFinal.toFixed(2);
+    }
+
+    atualizarBadgeValorManual();
+}
+
+function toggleManterDescontoModal() {
+    const chk = document.getElementById('chk-manter-desconto-modal');
+    if (chk && chk.checked) {
+        aplicarAtalhoValorModal(0.77, true);
+    } else {
+        recalcularSugestaoPorDataModal();
     }
 }
 
 function atualizarBadgeValorManual() {
     const alunoId = document.getElementById('pendencia_aluno_id')?.value;
+    const competencia = document.getElementById('pendencia_competencia')?.value;
+    const dataPgtoIso = document.getElementById('input-data-pagamento')?.value;
     const inputValor = document.getElementById('input-valor-pago');
     const elBadge = document.getElementById('badge-regra-modal');
+    const chkManterDesconto = document.getElementById('chk-manter-desconto-modal');
     if (!inputValor || !elBadge) return;
 
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
     const valorDigitado = parseFloat(inputValor.value) || 0;
+    const dtRef = dataPgtoIso ? parseDataIsoLocal(dataPgtoIso) : new Date();
+    const calcRegra = calcularValorComPontualidadeAdmin(valorIntegral, competencia, dtRef);
 
     if (valorIntegral > 0 && valorDigitado < valorIntegral) {
         const pct = Math.round(((valorIntegral - valorDigitado) / valorIntegral) * 100);
-        elBadge.innerHTML = `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Desconto (${pct}% OFF)</span>`;
+        if (chkManterDesconto && pct === 23) chkManterDesconto.checked = true;
+
+        const origem = calcRegra.eleganteDesconto
+            ? `Pontualidade (${pct}% OFF)`
+            : `Promoção Admin (${pct}% OFF)`;
+        elBadge.innerHTML = `<span class="inline-block bg-teal-100 text-teal-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">${origem}</span>`;
     } else if (valorDigitado > valorIntegral && valorIntegral > 0) {
+        if (chkManterDesconto) chkManterDesconto.checked = false;
         elBadge.innerHTML = `<span class="inline-block bg-rose-100 text-rose-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Com Acréscimo / Juros</span>`;
     } else {
+        if (chkManterDesconto) chkManterDesconto.checked = false;
         elBadge.innerHTML = `<span class="inline-block bg-gray-200 text-gray-700 text-[9px] font-black px-2 py-0.5 rounded uppercase">Valor Integral</span>`;
     }
 }
 
-function aplicarAtalhoValorModal(fator) {
+function aplicarAtalhoValorModal(fator, manterCheck = false) {
     const alunoId = document.getElementById('pendencia_aluno_id')?.value;
     const inputValor = document.getElementById('input-valor-pago');
+    const chkManterDesconto = document.getElementById('chk-manter-desconto-modal');
     if (!inputValor) return;
 
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const valorIntegral = calcularValorMensalidadeAluno(alunoObj);
     inputValor.value = (Math.round(valorIntegral * fator * 100) / 100).toFixed(2);
+
+    if (chkManterDesconto) {
+        chkManterDesconto.checked = fator < 1 || manterCheck;
+    }
     atualizarBadgeValorManual();
 }
 
@@ -4615,9 +4649,13 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
     const alunoObj = alunosGlobais.find(a => String(a.id) === String(alunoId)) || {};
     const parcela = obterParcelaDoMes(alunoObj, competencia);
     const hojeIso = new Date().toISOString().slice(0, 10);
+
+    // Se a parcela já estava paga ou com valor customizado, mantém exatamente o valor e a data salvos
     const dataInicialModal = parcela.data_pagamento_iso || hojeIso;
-    const valorInicialModal = (parcela.valor !== undefined ? Number(parcela.valor) : calcularValorMensalidadeAluno(alunoObj)).toFixed(2);
-    const vIntegralFmt = (parcela.valor_integral || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const valorBaseCurso = calcularValorMensalidadeAluno(alunoObj);
+    const valorInicialModal = (parcela.valor !== undefined ? Number(parcela.valor) : valorBaseCurso).toFixed(2);
+    const vIntegralFmt = (parcela.valor_integral || valorBaseCurso || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const jaTemDesconto = Number(valorInicialModal) < Number(parcela.valor_integral || valorBaseCurso || 0);
 
     const htmlModal = `
     <div id="modal-pendencia-financeira" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
@@ -4650,15 +4688,20 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
                         <input type="number" step="0.01" min="0" id="input-valor-pago" value="${valorInicialModal}" oninput="atualizarBadgeValorManual()" required class="w-full border border-teal-200 rounded-lg px-3 py-2 text-base font-black text-gray-900 bg-white focus:outline-teal-500">
                         <div id="badge-regra-modal" class="shrink-0 text-right"></div>
                     </div>
+
+                    <label class="mt-2.5 flex items-center gap-2 cursor-pointer select-none bg-teal-50/70 border border-teal-100 px-2.5 py-1.5 rounded-lg">
+                        <input type="checkbox" id="chk-manter-desconto-modal" ${jaTemDesconto ? 'checked' : ''} onchange="toggleManterDescontoModal()" class="rounded text-teal-600 focus:ring-teal-500">
+                        <span class="text-[10px] font-bold text-teal-800">Manter desconto de 23% OFF (mesmo se a baixa for lançada após dia 05)</span>
+                    </label>
+
                     <div class="flex items-center gap-2 mt-2">
-                        <button type="button" onclick="aplicarAtalhoValorModal(0.77)" class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-[10px] font-black uppercase hover:bg-teal-100 transition">
+                        <button type="button" onclick="aplicarAtalhoValorModal(0.77, true)" class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-[10px] font-black uppercase hover:bg-teal-100 transition">
                             Aplicar 23% OFF
                         </button>
-                        <button type="button" onclick="aplicarAtalhoValorModal(1.0)" class="px-2.5 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-black uppercase hover:bg-gray-200 transition">
+                        <button type="button" onclick="aplicarAtalhoValorModal(1.0, false)" class="px-2.5 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-[10px] font-black uppercase hover:bg-gray-200 transition">
                             Valor Integral
                         </button>
                     </div>
-                    <p class="text-[9px] text-gray-400 mt-1.5">Alterar a data recalcula a regra do dia 05, use os atalhos ou digite livremente o valor negociado.</p>
                 </div>
 
                 <div>
@@ -4697,6 +4740,7 @@ function abrirModalPendencia(alunoId, alunoNome, competencia, detalhesAtuais, nf
     atualizarBadgeValorManual();
     if (typeof feather !== 'undefined') feather.replace();
 }
+
 
 async function salvarPendenciaAluno(e) {
     e.preventDefault();
