@@ -269,7 +269,7 @@
                            <!-- Preenchido via JS -->
                         </div>
                         <div class="mt-4 pt-3 border-t border-orange-100/80 text-[10px] text-orange-700 font-semibold flex items-center justify-between">
-                            <span>Soma das notas ÷ 2 • Média mínima:</span>
+                            <span>Média Ponderada Oficial • Corte:</span>
                             <span class="bg-orange-100 px-2 py-0.5 rounded font-black">8,0</span>
                         </div>
                     </div>
@@ -320,7 +320,7 @@
                             <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
                                 <i data-feather="bar-chart-2" class="w-4 h-4 text-blue-500 mr-1.5"></i> Notas por Avaliação
                             </h5>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase">Soma das Notas ÷ 2 • Corte: 8,0</span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase">Média Ponderada • Corte: 8,0</span>
                         </div>
                         <div class="relative h-48 w-full">
                             <canvas id="graficoDesempenhoAluno"></canvas>
@@ -617,6 +617,36 @@ function obterFaltas(d) {
     return isNaN(num) ? 0 : num;
 }
 
+function normalizarListaAvaliacoes(d) {
+    const notasObj = d?.notas || {};
+    if (Array.isArray(d?.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0) {
+        return d.avaliacoes_previstas.map((av, idx) => {
+            if (typeof av === 'object' && av !== null) {
+                return {
+                    tipo: av.tipo || `Avaliação ${idx + 1}`,
+                    peso: parseFloat(av.peso) || 1,
+                    data: av.data || ''
+                };
+            }
+            return { tipo: String(av), peso: 1, data: '' };
+        });
+    }
+
+    const chaves = Object.keys(notasObj).filter(k => !['AV1', 'AV2'].includes(k) || Object.keys(notasObj).length <= 2);
+    if (chaves.length > 0) {
+        return chaves.map(k => ({
+            tipo: k.replace(/^av_\d+_/, ''),
+            peso: 1,
+            data: ''
+        }));
+    }
+
+    return [
+        { tipo: 'Primeira avaliação', peso: 1, data: '' },
+        { tipo: 'Segunda avaliação', peso: 1, data: '' }
+    ];
+}
+
 function extrairNotaAluno(notasObj, tipo, idx) {
     if (!notasObj || typeof notasObj !== 'object') return null;
     const chaveIndexada = `av_${idx}_${tipo}`;
@@ -628,34 +658,39 @@ function extrairNotaAluno(notasObj, tipo, idx) {
     }
     const chaveSufixo = Object.keys(notasObj).find(k => k.endsWith(`_${tipo}`) && notasObj[k] !== '' && notasObj[k] !== null);
     if (chaveSufixo) return parseFloat(notasObj[chaveSufixo]);
+    if (idx === 0 && notasObj['AV1'] !== undefined && notasObj['AV1'] !== '') return parseFloat(notasObj['AV1']);
+    if (idx === 1 && notasObj['AV2'] !== undefined && notasObj['AV2'] !== '') return parseFloat(notasObj['AV2']);
     return null;
 }
 
 function calcularMediaDisciplina(d) {
     if (!d) return null;
-    if (d.media_final !== undefined && d.media_final !== null && d.media_final !== '') {
-        const mf = parseFloat(d.media_final);
+    const rawMediaOficial = d.media_final ?? d.media;
+    if (rawMediaOficial !== undefined && rawMediaOficial !== null && rawMediaOficial !== '') {
+        const mf = parseFloat(rawMediaOficial);
         if (!isNaN(mf)) return mf;
     }
 
     const notasObj = d.notas || {};
-    const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
-        ? d.avaliacoes_previstas
-        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
+    const avalPrevistas = normalizarListaAvaliacoes(d);
 
-    let somaNotas = 0;
+    let somaPonderada = 0;
+    let somaPesosTotal = 0;
     let qtdValidas = 0;
 
-    avalPrevistas.forEach((tipo, idx) => {
-        const num = extrairNotaAluno(notasObj, tipo, idx);
+    avalPrevistas.forEach((av, idx) => {
+        const peso = parseFloat(av.peso) || 1;
+        somaPesosTotal += peso;
+
+        const num = extrairNotaAluno(notasObj, av.tipo, idx);
         if (num !== null && !isNaN(num)) {
-            somaNotas += Math.max(0, num);
+            somaPonderada += Math.max(0, num) * peso;
             qtdValidas++;
         }
     });
 
-    if (qtdValidas === 0) return null;
-    return somaNotas / 2;
+    if (qtdValidas === 0 || somaPesosTotal === 0) return null;
+    return somaPonderada / somaPesosTotal;
 }
 
 async function liberarAcessoAluno() {
@@ -808,7 +843,7 @@ async function mudarCursoAtivoAluno(novoCursoId) {
     if (selectMaterial) selectMaterial.value = novoCursoId;
     if (selectSeletorTop) selectSeletorTop.value = novoCursoId;
 
-    await Promise.all([carregarBoletim(), carregarMateriais()]);
+    await Promise.all([carregarBoletim(), carregarMateriais(), loadPerfilFinanceiro()]);
 }
 
 async function carregarBoletim() {
@@ -867,16 +902,14 @@ function renderizarDisciplinaSelecionada() {
     const nomeDisc = n.disciplina || n.nome_disciplina || 'Módulo';
     const faltas = obterFaltas(n);
     const notasObj = n.notas || {};
-    const tiposAvaliacoes = Array.isArray(n.avaliacoes_previstas) && n.avaliacoes_previstas.length > 0
-        ? n.avaliacoes_previstas
-        : Object.keys(notasObj).map(k => k.replace(/^av_\d+_/, ''));
+    const avaliacoes = normalizarListaAvaliacoes(n);
 
     let thHTML = `
         <th class="py-3 px-4">Disciplina / Módulo</th>
         <th class="py-3 px-4 text-center text-yellow-600">Faltas</th>
     `;
-    tiposAvaliacoes.forEach(tipo => {
-        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${tipo}</th>`;
+    avaliacoes.forEach(av => {
+        thHTML += `<th class="py-3 px-4 text-center text-blue-600">${av.tipo} <span class="text-[10px] opacity-75">(P${av.peso})</span></th>`;
     });
     thHTML += `
         <th class="py-3 px-4 text-center">Média</th>
@@ -889,17 +922,17 @@ function renderizarDisciplinaSelecionada() {
     let labelsGrafico = [];
     let dadosGrafico = [];
 
-    tiposAvaliacoes.forEach((tipo, idx) => {
-        const valNota = extrairNotaAluno(notasObj, tipo, idx);
+    avaliacoes.forEach((av, idx) => {
+        const valNota = extrairNotaAluno(notasObj, av.tipo, idx);
 
         if (valNota !== null && !isNaN(valNota)) {
             qtdNotasValidas++;
             tdsNotas += `<td class="py-4 px-4 text-center font-bold text-gray-800">${valNota.toFixed(1)}</td>`;
-            labelsGrafico.push(tipo);
+            labelsGrafico.push(av.tipo);
             dadosGrafico.push(valNota);
         } else {
             tdsNotas += `<td class="py-4 px-4 text-center text-gray-300">-</td>`;
-            labelsGrafico.push(tipo);
+            labelsGrafico.push(av.tipo);
             dadosGrafico.push(0);
         }
     });
@@ -921,7 +954,7 @@ function renderizarDisciplinaSelecionada() {
             badge = `<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] uppercase font-bold tracking-wider">${situacaoOficial}</span>`;
         }
     } else if (mediaFinal !== null && !isNaN(mediaFinal)) {
-        if (tiposAvaliacoes.length > 0 && qtdNotasValidas < tiposAvaliacoes.length) {
+        if (avaliacoes.length > 0 && qtdNotasValidas < avaliacoes.length) {
             badge = `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold tracking-wider">Parcial</span>`;
         } else if (mediaFinal >= 8.0) {
             badge = `<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold tracking-wider">Aprovado</span>`;
@@ -1172,7 +1205,7 @@ async function loadPerfilFinanceiro() {
 
         const hoje = new Date();
         const mesAtualKey = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-        const diaVencimentoAluno = parseInt(dados?.dia_vencimento || 10, 10);
+        const diaVencimentoAluno = parseInt(dados?.dia_vencimento || 5, 10);
 
         let mapaMeses = {};
 
@@ -1538,8 +1571,12 @@ function renderizarSemestreFinanceiro(chaveSemestre, mesAtualKey, diaVencimentoA
                 ? `<button type="button" onclick="baixarReciboPdf('${p.competencia}', this)" class="bg-blue-600 text-white hover:bg-blue-700 transition px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto shadow-sm">
                        <i data-feather="file-text" class="w-3.5 h-3.5 mr-1.5"></i> Gerar Comprovante
                    </button>`
-                : `<span class="text-[11px] font-semibold text-gray-400">${emAnalise ? 'Comprovante em validação' : 'Aguardando baixa na secretaria'}</span>`;
-
+                : (emAnalise
+                    ? `<span class="text-[11px] font-semibold text-amber-600">Comprovante em validação</span>`
+                    : `<label class="cursor-pointer bg-emerald-600 text-white hover:bg-emerald-700 transition px-3.5 py-2 rounded-lg text-xs font-bold inline-flex items-center ml-auto shadow-sm">
+                           <i data-feather="upload" class="w-3.5 h-3.5 mr-1.5"></i> Anexar Comprovante
+                           <input type="file" accept="image/*,application/pdf" class="hidden" onchange="enviarComprovantePagamentoAluno('${p.competencia}', this)">
+                       </label>`);
             return `
                 <tr class="hover:bg-gray-50 transition border-b border-gray-50">
                     <td class="py-4 px-4 font-bold text-gray-900 capitalize">
@@ -1690,6 +1727,30 @@ async function salvarPerfilAluno(event) {
         btn.disabled = false;
         btn.innerText = textoOriginal;
     }
+}
+
+async function enviarComprovantePagamentoAluno(competencia, inputEl) {
+    const arquivo = inputEl?.files?.[0];
+    if (!arquivo) return;
+
+    if (arquivo.size > 2 * 1024 * 1024) {
+        alert("O arquivo deve ter no máximo 2MB.");
+        inputEl.value = "";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("comprovante", arquivo);
+    formData.append("competencia", competencia);
+
+    const res = await apiRequest("/aluno/financeiro/comprovante", "POST", formData);
+    if (res && res.sucesso) {
+        alert(res.mensagem || "Comprovante enviado para análise da secretaria!");
+        await loadPerfilFinanceiro();
+    } else {
+        alert(res?.detail || "Não foi possível enviar o comprovante.");
+    }
+    inputEl.value = "";
 }
 
 function mudarTela(idTela) {
@@ -2048,22 +2109,20 @@ async function abrirTelaDisciplina(indexBoletim) {
     }
 
     const ulAval = document.getElementById('disc-lista-avaliacoes');
-    const avalPrevistas = Array.isArray(d.avaliacoes_previstas) && d.avaliacoes_previstas.length > 0
-        ? d.avaliacoes_previstas
-        : Object.keys(d.notas || {}).map(k => k.replace(/^av_\d+_/, ''));
+    const avalPrevistas = normalizarListaAvaliacoes(d);
 
     if (avalPrevistas.length === 0) {
         ulAval.innerHTML = '<p class="text-xs text-orange-400">Nenhuma avaliação configurada.</p>';
     } else {
-        ulAval.innerHTML = avalPrevistas.map((tipo, idx) => {
-            const notaNum = extrairNotaAluno(d.notas || {}, tipo, idx);
+        ulAval.innerHTML = avalPrevistas.map((av, idx) => {
+            const notaNum = extrairNotaAluno(d.notas || {}, av.tipo, idx);
             const nota = (notaNum !== null && !isNaN(notaNum)) ? notaNum.toFixed(1) : 'Pendente';
             const bgCor = nota === 'Pendente' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-700';
             return `
                 <div class="bg-white border border-orange-100 p-3 rounded-xl flex items-center justify-between shadow-sm">
                     <div>
-                        <p class="text-xs font-bold text-gray-800 uppercase">${tipo}</p>
-                        <p class="text-[9px] text-gray-400 uppercase mt-0.5">Avaliação Oficial</p>
+                        <p class="text-xs font-bold text-gray-800 uppercase">${av.tipo}</p>
+                        <p class="text-[9px] text-gray-400 uppercase mt-0.5">Peso ${av.peso} ${av.data ? '• ' + formatarDataBrSegura(av.data) : '• Avaliação Oficial'}</p>
                     </div>
                     <span class="${bgCor} px-2 py-1 rounded text-xs font-black">${nota}</span>
                 </div>
