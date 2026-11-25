@@ -1,23 +1,360 @@
 import os
+import re
 import json
 import uuid
-from datetime import datetime
-from fastapi.middleware.cors import CORSMiddleware
-import firebase_admin
-from fastapi import FastAPI, Form, HTTPException, File, UploadFile, Response, Header
-from firebase_admin import credentials, firestore, storage
+import smtplib
 import traceback
 import io
+import base64
+import urllib.request
+from datetime import datetime, timezone, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from typing import List, Optional
+
+from fastapi import FastAPI, Form, HTTPException, File, UploadFile, Response, Header
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import firebase_admin
+from firebase_admin import credentials, firestore, storage
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
-import urllib.request
-from typing import List, Optional
-from pydantic import BaseModel
-import base64
 
+# ============================================
+# AUTOMAÇÃO DE ENVIO DE E-MAILS (FUNÇÕES)
+# ============================================
+FUSO_BR = timezone(timedelta(hours=-3))
+
+
+def _agora_br() -> datetime:
+    return datetime.now(FUSO_BR)
+
+
+def _normalizar_data_iso(data_raw) -> str:
+    """Converte 'DD/MM/YYYY' ou 'YYYY-MM-DD...' para 'YYYY-MM-DD'."""
+    if not data_raw:
+        return ""
+    s = str(data_raw).strip().split(" ")[0].split("T")[0]
+    if "/" in s:
+        partes = s.split("/")
+        if len(partes) == 3:
+            return f"{partes[2].zfill(4)}-{partes[1].zfill(2)}-{partes[0].zfill(2)}"
+    return s[:10]
+
+
+def _enviar_smtp(destinatario: str, assunto: str, html_corpo: str, anexo_pdf: tuple = None) -> bool:
+    host = os.getenv("SMTP_HOST", "").strip()
+    port = int(os.getenv("SMTP_PORT", "587"))
+    user = os.getenv("SMTP_USER", "").strip()
+    password = os.getenv("SMTP_PASS", "").strip()
+    from_name = os.getenv("SMTP_FROM_NAME", "SIGA - UNIVEAS").strip()
+
+    if not host or not user or not password or not destinatario or "@" not in destinatario:
+        return False
+
+    msg = MIMEMultipart("mixed")
+    msg["From"] = f"{from_name} <{user}>"
+    msg["To"] = destinatario.strip()
+    msg["Subject"] = assunto
+
+    parte_html = MIMEText(html_corpo, "html", "utf-8")
+    msg.attach(parte_html)
+
+    if anexo_pdf:
+        nome_arquivo, bytes_pdf = anexo_pdf
+        part_pdf = MIMEApplication(bytes_pdf, _subtype="pdf")
+        part_pdf.add_header("Content-Disposition", "attachment", filename=nome_arquivo)
+        msg.attach(part_pdf)
+
+    try:
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+                server.login(user, password)
+                server.sendmail(user, [destinatario.strip()], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(user, password)
+                server.sendmail(user, [destinatario.strip()], msg.as_string())
+        return True
+    except Exception:
+        traceback.print_exc()
+        return False
+
+
+def _template_base_email(titulo: str, saudacao: str, conteudo_html: str) -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:24px 12px;">
+            <tr>
+                <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+                        <tr>
+                            <td style="background:#0f172a;padding:20px 24px;text-align:center;border-bottom:4px solid #0f766e;">
+                                <img src="https://i.imgur.com/ki7mdS2.png" alt="UNIVEAS" style="height:52px;margin-bottom:8px;"><br>
+                                <span style="color:#ffffff;font-size:15px;font-weight:700;letter-spacing:0.5px;">UNIVEAS — UNIÃO VIGIENSE DE ENSINO E ASSISTÊNCIA À SAÚDE</span><br>
+                                <span style="color:#5eead4;font-size:11px;">Sistema Integrado de Gestão Acadêmica (SIGA - UNIVEAS)</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:28px 26px;">
+                                <h2 style="margin:0 0 14px 0;color:#0f766e;font-size:18px;">{titulo}</h2>
+                                <p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;">{saudacao}</p>
+                                <div style="font-size:14px;line-height:1.6;color:#334155;">
+                                    {conteudo_html}
+                                </div>
+                                <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;">
+                                    <a href="https://univeasvigia.vercel.app/aluno.html" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;padding:11px 22px;border-radius:8px;">
+                                        Acessar Portal do Aluno
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="background:#f8fafc;padding:14px 20px;text-align:center;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;">
+                                CNPJ: 53.199.321/0001-23 • Tv. Josino Cardoso, nº 126 – Centro, Vigia/PA<br>
+                                E-mail automático enviado pelo robô acadêmico SIGA UNIVEAS.
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+
+
+def _ja_notificado(db_conn, chave_unica: str) -> bool:
+    doc = db_conn.collection("logs_notificacoes_email").document(chave_unica).get()
+    return doc.exists
+
+
+def _registrar_notificacao(db_conn, chave_unica: str, dados: dict):
+    db_conn.collection("logs_notificacoes_email").document(chave_unica).set({
+        **dados,
+        "enviado_em": _agora_br().isoformat()
+    })
+
+
+def _cursos_do_aluno(aluno: dict) -> set:
+    ids = set()
+    if aluno.get("curso_id"):
+        ids.add(str(aluno["curso_id"]))
+    if aluno.get("curso"):
+        ids.add(str(aluno["curso"]))
+    c_json = aluno.get("cursos_json", [])
+    if isinstance(c_json, str):
+        try:
+            c_json = json.loads(c_json)
+        except Exception:
+            c_json = []
+    if isinstance(c_json, list):
+        for item in c_json:
+            if isinstance(item, dict) and item.get("curso_id"):
+                ids.add(str(item["curso_id"]))
+    return ids
+
+
+def disparar_recibo_pagamento_email(db_conn, aluno_id: str, competencia: str, pdf_bytes: bytes, nome_arquivo_pdf: str):
+    """Dispara e-mail com o recibo PDF oficial anexado quando uma mensalidade é quitada."""
+    try:
+        chave = f"RECIBO__{aluno_id}__{competencia}"
+        if _ja_notificado(db_conn, chave):
+            return False
+
+        aluno_doc = db_conn.collection("alunos").document(str(aluno_id)).get()
+        if not aluno_doc.exists:
+            return False
+
+        aluno = aluno_doc.to_dict() or {}
+        email_aluno = str(aluno.get("email") or "").strip()
+        if not email_aluno or "@" not in email_aluno:
+            return False
+
+        nome_aluno = aluno.get("nome", "Aluno(a)")
+        matricula = aluno.get("matricula", "S/N")
+        partes = competencia.split("-")
+        comp_fmt = f"{partes[1]}/{partes[0]}" if len(partes) == 2 else competencia
+
+        corpo = _template_base_email(
+            titulo=f"Recibo de Pagamento — Competência {comp_fmt}",
+            saudacao=f"Olá, <strong>{nome_aluno}</strong> (Matrícula: <strong>{matricula}</strong>),",
+            conteudo_html=f"""
+                <p>Confirmamos a quitação da sua mensalidade referente à competência <strong>{comp_fmt}</strong>.</p>
+                <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:14px;margin:14px 0;color:#065f46;">
+                    <strong>Status:</strong> Pago / Quitado<br>
+                    <strong>Competência:</strong> {comp_fmt}<br>
+                    <strong>Comprovante:</strong> Seu recibo oficial em PDF segue anexado neste e-mail e também está disponível para download no Portal do Aluno.
+                </div>
+            """
+        )
+
+        enviado = _enviar_smtp(
+            destinatario=email_aluno,
+            assunto=f"Recibo de Mensalidade ({comp_fmt}) - UNIVEAS",
+            html_corpo=corpo,
+            anexo_pdf=(nome_arquivo_pdf, pdf_bytes)
+        )
+
+        if enviado:
+            _registrar_notificacao(db_conn, chave, {
+                "tipo": "RECIBO",
+                "aluno_id": str(aluno_id),
+                "email": email_aluno,
+                "competencia": competencia
+            })
+        return enviado
+    except Exception:
+        traceback.print_exc()
+        return False
+
+
+def executar_varredura_diaria_notificacoes(db_conn) -> dict:
+    hoje_iso = _agora_br().strftime("%Y-%m-%d")
+    hoje_br = _agora_br().strftime("%d/%m/%Y")
+
+    alunos_ativos = []
+    for doc in db_conn.collection("alunos").stream():
+        a = doc.to_dict() or {}
+        if str(a.get("status") or "").strip() not in ["Trancado", "Concluído", "Concluido", "Cancelado"]:
+            alunos_ativos.append({"id": doc.id, **a})
+
+    cursos_docs = [{"id": doc.id, **doc.to_dict()} for doc in db_conn.collection("cursos").stream()]
+
+    enviados_inicio = 0
+    enviados_avaliacao = 0
+    erros = 0
+
+    for curso in cursos_docs:
+        cid = str(curso["id"])
+        nome_curso = curso.get("nome_curso", "Curso")
+        grade = curso.get("grade_curricular", [])
+        if not isinstance(grade, list):
+            continue
+
+        alunos_do_curso = [a for a in alunos_ativos if cid in _cursos_do_aluno(a)]
+        if not alunos_do_curso:
+            continue
+
+        for mod in grade:
+            if not isinstance(mod, dict):
+                continue
+            sub_discs = mod.get("disciplinas", [])
+            itens = sub_discs if (isinstance(sub_discs, list) and len(sub_discs) > 0) else [mod]
+
+            for disc in itens:
+                if not isinstance(disc, dict):
+                    continue
+                nome_disc = str(disc.get("nome") or disc.get("disciplina") or "").strip()
+                if not nome_disc:
+                    continue
+
+                # 1. GATILHO: INÍCIO DE DISCIPLINA / MÓDULO
+                dt_inicio = _normalizar_data_iso(disc.get("data_inicio") or mod.get("data_inicio"))
+                if dt_inicio == hoje_iso:
+                    dias_aula = ", ".join(disc.get("dias_aula") or mod.get("dias_aula") or []) or "Conforme cronograma"
+                    h_ini = disc.get("hora_aula_inicio") or mod.get("hora_aula_inicio") or ""
+                    h_fim = disc.get("hora_aula_fim") or mod.get("hora_aula_fim") or ""
+                    horario_txt = f"{h_ini} às {h_fim}" if (h_ini and h_fim) else (h_ini or "Horário da turma")
+                    ch_tot = disc.get("ch_total") or mod.get("ch_total") or 40
+
+                    for aluno in alunos_do_curso:
+                        email_aluno = str(aluno.get("email") or "").strip()
+                        if not email_aluno or "@" not in email_aluno:
+                            continue
+                        chave_ini = f"INICIO_DISC__{aluno['id']}__{cid}__{nome_disc.upper()}__{hoje_iso}".replace("/", "-")
+                        if _ja_notificado(db_conn, chave_ini):
+                            continue
+
+                        corpo = _template_base_email(
+                            titulo=f"Início de Disciplina: {nome_disc}",
+                            saudacao=f"Olá, <strong>{aluno.get('nome', 'Aluno(a)')}</strong>!",
+                            conteudo_html=f"""
+                                <p>Informamos que hoje (<strong>{hoje_br}</strong>) inicia-se uma nova disciplina/módulo no seu curso de <strong>{nome_curso}</strong>:</p>
+                                <div style="background:#f8fafc;border-left:4px solid #0f766e;padding:14px;border-radius:6px;margin:14px 0;">
+                                    <strong>Disciplina / Módulo:</strong> {nome_disc}<br>
+                                    <strong>Carga Horária:</strong> {ch_tot}h<br>
+                                    <strong>Dias de Aula:</strong> {dias_aula}<br>
+                                    <strong>Horário:</strong> {horario_txt}
+                                </div>
+                                <p>Acompanhe materiais didáticos, frequência e cronograma diretamente pelo seu Portal do Aluno.</p>
+                            """
+                        )
+                        if _enviar_smtp(email_aluno, f"Início de Disciplina: {nome_disc} - UNIVEAS", corpo):
+                            _registrar_notificacao(db_conn, chave_ini, {
+                                "tipo": "INICIO_DISCIPLINA",
+                                "aluno_id": aluno["id"],
+                                "curso_id": cid,
+                                "disciplina": nome_disc,
+                                "data": hoje_iso
+                            })
+                            enviados_inicio += 1
+                        else:
+                            erros += 1
+
+                # 2. GATILHO: DIA DE AVALIAÇÃO
+                avaliacoes = disc.get("avaliacoes", [])
+                if isinstance(avaliacoes, list):
+                    for idx_av, av in enumerate(avaliacoes):
+                        if not isinstance(av, dict):
+                            continue
+                        dt_av = _normalizar_data_iso(av.get("data") or av.get("data_avaliacao"))
+                        if dt_av != hoje_iso:
+                            continue
+
+                        tipo_av = av.get("tipo") or av.get("nome") or f"Avaliação {idx_av + 1}"
+                        desc_av = av.get("descricao") or av.get("conteudo") or ""
+
+                        for aluno in alunos_do_curso:
+                            email_aluno = str(aluno.get("email") or "").strip()
+                            if not email_aluno or "@" not in email_aluno:
+                                continue
+                            chave_av = f"AVALIACAO__{aluno['id']}__{cid}__{nome_disc.upper()}__{tipo_av.upper()}__{hoje_iso}".replace("/", "-")
+                            if _ja_notificado(db_conn, chave_av):
+                                continue
+
+                            detalhe_extra = f"<br><strong>Observação:</strong> {desc_av}" if desc_av else ""
+                            corpo_av = _template_base_email(
+                                titulo=f"Dia de Avaliação — {nome_disc}",
+                                saudacao=f"Olá, <strong>{aluno.get('nome', 'Aluno(a)')}</strong>!",
+                                conteudo_html=f"""
+                                    <p>Lembramos que hoje (<strong>{hoje_br}</strong>) está agendada uma avaliação no curso de <strong>{nome_curso}</strong>:</p>
+                                    <div style="background:#fefce8;border-left:4px solid #eab308;padding:14px;border-radius:6px;margin:14px 0;color:#713f12;">
+                                        <strong>Disciplina:</strong> {nome_disc}<br>
+                                        <strong>Avaliação:</strong> {tipo_av}<br>
+                                        <strong>Data:</strong> {hoje_br}{detalhe_extra}
+                                    </div>
+                                    <p>Bons estudos e excelente avaliação!</p>
+                                """
+                            )
+                            if _enviar_smtp(email_aluno, f"Lembrete de Avaliação Hoje: {nome_disc} - UNIVEAS", corpo_av):
+                                _registrar_notificacao(db_conn, chave_av, {
+                                    "tipo": "DIA_AVALIACAO",
+                                    "aluno_id": aluno["id"],
+                                    "curso_id": cid,
+                                    "disciplina": nome_disc,
+                                    "avaliacao": tipo_av,
+                                    "data": hoje_iso
+                                })
+                                enviados_avaliacao += 1
+                            else:
+                                erros += 1
+
+    return {
+        "sucesso": True,
+        "data_referencia": hoje_iso,
+        "enviados_inicio_disciplina": enviados_inicio,
+        "enviados_dia_avaliacao": enviados_avaliacao,
+        "falhas_envio": erros
+    }
 
 # ==========================================
 # SCHEMAS PYDANTIC (Validação de JSON)
@@ -1372,6 +1709,8 @@ def salvar_parcela_individual(payload: ParcelaUpdatePayload):
         mapa = obter_mapa_mensalidades_unificado(aluno_id, aluno_dados, cursos_map, mens_docs)
         mapa[comp] = {**mapa.get(comp, {}), **dados}
         sincronizar_estado_aluno(aluno_id, mapa)
+    if payload.status == "Pago":
+        _notificar_recibo_pago_se_aplicavel(aluno_id, comp)
 
     return {"sucesso": True, "parcela": dados}
 
@@ -1491,6 +1830,11 @@ async def atualizar_pendencia_aluno(
         ref.update(updates_aluno)
 
     sincronizar_estado_aluno(str(aluno_id), mapa)
+
+    for comp_k, parc_v in mapa.items():
+        if parc_v.get("status") == "Pago":
+            _notificar_recibo_pago_se_aplicavel(str(aluno_id), comp_k)
+
     return {"sucesso": True, "mensagem": "Parcelas financeiras atualizadas com sucesso."}
 
 
@@ -1547,6 +1891,8 @@ async def dar_baixa_mensalidade(mensalidade_id: str):
         mapa[comp] = {**mapa.get(comp, {}), **dados_baixa}
         sincronizar_estado_aluno(aluno_id, mapa)
 
+    _notificar_recibo_pago_se_aplicavel(aluno_id, comp)
+
     return {"sucesso": True, "mensagem": "Baixa realizada com sucesso.", "valor_cobrado": calc["valor_final"], "desconto_percentual": calc["desconto_percentual"]}
 
 
@@ -1596,7 +1942,8 @@ async def auditar_e_quitar_mensalidade(mensalidade_id: str, acao: str = Form(...
             mapa[comp]["desconto_percentual"] = calc["desconto_percentual"]
             mapa[comp]["data_pagamento"] = agora.strftime("%Y-%m-%d") if acao == "aprovar" else None
         sincronizar_estado_aluno(aluno_id, mapa)
-
+    if novo_status == "Pago":
+        _notificar_recibo_pago_se_aplicavel(aluno_id, comp)
     return {"sucesso": True, "mensagem": f"Mensalidade marcada como {novo_status}."}
 
 
@@ -3346,6 +3693,15 @@ def _montar_pdf_recibo_aluno(aluno_id: str, competencia: str):
         headers={"Content-Disposition": f"attachment; filename={nome_arq}"}
     )
 
+def _notificar_recibo_pago_se_aplicavel(aluno_id: str, competencia: str):
+    try:
+        resp_pdf = _montar_pdf_recibo_aluno(str(aluno_id), competencia)
+        nome_arq = f"Recibo_UNIVEAS_{competencia}.pdf"
+        disparar_recibo_pagamento_email(db, str(aluno_id), competencia, resp_pdf.body, nome_arq)
+    except Exception:
+        traceback.print_exc()
+
+
 @app.post("/api/v1/aluno/financeiro/comprovante")
 async def aluno_enviar_comprovante_portal(
         comprovante: UploadFile = File(...),
@@ -3426,3 +3782,14 @@ async def gerar_recibo_mensalidade_admin_pdf(aluno_id: str, competencia: str):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao gerar recibo PDF: {str(e)}")
+
+@app.get("/api/v1/robo/notificacoes-diarias")
+async def rodar_robo_notificacoes_diarias(chave: str = "", authorization: str = Header(None)):
+    checar_db()
+    segredo_esperado = os.getenv("CRON_SECRET") or os.getenv("KEY_ADMIN")
+    token_bearer = (authorization or "").replace("Bearer ", "").strip()
+
+    if segredo_esperado and chave != segredo_esperado and token_bearer != segredo_esperado:
+        raise HTTPException(status_code=401, detail="Chave de execução do robô inválida.")
+
+    return executar_varredura_diaria_notificacoes(db)
