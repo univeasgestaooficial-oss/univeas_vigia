@@ -3283,30 +3283,110 @@ async function excluirCursoModal(id_firebase) {
 }
 
 function imprimirCardCurso(id_firebase) {
-    const token = localStorage.getItem('token_siga');
+    const curso = cursosGlobais.find(c => String(c.id) === String(id_firebase));
+    if (!curso) {
+        alert("Curso não encontrado para impressão.");
+        return;
+    }
 
-    fetch(`${API_BASE_URL}/cursos/${id_firebase}/pdf`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(response => {
-        if (!response.ok) throw new Error("Erro ao gerar o PDF no servidor.");
-        return response.blob();
-    })
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Matriz_Curricular_${id_firebase}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-    })
-    .catch(error => {
-        console.error(error);
-        alert("Erro ao baixar o PDF. Verifique se o backend está online.");
-    });
+    let gradeRaw = curso.disciplinas_json || curso.grade_curricular || curso.disciplinas || curso.modulos || '[]';
+    let grade = [];
+    try {
+        grade = typeof gradeRaw === 'string' ? JSON.parse(gradeRaw) : (Array.isArray(gradeRaw) ? gradeRaw : []);
+    } catch (e) {}
+
+    let cargaTotal = 0;
+    const linhasModulos = grade.map((mod, idx) => {
+        const chT = parseInt(mod.ch_teoria) || 0;
+        const chP = parseInt(mod.ch_pratica) || 0;
+        const chE = parseInt(mod.ch_estagio) || 0;
+        const chTot = parseInt(mod.ch_total) || (chT + chP + chE);
+        cargaTotal += chTot;
+
+        return `
+            <tr>
+                <td style="text-align:center;">${idx + 1}</td>
+                <td>${mod.semestre || '-'}</td>
+                <td><strong>${mod.nome || 'Módulo sem nome'}</strong><br><span style="font-size:10px;color:#64748b;">${mod.descricao || ''}</span></td>
+                <td style="text-align:center;">${chT}h</td>
+                <td style="text-align:center;">${chP}h</td>
+                <td style="text-align:center;">${chE}h</td>
+                <td style="text-align:center;font-weight:800;">${chTot}h</td>
+            </tr>
+        `;
+    }).join('');
+
+    const janelaPrint = window.open('', '_blank', 'width=1000,height=780');
+    janelaPrint.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Matriz Curricular - ${curso.nome_curso || 'Curso'}</title>
+            <style>
+                @page { size: A4 portrait; margin: 14mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; }
+                .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #14b8a6; padding-bottom: 12px; margin-bottom: 16px; }
+                .header-left { display: flex; align-items: center; gap: 14px; }
+                .header-left img { height: 60px; width: auto; object-fit: contain; }
+                .inst-nome { font-size: 16px; font-weight: 900; color: #0f172a; margin: 0; }
+                .inst-sub { font-size: 10px; color: #475569; margin: 2px 0 0 0; }
+                .doc-titulo { font-size: 14px; font-weight: 900; color: #0d9488; text-transform: uppercase; text-align: right; margin: 0; }
+                .info-curso { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 11px; }
+                table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                th { background: #0f172a; color: #ffffff; text-transform: uppercase; font-size: 9.5px; padding: 8px 6px; text-align: left; }
+                td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; }
+                tr:nth-child(even) td { background: #f8fafc; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="header-left">
+                    <img src="https://i.imgur.com/ki7mdS2.png" alt="Logo UNIVEAS">
+                    <div>
+                        <p class="inst-nome">ESCOLA TÉCNICA E PROFISSIONALIZANTE UNIVEAS</p>
+                        <p class="inst-sub">Sistema Integrado de Gestão Acadêmica (SIGA - UNIVEAS) • Vigia de Nazaré/PA</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="doc-titulo">Matriz Curricular do Curso</p>
+                    <p style="font-size:10px;color:#64748b;text-align:right;margin:3px 0 0 0;">Cód: ${curso.codigo || '-'}</p>
+                </div>
+            </div>
+
+            <div class="info-curso">
+                <strong>Curso:</strong> ${curso.nome_curso || '-'} &nbsp;|&nbsp;
+                <strong>Modalidade:</strong> ${(curso.modalidade || '-').toUpperCase()} &nbsp;|&nbsp;
+                <strong>Duração:</strong> ${curso.duracao || '-'} &nbsp;|&nbsp;
+                <strong>Carga Horária Total:</strong> ${cargaTotal}h
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align:center;width:30px;">#</th>
+                        <th>Semestre</th>
+                        <th>Módulo / Disciplina</th>
+                        <th style="text-align:center;">Teoria</th>
+                        <th style="text-align:center;">Prática</th>
+                        <th style="text-align:center;">Estágio</th>
+                        <th style="text-align:center;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhasModulos || '<tr><td colspan="7" style="text-align:center;">Nenhum módulo cadastrado.</td></tr>'}
+                </tbody>
+            </table>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 350);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    janelaPrint.document.close();
 }
 
 async function loadDocumentos() {
